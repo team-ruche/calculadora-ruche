@@ -5,7 +5,6 @@ import {
   Calculator,
   FileText,
   EyeOff,
-  KanbanSquare,
   Users,
   LogOut,
 } from "lucide-react";
@@ -32,7 +31,6 @@ const items: Item[] = [
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },
   { title: "Motor de Preços", url: "/motor", icon: Calculator, rucheOnly: true },
   { title: "Visão Interna", url: "/visao-interna", icon: EyeOff, rucheOnly: true },
-  { title: "Tracker", url: "/tracker", icon: KanbanSquare, rucheOnly: true },
   { title: "Usuários", url: "/usuarios", icon: Users, rucheOnly: true },
 ];
 
@@ -82,7 +80,9 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border p-3">
         {!collapsed && user && (
           <div className="mb-2 px-2">
-            <p className="truncate text-sm font-medium text-sidebar-foreground">{user.nome || user.email}</p>
+            <p className="truncate text-sm font-medium text-sidebar-foreground">
+              {user.nome || user.email}
+            </p>
             <p className="truncate text-xs text-sidebar-foreground/60">{user.email}</p>
           </div>
         )}

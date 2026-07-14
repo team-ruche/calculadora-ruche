@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated.usuarios'
 import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated.overview'
+import { Route as AuthenticatedMotorRouteImport } from './routes/_authenticated.motor'
 import { Route as AuthenticatedInputRouteImport } from './routes/_authenticated.input'
 
 const AuthRoute = AuthRouteImport.update({
@@ -40,6 +41,11 @@ const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
   path: '/overview',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedMotorRoute = AuthenticatedMotorRouteImport.update({
+  id: '/motor',
+  path: '/motor',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedInputRoute = AuthenticatedInputRouteImport.update({
   id: '/input',
   path: '/input',
@@ -50,6 +56,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/input': typeof AuthenticatedInputRoute
+  '/motor': typeof AuthenticatedMotorRoute
   '/overview': typeof AuthenticatedOverviewRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
@@ -57,6 +64,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/input': typeof AuthenticatedInputRoute
+  '/motor': typeof AuthenticatedMotorRoute
   '/overview': typeof AuthenticatedOverviewRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
@@ -66,20 +74,22 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/input': typeof AuthenticatedInputRoute
+  '/_authenticated/motor': typeof AuthenticatedMotorRoute
   '/_authenticated/overview': typeof AuthenticatedOverviewRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/input' | '/overview' | '/usuarios'
+  fullPaths: '/' | '/auth' | '/input' | '/motor' | '/overview' | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/input' | '/overview' | '/usuarios'
+  to: '/' | '/auth' | '/input' | '/motor' | '/overview' | '/usuarios'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/input'
+    | '/_authenticated/motor'
     | '/_authenticated/overview'
     | '/_authenticated/usuarios'
   fileRoutesById: FileRoutesById
@@ -127,6 +137,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOverviewRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/motor': {
+      id: '/_authenticated/motor'
+      path: '/motor'
+      fullPath: '/motor'
+      preLoaderRoute: typeof AuthenticatedMotorRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/input': {
       id: '/_authenticated/input'
       path: '/input'
@@ -139,12 +156,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedInputRoute: typeof AuthenticatedInputRoute
+  AuthenticatedMotorRoute: typeof AuthenticatedMotorRoute
   AuthenticatedOverviewRoute: typeof AuthenticatedOverviewRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedInputRoute: AuthenticatedInputRoute,
+  AuthenticatedMotorRoute: AuthenticatedMotorRoute,
   AuthenticatedOverviewRoute: AuthenticatedOverviewRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
 }

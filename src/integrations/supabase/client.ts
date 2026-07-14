@@ -85,3 +85,18 @@ export interface ProposalExtras {
   segundo_andar_sem_elevador: boolean;
   portas_trim: number;
 }
+
+export type MotorGrupo = "instalacao" | "demolicao" | "prep" | "extra";
+
+export interface MotorPrice {
+  id: string;
+  grupo: MotorGrupo;
+  codigo: string;
+  componente: string;
+  unidade: string;
+  preco_cliente: number;
+  repasse_partida: number;
+  teto_repasse: number;
+  ativo: boolean;
+  created_at: string;
+}
