@@ -67,9 +67,10 @@ export interface ProposalRoom {
   proposal_id: string;
   nome: string;
   area_sqft: number;
-  piso_novo: PisoTipo;
-  piso_atual: PisoTipo;
-  preparo: PreparoNivel;
+  // Agora texto livre (codigo de motor_prices) — subcategorias dinâmicas
+  piso_novo: string;
+  piso_atual: string;
+  preparo: string;
   created_at: string;
 }
 
@@ -84,6 +85,16 @@ export interface ProposalExtras {
   aparelhos_mover: number;
   segundo_andar_sem_elevador: boolean;
   portas_trim: number;
+}
+
+export interface ProposalRoomMedia {
+  id: string;
+  room_id: string;
+  proposal_id: string;
+  url: string;
+  path: string;
+  mime: string | null;
+  created_at: string;
 }
 
 export type MotorGrupo = "instalacao" | "demolicao" | "prep" | "extra";

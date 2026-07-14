@@ -1,13 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  LayoutDashboard,
-  FilePlus2,
-  Calculator,
-  FileText,
-  EyeOff,
-  Users,
-  LogOut,
-} from "lucide-react";
+import { LayoutDashboard, Calculator, FileText, EyeOff, Users, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -27,7 +19,6 @@ type Item = { title: string; url: string; icon: typeof LayoutDashboard; rucheOnl
 
 const items: Item[] = [
   { title: "Overview", url: "/overview", icon: LayoutDashboard },
-  { title: "Novo Orçamento", url: "/input", icon: FilePlus2 },
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },
   { title: "Precificação", url: "/motor", icon: Calculator, rucheOnly: true },
   { title: "Controle Financeiro", url: "/visao-interna", icon: EyeOff, rucheOnly: true },

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, FileText, Printer } from "lucide-react";
+import { ArrowLeft, FileText, Printer, Plus, Pencil } from "lucide-react";
 import {
   supabase,
   type Proposal,
@@ -10,6 +10,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { OrcamentoForm } from "@/components/OrcamentoForm";
 import {
   Table,
   TableBody,
@@ -19,6 +21,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+
+type DialogState = { mode: "create" } | { mode: "edit"; proposalId: string } | null;
 
 export const Route = createFileRoute("/_authenticated/orcamentos")({
   head: () => ({ meta: [{ title: "Orçamentos · Ruche" }] }),
@@ -61,6 +65,7 @@ function OrcamentosPage() {
   const [selected, setSelected] = useState<ProposalRow | null>(null);
   const [items, setItems] = useState<ProposalItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
+  const [dialog, setDialog] = useState<DialogState>(null);
 
   const load = async () => {
     setLoading(true);
@@ -87,40 +92,90 @@ function OrcamentosPage() {
     load();
   }, []);
 
-  const openDetail = async (row: ProposalRow) => {
-    setSelected(row);
+  const reloadItems = async (proposalId: string) => {
     setItemsLoading(true);
     const { data, error } = await supabase
       .from("proposal_items")
       .select("*")
-      .eq("proposal_id", row.id)
+      .eq("proposal_id", proposalId)
       .order("grupo");
     if (error) toast.error(error.message);
     else setItems((data as ProposalItem[]) ?? []);
     setItemsLoading(false);
   };
 
+  const openDetail = async (row: ProposalRow) => {
+    setSelected(row);
+    await reloadItems(row.id);
+  };
+
+  const onSaved = async (proposalId: string) => {
+    setDialog(null);
+    await load();
+    if (selected && selected.id === proposalId) {
+      const { data } = await supabase
+        .from("proposals")
+        .select("*, leads(nome_cliente, endereco, telefone, email)")
+        .eq("id", proposalId)
+        .maybeSingle();
+      if (data) setSelected(data as ProposalRow);
+      await reloadItems(proposalId);
+    }
+  };
+
+  const formDialog = (
+    <Dialog open={dialog !== null} onOpenChange={(o) => !o && setDialog(null)}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {dialog?.mode === "edit" ? "Editar orçamento" : "Novo orçamento"}
+          </DialogTitle>
+        </DialogHeader>
+        {dialog && (
+          <OrcamentoForm
+            mode={dialog.mode}
+            proposalId={dialog.mode === "edit" ? dialog.proposalId : undefined}
+            onSaved={() =>
+              onSaved(dialog.mode === "edit" ? dialog.proposalId : (selected?.id ?? ""))
+            }
+            onCancel={() => setDialog(null)}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
   if (selected) {
     return (
-      <OrcamentoDetail
-        row={selected}
-        items={items}
-        loading={itemsLoading}
-        onBack={() => {
-          setSelected(null);
-          setItems([]);
-        }}
-      />
+      <>
+        {formDialog}
+        <OrcamentoDetail
+          row={selected}
+          items={items}
+          loading={itemsLoading}
+          onEdit={() => setDialog({ mode: "edit", proposalId: selected.id })}
+          onBack={() => {
+            setSelected(null);
+            setItems([]);
+          }}
+        />
+      </>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Orçamentos</h1>
-        <p className="text-sm text-muted-foreground">
-          Propostas geradas. Abra para ver o orçamento do cliente e exportar.
-        </p>
+      {formDialog}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Orçamentos</h1>
+          <p className="text-sm text-muted-foreground">
+            Propostas geradas. Abra para ver o orçamento do cliente e exportar.
+          </p>
+        </div>
+        <Button onClick={() => setDialog({ mode: "create" })}>
+          <Plus className="mr-1 h-4 w-4" /> Novo Orçamento
+        </Button>
       </div>
       <Card>
         <CardHeader>
@@ -187,11 +242,13 @@ function OrcamentoDetail({
   items,
   loading,
   onBack,
+  onEdit,
 }: {
   row: ProposalRow;
   items: ProposalItem[];
   loading: boolean;
   onBack: () => void;
+  onEdit: () => void;
 }) {
   const cliente = row.leads?.nome_cliente || "Cliente";
 
@@ -251,9 +308,14 @@ function OrcamentoDetail({
             <p className="text-sm text-muted-foreground">{row.leads?.endereco || "Sem endereço"}</p>
           </div>
         </div>
-        <Button variant="outline" onClick={printPdf} disabled={loading || !items.length}>
-          <Printer className="mr-1 h-4 w-4" /> Exportar PDF
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onEdit}>
+            <Pencil className="mr-1 h-4 w-4" /> Editar
+          </Button>
+          <Button variant="outline" onClick={printPdf} disabled={loading || !items.length}>
+            <Printer className="mr-1 h-4 w-4" /> Exportar PDF
+          </Button>
+        </div>
       </div>
 
       <Card>
