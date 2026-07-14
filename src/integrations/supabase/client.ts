@@ -88,6 +88,22 @@ export interface ProposalExtras {
 
 export type MotorGrupo = "instalacao" | "demolicao" | "prep" | "extra";
 
+export interface ProposalItem {
+  id: string;
+  proposal_id: string;
+  grupo: MotorGrupo;
+  codigo: string;
+  componente: string;
+  unidade: string;
+  quantidade: number;
+  preco_cliente_unit: number;
+  repasse_unit: number;
+  repasse_teto: number;
+  subtotal_cliente: number;
+  subtotal_repasse: number;
+  created_at: string;
+}
+
 export interface MotorPrice {
   id: string;
   grupo: MotorGrupo;

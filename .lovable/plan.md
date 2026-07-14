@@ -41,15 +41,15 @@ Web app em português (valores USD) para orçamentos de flooring/home improvemen
 
 2. **Aba Input** ✅ — formulário lead + ambientes repetíveis + extras; salva `lead` e cria `proposal` rascunho (`src/routes/_authenticated.input.tsx`, migração `supabase-migration-etapa2.sql`)
 
-3. **Aba Motor + lógica de cálculo** (CRUD motor_prices para ruche; função de cálculo que popula `proposal_items`)
+3. **Aba Motor + lógica de cálculo** ✅ — CRUD motor_prices (só ruche) em `_authenticated.motor.tsx` (`supabase-migration-etapa3.sql`); função de cálculo `rpc_calcular_proposta` + `rpc_ajustar_repasse` que popula `proposal_items` (`supabase-migration-etapa3b.sql`). A Input já dispara o cálculo ao salvar.
 
-4. **Aba Orçamento Cliente + Export PDF**
+4. **Aba Orçamento Cliente + Export PDF** ✅ — `_authenticated.orcamentos.tsx` (lista + detalhe do orçamento cliente; export via janela de impressão/Salvar como PDF, sem dependência nova).
 
-5. **Aba Visão Interna** (repasse por item ajustável entre partida e teto, margem)
+5. **Aba Visão Interna** ✅ — `_authenticated.visao-interna.tsx` (só ruche; repasse por item ajustável até o teto via `rpc_ajustar_repasse`, total repasse e margem).
 
-6. **Aba Tracker** (kanban drag-and-drop por `etapa_funil`, métricas)
+6. ~~**Aba Tracker**~~ — fundida no Overview (aba removida da sidebar por decisão do cliente).
 
-7. **Polimento Usuários + filtros globais** (data, lead, parceiro)
+7. **Polimento Usuários + filtros globais** (data, lead, parceiro) — pendente.
 
 **Etapas 1 e 2 concluídas.** Depois paro para você revisar antes de seguir para a Etapa 3 (Motor de Preços).
 

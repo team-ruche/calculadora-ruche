@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedVisaoInternaRouteImport } from './routes/_authenticated.visao-interna'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated.usuarios'
 import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated.overview'
+import { Route as AuthenticatedOrcamentosRouteImport } from './routes/_authenticated.orcamentos'
 import { Route as AuthenticatedMotorRouteImport } from './routes/_authenticated.motor'
 import { Route as AuthenticatedInputRouteImport } from './routes/_authenticated.input'
 
@@ -31,6 +33,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedVisaoInternaRoute =
+  AuthenticatedVisaoInternaRouteImport.update({
+    id: '/visao-interna',
+    path: '/visao-interna',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -39,6 +47,11 @@ const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
 const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedOrcamentosRoute = AuthenticatedOrcamentosRouteImport.update({
+  id: '/orcamentos',
+  path: '/orcamentos',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedMotorRoute = AuthenticatedMotorRouteImport.update({
@@ -57,16 +70,20 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/input': typeof AuthenticatedInputRoute
   '/motor': typeof AuthenticatedMotorRoute
+  '/orcamentos': typeof AuthenticatedOrcamentosRoute
   '/overview': typeof AuthenticatedOverviewRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
+  '/visao-interna': typeof AuthenticatedVisaoInternaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/input': typeof AuthenticatedInputRoute
   '/motor': typeof AuthenticatedMotorRoute
+  '/orcamentos': typeof AuthenticatedOrcamentosRoute
   '/overview': typeof AuthenticatedOverviewRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
+  '/visao-interna': typeof AuthenticatedVisaoInternaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -75,14 +92,32 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/input': typeof AuthenticatedInputRoute
   '/_authenticated/motor': typeof AuthenticatedMotorRoute
+  '/_authenticated/orcamentos': typeof AuthenticatedOrcamentosRoute
   '/_authenticated/overview': typeof AuthenticatedOverviewRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
+  '/_authenticated/visao-interna': typeof AuthenticatedVisaoInternaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/input' | '/motor' | '/overview' | '/usuarios'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/input'
+    | '/motor'
+    | '/orcamentos'
+    | '/overview'
+    | '/usuarios'
+    | '/visao-interna'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/input' | '/motor' | '/overview' | '/usuarios'
+  to:
+    | '/'
+    | '/auth'
+    | '/input'
+    | '/motor'
+    | '/orcamentos'
+    | '/overview'
+    | '/usuarios'
+    | '/visao-interna'
   id:
     | '__root__'
     | '/'
@@ -90,8 +125,10 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/input'
     | '/_authenticated/motor'
+    | '/_authenticated/orcamentos'
     | '/_authenticated/overview'
     | '/_authenticated/usuarios'
+    | '/_authenticated/visao-interna'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -123,6 +160,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/visao-interna': {
+      id: '/_authenticated/visao-interna'
+      path: '/visao-interna'
+      fullPath: '/visao-interna'
+      preLoaderRoute: typeof AuthenticatedVisaoInternaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/usuarios': {
       id: '/_authenticated/usuarios'
       path: '/usuarios'
@@ -135,6 +179,13 @@ declare module '@tanstack/react-router' {
       path: '/overview'
       fullPath: '/overview'
       preLoaderRoute: typeof AuthenticatedOverviewRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/orcamentos': {
+      id: '/_authenticated/orcamentos'
+      path: '/orcamentos'
+      fullPath: '/orcamentos'
+      preLoaderRoute: typeof AuthenticatedOrcamentosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/motor': {
@@ -157,15 +208,19 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedInputRoute: typeof AuthenticatedInputRoute
   AuthenticatedMotorRoute: typeof AuthenticatedMotorRoute
+  AuthenticatedOrcamentosRoute: typeof AuthenticatedOrcamentosRoute
   AuthenticatedOverviewRoute: typeof AuthenticatedOverviewRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
+  AuthenticatedVisaoInternaRoute: typeof AuthenticatedVisaoInternaRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedInputRoute: AuthenticatedInputRoute,
   AuthenticatedMotorRoute: AuthenticatedMotorRoute,
+  AuthenticatedOrcamentosRoute: AuthenticatedOrcamentosRoute,
   AuthenticatedOverviewRoute: AuthenticatedOverviewRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
+  AuthenticatedVisaoInternaRoute: AuthenticatedVisaoInternaRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

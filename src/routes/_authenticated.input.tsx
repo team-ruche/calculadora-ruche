@@ -190,7 +190,16 @@ function InputPage() {
       return toast.error(extrasError.message);
     }
 
-    toast.success("Rascunho de orçamento criado");
+    // Precifica a proposta a partir da medição + Motor de Preços.
+    // Se falhar (ex: preço faltando), o rascunho continua salvo — só avisa.
+    const { error: calcError } = await supabase.rpc("rpc_calcular_proposta", {
+      p_proposal_id: proposal.id,
+    });
+    if (calcError) {
+      toast.warning("Rascunho salvo, mas o cálculo falhou: " + calcError.message);
+    } else {
+      toast.success("Orçamento rascunho criado e precificado");
+    }
     setSubmitting(false);
     resetForm();
   };
