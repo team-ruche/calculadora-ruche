@@ -13,7 +13,9 @@ Web app em português (valores USD) para orçamentos de flooring/home improvemen
 - `user_roles` (padrão seguro Lovable, com enum `app_role` e `has_role()` SECURITY DEFINER — evita recursão em RLS)
 - `leads` (nome_cliente, telefone, endereco, email, partner_id, etapa_funil, created_at)
 - `proposals` (lead_id, partner_id, status, total_cliente, total_repasse, margem_ruche, timestamps)
-- `proposal_items` (proposal_id, grupo, componente, unidade, quantidade, preco_cliente_unit, repasse_unit, subtotais)
+- `proposal_rooms` (proposal_id, nome, area_sqft, piso_novo, piso_atual, preparo) — medição crua por ambiente, capturada na Etapa 2, ainda sem preço
+- `proposal_extras` (proposal_id como PK — 1 linha por proposta, colunas fixas dos extras do projeto) — capturada na Etapa 2
+- `proposal_items` (proposal_id, grupo, componente, unidade, quantidade, preco_cliente_unit, repasse_unit, subtotais) — saída **precificada**, populada pela Etapa 3 a partir de `proposal_rooms` + `proposal_extras` + `motor_prices`
 - `motor_prices` (grupo, componente, unidade, preco_cliente, repasse_partida, teto_repasse, ativo) — seed com tabelas do prompt
 
 **RLS resumo**
@@ -37,7 +39,7 @@ Web app em português (valores USD) para orçamentos de flooring/home improvemen
    - Migração SQL: enum `app_role`, tabela `users`, `user_roles`, `has_role()`, seed do papel ruche para primeiro admin (email fornecido depois, ou promoção manual)
    - Aba **Usuários** só shell + listagem (aprovação real vem em outra etapa? — não, aprovação simples já entra aqui pois é curta)
 
-2. **Aba Input** (formulário lead + ambientes repetíveis + extras; salva `lead` e cria `proposal` rascunho)
+2. **Aba Input** ✅ — formulário lead + ambientes repetíveis + extras; salva `lead` e cria `proposal` rascunho (`src/routes/_authenticated.input.tsx`, migração `supabase-migration-etapa2.sql`)
 
 3. **Aba Motor + lógica de cálculo** (CRUD motor_prices para ruche; função de cálculo que popula `proposal_items`)
 
@@ -49,7 +51,7 @@ Web app em português (valores USD) para orçamentos de flooring/home improvemen
 
 7. **Polimento Usuários + filtros globais** (data, lead, parceiro)
 
-**Nesta rodada implemento apenas a Etapa 1.** Depois paro para você revisar antes de seguir.
+**Etapas 1 e 2 concluídas.** Depois paro para você revisar antes de seguir para a Etapa 3 (Motor de Preços).
 
 ### Notas técnicas
 - Uso Supabase externo do usuário (não Lovable Cloud) porque credenciais foram fornecidas explicitamente. Client browser-only com anon key em `import.meta.env` via `.env` local — armazenarei via secrets (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`).

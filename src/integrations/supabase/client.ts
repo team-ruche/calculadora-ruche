@@ -26,3 +26,62 @@ export interface AppUser {
   status: UserStatus;
   created_at: string;
 }
+
+export type PisoTipo =
+  | "vinyl_lvp"
+  | "laminado"
+  | "hardwood"
+  | "tile"
+  | "refinish"
+  | "unfinished"
+  | "carpete"
+  | "concreto_exposto";
+
+export type PreparoNivel = "nenhuma" | "simples" | "pesada";
+
+export interface Lead {
+  id: string;
+  partner_id: string;
+  nome_cliente: string;
+  telefone: string | null;
+  endereco: string | null;
+  email: string | null;
+  etapa_funil: string;
+  created_at: string;
+}
+
+export interface Proposal {
+  id: string;
+  lead_id: string;
+  partner_id: string;
+  status: string;
+  total_cliente: number | null;
+  total_repasse: number | null;
+  margem_ruche: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProposalRoom {
+  id: string;
+  proposal_id: string;
+  nome: string;
+  area_sqft: number;
+  piso_novo: PisoTipo;
+  piso_atual: PisoTipo;
+  preparo: PreparoNivel;
+  created_at: string;
+}
+
+export interface ProposalExtras {
+  proposal_id: string;
+  degraus_escada: number;
+  baseboard_instalar_ft: number;
+  baseboard_pintar_ft: number;
+  quarter_round_ft: number;
+  transicoes: number;
+  ambientes_moveis: number;
+  aparelhos_mover: number;
+  segundo_andar_sem_elevador: boolean;
+  portas_trim: number;
+}
