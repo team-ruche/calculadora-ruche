@@ -17,13 +17,13 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/motor")({
-  head: () => ({ meta: [{ title: "Motor de Preços · Ruche" }] }),
+  head: () => ({ meta: [{ title: "Precificação · Ruche" }] }),
   component: MotorPage,
 });
 
 const GRUPO_LABEL: Record<MotorGrupo, string> = {
   instalacao: "Instalação",
-  demolicao: "Demolição",
+  demolicao: "Remoção",
   prep: "Preparação",
   extra: "Extras",
 };
@@ -88,7 +88,7 @@ function MotorPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Motor de Preços</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Precificação</h1>
         <p className="text-sm text-muted-foreground">
           Preço cobrado do cliente e banda de repasse ao parceiro (partida → teto), por unidade.
         </p>

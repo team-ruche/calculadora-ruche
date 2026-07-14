@@ -22,7 +22,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/visao-interna")({
-  head: () => ({ meta: [{ title: "Visão Interna · Ruche" }] }),
+  head: () => ({ meta: [{ title: "Controle Financeiro · Ruche" }] }),
   component: VisaoInternaPage,
 });
 
@@ -30,7 +30,7 @@ type ProposalRow = Proposal & { leads: { nome_cliente: string } | null };
 
 const GRUPO_LABEL: Record<MotorGrupo, string> = {
   instalacao: "Instalação",
-  demolicao: "Demolição",
+  demolicao: "Remoção",
   prep: "Preparação",
   extra: "Extras",
 };
@@ -78,7 +78,7 @@ function VisaoInternaPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Visão Interna</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Controle Financeiro</h1>
         <p className="text-sm text-muted-foreground">
           Repasse ao parceiro (ajustável até o teto) e margem Ruche por proposta.
         </p>

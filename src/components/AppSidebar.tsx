@@ -29,8 +29,8 @@ const items: Item[] = [
   { title: "Overview", url: "/overview", icon: LayoutDashboard },
   { title: "Novo Orçamento", url: "/input", icon: FilePlus2 },
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },
-  { title: "Motor de Preços", url: "/motor", icon: Calculator, rucheOnly: true },
-  { title: "Visão Interna", url: "/visao-interna", icon: EyeOff, rucheOnly: true },
+  { title: "Precificação", url: "/motor", icon: Calculator, rucheOnly: true },
+  { title: "Controle Financeiro", url: "/visao-interna", icon: EyeOff, rucheOnly: true },
   { title: "Usuários", url: "/usuarios", icon: Users, rucheOnly: true },
 ];
 

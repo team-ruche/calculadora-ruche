@@ -36,7 +36,7 @@ type ProposalRow = Proposal & {
 
 const GRUPO_LABEL: Record<MotorGrupo, string> = {
   instalacao: "Instalação",
-  demolicao: "Demolição",
+  demolicao: "Remoção",
   prep: "Preparação",
   extra: "Extras",
 };
@@ -46,6 +46,8 @@ const GRUPO_ORDER: MotorGrupo[] = ["instalacao", "demolicao", "prep", "extra"];
 const money = (n: number | null) =>
   (n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
 
+const shortDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("pt-BR") : "—");
+
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   rascunho: "outline",
   enviado: "secondary",
@@ -54,6 +56,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
 
 function OrcamentosPage() {
   const [rows, setRows] = useState<ProposalRow[]>([]);
+  const [authors, setAuthors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<ProposalRow | null>(null);
   const [items, setItems] = useState<ProposalItem[]>([]);
@@ -67,6 +70,16 @@ function OrcamentosPage() {
       .order("created_at", { ascending: false });
     if (error) toast.error(error.message);
     else setRows((data as ProposalRow[]) ?? []);
+
+    // Nomes dos autores (RLS: parceiro vê só o próprio; ruche vê todos)
+    const { data: us } = await supabase.from("users").select("id, nome, email");
+    if (us) {
+      const map: Record<string, string> = {};
+      for (const u of us as { id: string; nome: string; email: string }[]) {
+        map[u.id] = u.nome || u.email;
+      }
+      setAuthors(map);
+    }
     setLoading(false);
   };
 
@@ -121,8 +134,11 @@ function OrcamentosPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Autor</TableHead>
+                  <TableHead>Criado em</TableHead>
+                  <TableHead>Última edição</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Total cliente</TableHead>
+                  <TableHead className="text-right">Valor da proposta</TableHead>
                   <TableHead className="text-right">Ação</TableHead>
                 </TableRow>
               </TableHeader>
@@ -130,6 +146,15 @@ function OrcamentosPage() {
                 {rows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell className="font-medium">{row.leads?.nome_cliente || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {authors[row.partner_id] || "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {shortDate(row.created_at)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {shortDate(row.updated_at)}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={STATUS_VARIANT[row.status] ?? "outline"}>{row.status}</Badge>
                     </TableCell>
@@ -143,7 +168,7 @@ function OrcamentosPage() {
                 ))}
                 {rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       Nenhum orçamento ainda. Crie um em "Novo Orçamento".
                     </TableCell>
                   </TableRow>
@@ -283,7 +308,7 @@ function OrcamentoDetail({
               })}
               <div className="mt-4 flex justify-end border-t pt-4">
                 <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Total do cliente</p>
+                  <p className="text-sm text-muted-foreground">Valor da proposta</p>
                   <p className="text-3xl font-bold">{money(row.total_cliente)}</p>
                 </div>
               </div>
