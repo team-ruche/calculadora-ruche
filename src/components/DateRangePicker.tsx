@@ -82,10 +82,12 @@ export function DateRangePicker({ value, onChange }: Props) {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-11 gap-2 rounded-full border border-border bg-card px-5 text-[15px] font-bold text-foreground shadow-sm hover:bg-accent"
+          className="m-1 h-12 gap-2.5 rounded-full border border-border bg-card px-7 text-[15px] font-bold text-foreground shadow-sm hover:bg-accent"
         >
-          <CalendarIcon className="h-4 w-4 text-primary" />
-          {fmt(value.from)} – {fmt(value.to)}
+          <CalendarIcon className="h-[18px] w-[18px] shrink-0 text-primary" />
+          <span className="whitespace-nowrap">
+            {fmt(value.from)} – {fmt(value.to)}
+          </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="end">
