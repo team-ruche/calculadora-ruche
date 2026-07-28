@@ -270,6 +270,10 @@ function Overview() {
             const r = rows.find((x) => x.id === id);
             if (r) setDetail(r);
           }}
+          onChangeStage={(id, next) => {
+            const r = rows.find((x) => x.id === id);
+            if (r) changeStage(r, next);
+          }}
         />
       ) : (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
