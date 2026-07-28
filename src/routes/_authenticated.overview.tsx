@@ -274,6 +274,10 @@ function Overview() {
             const r = rows.find((x) => x.id === id);
             if (r) changeStage(r, next);
           }}
+          onOrcamento={(id) => {
+            const r = rows.find((x) => x.id === id);
+            if (r) setOrc({ row: r, advance: false });
+          }}
         />
       ) : (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">

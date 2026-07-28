@@ -1,5 +1,17 @@
 import { useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, Eye, Check } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Check,
+  Phone,
+  MessageSquare,
+  ExternalLink,
+  ClipboardList,
+  Calendar as CalendarIcon,
+  MapPin,
+  DollarSign,
+} from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { ProposalStage } from "@/integrations/supabase/client";
@@ -12,7 +24,11 @@ export type CalRow = {
   visita_at: string | null;
   stage: ProposalStage;
   total_cliente: number | null;
-  leads: { nome_cliente: string | null } | null;
+  leads: {
+    nome_cliente: string | null;
+    endereco: string | null;
+    telefone: string | null;
+  } | null;
 };
 
 const STAGE_BG: Record<ProposalStage, { bg: string; fg: string; border: string; dot: string }> = {
@@ -50,9 +66,17 @@ interface Props {
   onWeekStart: (d: Date) => void;
   onSelect: (id: string) => void;
   onChangeStage: (id: string, next: ProposalStage) => void;
+  onOrcamento: (id: string) => void;
 }
 
-export function PipelineCalendar({ rows, weekStart, onWeekStart, onSelect, onChangeStage }: Props) {
+export function PipelineCalendar({
+  rows,
+  weekStart,
+  onWeekStart,
+  onSelect,
+  onChangeStage,
+  onOrcamento,
+}: Props) {
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
@@ -217,13 +241,60 @@ export function PipelineCalendar({ rows, weekStart, onWeekStart, onSelect, onCha
                               </span>
                             </button>
                           </PopoverTrigger>
-                          <PopoverContent align="start" className="w-56 p-2">
-                            <p className="px-1 pb-1 text-xs font-semibold">
+                          <PopoverContent align="start" className="w-64 p-2">
+                            <p className="px-1 text-sm font-semibold">
                               {r.leads?.nome_cliente ?? "Lead"}
                             </p>
-                            <p className="px-1 pb-2 text-[11px] text-muted-foreground">
-                              {format(dt, "EEE d MMM · HH:mm", { locale: ptBR })}
-                            </p>
+                            <div className="space-y-1 px-1 pb-2 pt-1 text-[11px] text-muted-foreground">
+                              <p className="flex items-center gap-1.5">
+                                <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+                                {format(dt, "EEE d MMM · HH:mm", { locale: ptBR })}
+                              </p>
+                              <p className="flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                <span className="truncate">
+                                  {r.leads?.endereco ?? "Endereço a confirmar"}
+                                </span>
+                              </p>
+                              <p className="flex items-center gap-1.5 font-medium text-foreground">
+                                <DollarSign className="h-3.5 w-3.5 shrink-0" />
+                                {money(r.total_cliente)}
+                                {!r.total_cliente && (
+                                  <span className="font-normal text-muted-foreground">
+                                    (após orçamento)
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 border-t px-1 py-2">
+                              <IconBtn label="GHL">
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </IconBtn>
+                              <IconBtn label="Google Calendar">
+                                <CalendarIcon className="h-3.5 w-3.5" />
+                              </IconBtn>
+                              <IconBtn
+                                label="Ligar"
+                                href={r.leads?.telefone ? `tel:${r.leads.telefone}` : undefined}
+                              >
+                                <Phone className="h-3.5 w-3.5" />
+                              </IconBtn>
+                              <IconBtn
+                                label="SMS"
+                                href={r.leads?.telefone ? `sms:${r.leads.telefone}` : undefined}
+                              >
+                                <MessageSquare className="h-3.5 w-3.5" />
+                              </IconBtn>
+                              <IconBtn
+                                label="Orçamento / medição"
+                                onClick={() => onOrcamento(r.id)}
+                                accent={!(r.total_cliente && r.total_cliente > 0)}
+                              >
+                                <ClipboardList className="h-3.5 w-3.5" />
+                              </IconBtn>
+                            </div>
+
                             <p className="px-1 pb-1 text-[11px] font-medium text-muted-foreground">
                               Mover para
                             </p>
@@ -271,5 +342,34 @@ export function PipelineCalendar({ rows, weekStart, onWeekStart, onSelect, onCha
         </div>
       </div>
     </div>
+  );
+}
+
+function IconBtn({
+  children,
+  label,
+  onClick,
+  href,
+  accent,
+}: {
+  children: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+  href?: string;
+  accent?: boolean;
+}) {
+  const cls = `flex h-7 w-7 items-center justify-center rounded-md border ${
+    accent
+      ? "border-primary/40 bg-primary/10 text-primary"
+      : "border-border bg-background text-muted-foreground hover:text-foreground"
+  }`;
+  return href ? (
+    <a href={href} aria-label={label} title={label} className={cls}>
+      {children}
+    </a>
+  ) : (
+    <button type="button" aria-label={label} title={label} onClick={onClick} className={cls}>
+      {children}
+    </button>
   );
 }
