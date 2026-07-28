@@ -191,7 +191,7 @@ function MotorPage() {
                       <TableHead className="w-32">Repasse partida</TableHead>
                       <TableHead className="w-32">Teto repasse</TableHead>
                       <TableHead className="w-20">Ativo</TableHead>
-                      <TableHead className="w-28 text-right">Ação</TableHead>
+                      <TableHead className="w-36 text-right">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -223,25 +223,28 @@ function MotorPage() {
                             onCheckedChange={(v) => toggleAtivo(row, v)}
                           />
                         </TableCell>
-                        <TableCell className="space-x-1 text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={savingId === row.id}
-                            onClick={() => saveRow(row)}
-                          >
-                            {savingId === row.id ? "…" : "Salvar"}
-                          </Button>
-                          {canEditRows && (
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-2">
                             <Button
                               size="sm"
-                              variant="ghost"
-                              onClick={() => deleteRow(row)}
-                              title="Remover"
+                              disabled={savingId === row.id}
+                              onClick={() => saveRow(row)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              {savingId === row.id ? "Salvando…" : "Salvar"}
                             </Button>
-                          )}
+                            {canEditRows && (
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-8 w-8 text-muted-foreground hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive"
+                                onClick={() => deleteRow(row)}
+                                title="Remover"
+                                aria-label="Remover"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -283,13 +286,19 @@ function MotorPage() {
                           />
                         </TableCell>
                         <TableCell />
-                        <TableCell className="space-x-1 text-right">
-                          <Button size="sm" onClick={() => addSub(grupo)}>
-                            Adicionar
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setAddingGrupo(null)}>
-                            Cancelar
-                          </Button>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button size="sm" onClick={() => addSub(grupo)}>
+                              Adicionar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setAddingGrupo(null)}
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     )}
