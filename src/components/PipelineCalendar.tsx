@@ -26,7 +26,7 @@ const STAGE_BG: Record<ProposalStage, { bg: string; fg: string; border: string; 
 const START_HOUR = 0; // meia-noite
 const END_HOUR = 23; // 23h (rola até meia-noite embaixo)
 const ROW_H = 60;
-const DEFAULT_SCROLL_HOUR = 7; // abre nas horas comerciais
+const DEFAULT_SCROLL_HOUR = 9; // abre com 9h no topo
 
 const money = (n: number | null) =>
   (n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
