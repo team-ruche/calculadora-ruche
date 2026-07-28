@@ -6,12 +6,23 @@ import {
   type Proposal,
   type ProposalItem,
   type MotorGrupo,
+  type ProposalStage,
+  type LeadQualificacao,
+  STAGE_LABEL,
+  STAGE_ORDER,
 } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { OrcamentoForm } from "@/components/OrcamentoForm";
+import { LeadDetalhe, type LeadLike } from "@/components/LeadDetalhe";
 import {
   Table,
   TableBody,
@@ -35,7 +46,17 @@ type ProposalRow = Proposal & {
     endereco: string | null;
     telefone: string | null;
     email: string | null;
+    qualificacao: LeadQualificacao | null;
   } | null;
+};
+
+// Cor do badge por estágio do kanban (sincronizado).
+const STAGE_BADGE: Record<ProposalStage, { bg: string; fg: string }> = {
+  appointment_confirmed: { bg: "#FBE7BF", fg: "#7A4E05" },
+  appointment_canceled: { bg: "#F6D6C7", fg: "#7A2E12" },
+  negotiation: { bg: "#F5DDB4", fg: "#7A4405" },
+  no_deal: { bg: "#DEDCD2", fg: "#45443D" },
+  deal: { bg: "#D3E8BC", fg: "#2C5212" },
 };
 
 const GRUPO_LABEL: Record<MotorGrupo, string> = {
@@ -52,12 +73,6 @@ const money = (n: number | null) =>
 
 const shortDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("pt-BR") : "—");
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
-  rascunho: "outline",
-  enviado: "secondary",
-  fechado: "default",
-};
-
 function OrcamentosPage() {
   const [rows, setRows] = useState<ProposalRow[]>([]);
   const [authors, setAuthors] = useState<Record<string, string>>({});
@@ -66,12 +81,13 @@ function OrcamentosPage() {
   const [items, setItems] = useState<ProposalItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(null);
+  const [leadDetail, setLeadDetail] = useState<LeadLike>(null);
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("proposals")
-      .select("*, leads(nome_cliente, endereco, telefone, email)")
+      .select("*, leads(nome_cliente, endereco, telefone, email, qualificacao)")
       .order("created_at", { ascending: false });
     if (error) toast.error(error.message);
     else setRows((data as ProposalRow[]) ?? []);
@@ -109,13 +125,21 @@ function OrcamentosPage() {
     await reloadItems(row.id);
   };
 
+  // Sincroniza o status com o kanban (mesmo campo `stage`).
+  const changeStage = async (id: string, next: ProposalStage) => {
+    const { error } = await supabase.from("proposals").update({ stage: next }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Status atualizado");
+    load();
+  };
+
   const onSaved = async (proposalId: string) => {
     setDialog(null);
     await load();
     if (selected && selected.id === proposalId) {
       const { data } = await supabase
         .from("proposals")
-        .select("*, leads(nome_cliente, endereco, telefone, email)")
+        .select("*, leads(nome_cliente, endereco, telefone, email, qualificacao)")
         .eq("id", proposalId)
         .maybeSingle();
       if (data) setSelected(data as ProposalRow);
@@ -166,6 +190,11 @@ function OrcamentosPage() {
   return (
     <div className="space-y-6">
       {formDialog}
+      <LeadDetalhe
+        lead={leadDetail}
+        open={!!leadDetail}
+        onOpenChange={(o) => !o && setLeadDetail(null)}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Orçamentos</h1>
@@ -200,7 +229,16 @@ function OrcamentosPage() {
               <TableBody>
                 {rows.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="font-medium">{row.leads?.nome_cliente || "—"}</TableCell>
+                    <TableCell>
+                      <button
+                        type="button"
+                        onClick={() => setLeadDetail(row.leads)}
+                        className="font-medium text-primary underline-offset-2 hover:underline"
+                        title="Abrir card do setter"
+                      >
+                        {row.leads?.nome_cliente || "—"}
+                      </button>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {authors[row.partner_id] || "—"}
                     </TableCell>
@@ -211,7 +249,29 @@ function OrcamentosPage() {
                       {shortDate(row.updated_at)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_VARIANT[row.status] ?? "outline"}>{row.status}</Badge>
+                      <Select
+                        value={row.stage}
+                        onValueChange={(v) => changeStage(row.id, v as ProposalStage)}
+                      >
+                        <SelectTrigger className="h-8 w-[190px] border-none px-2 shadow-none">
+                          <span
+                            className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                            style={{
+                              background: STAGE_BADGE[row.stage].bg,
+                              color: STAGE_BADGE[row.stage].fg,
+                            }}
+                          >
+                            {STAGE_LABEL[row.stage]}
+                          </span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STAGE_ORDER.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {STAGE_LABEL[s]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell className="text-right">{money(row.total_cliente)}</TableCell>
                     <TableCell className="text-right">
