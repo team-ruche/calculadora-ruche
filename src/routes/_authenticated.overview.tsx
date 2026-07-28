@@ -127,6 +127,8 @@ function Overview() {
   }, [visitRows]);
 
   const count = (s: ProposalStage) => byStage[s].length;
+  const sumStage = (s: ProposalStage) =>
+    byStage[s].reduce((a, r) => a + (r.total_cliente ?? 0), 0);
 
   const totais = visitRows.length;
   const realizadas = visitRows.filter((r) => REALIZADAS.includes(r.stage)).length;
@@ -217,6 +219,13 @@ function Overview() {
                   onDetail={() => setDetail(row)}
                 />
               ))}
+            </div>
+            <div
+              className="mt-auto flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
+              style={{ background: STAGE_COLOR[stage].head, color: STAGE_COLOR[stage].headText }}
+            >
+              <span>Total</span>
+              <span>{money(sumStage(stage))}</span>
             </div>
           </div>
         ))}
