@@ -24,6 +24,10 @@ export interface AppUser {
   telefone: string | null;
   role: AppRole;
   status: UserStatus;
+  // Dados do parceiro
+  nicho: string | null;
+  endereco_empresa: string | null;
+  ein: string | null;
   created_at: string;
 }
 
