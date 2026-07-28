@@ -2,6 +2,7 @@ import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/use-auth";
+import { DefinirSenha } from "@/components/DefinirSenha";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -10,7 +11,7 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthenticatedLayout() {
-  const { session, user, loading, isAprovado, signOut } = useAuth();
+  const { session, user, loading, isAprovado, passwordRecovery, signOut } = useAuth();
 
   if (loading) {
     return (
@@ -22,6 +23,13 @@ function AuthenticatedLayout() {
 
   if (!session) return <Navigate to="/auth" />;
 
+  // 1º acesso (senha temporária / convite) ou recuperação → definir nova senha.
+  if (passwordRecovery || user?.must_change_password) {
+    return (
+      <DefinirSenha title={passwordRecovery ? "Redefinir senha" : "Defina sua senha de acesso"} />
+    );
+  }
+
   if (user && !isAprovado) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -31,8 +39,8 @@ function AuthenticatedLayout() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Sua conta ({user.email}) está aguardando aprovação de um admin da Ruche.
-              Você receberá acesso assim que for aprovada.
+              Sua conta ({user.email}) está aguardando aprovação de um admin da Ruche. Você receberá
+              acesso assim que for aprovada.
             </p>
             <Button variant="outline" className="w-full" onClick={() => signOut()}>
               Sair

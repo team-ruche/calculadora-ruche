@@ -8,6 +8,9 @@ interface AuthContextValue {
   loading: boolean;
   isRuche: boolean;
   isAprovado: boolean;
+  // true quando o usuário chegou por link de recuperação de senha.
+  passwordRecovery: boolean;
+  clearRecovery: () => void;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -18,19 +21,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   const loadProfile = async (uid: string) => {
-    const { data } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", uid)
-      .maybeSingle();
+    const { data } = await supabase.from("users").select("*").eq("id", uid).maybeSingle();
     setUser((data as AppUser) ?? null);
   };
 
   useEffect(() => {
     // Listener primeiro
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
       setSession(s);
       if (s?.user) {
         // defer para evitar deadlock
@@ -58,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     isRuche: user?.role === "ruche",
     isAprovado: user?.status === "aprovado",
+    passwordRecovery,
+    clearRecovery: () => setPasswordRecovery(false),
     refreshProfile: async () => {
       if (session?.user) await loadProfile(session.user.id);
     },
@@ -65,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
+      setPasswordRecovery(false);
     },
   };
 

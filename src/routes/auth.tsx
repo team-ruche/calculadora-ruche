@@ -36,6 +36,17 @@ function AuthPage() {
     navigate({ to: "/overview" });
   };
 
+  const handleForgot = async () => {
+    if (!email) return toast.error("Digite seu e-mail no campo acima primeiro.");
+    setSubmitting(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/overview`,
+    });
+    setSubmitting(false);
+    if (error) return toast.error(error.message);
+    toast.success("Enviamos um link de redefinição para seu e-mail.");
+  };
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -74,11 +85,33 @@ function AuthPage() {
               <form onSubmit={handleLogin} className="space-y-4 pt-4">
                 <div className="space-y-2">
                   <Label htmlFor="l-email">E-mail</Label>
-                  <Input id="l-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <Input
+                    id="l-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="l-pass">Senha</Label>
-                  <Input id="l-pass" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="l-pass">Senha</Label>
+                    <button
+                      type="button"
+                      onClick={handleForgot}
+                      disabled={submitting}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Esqueci minha senha
+                    </button>
+                  </div>
+                  <Input
+                    id="l-pass"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
                 </div>
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? "Entrando…" : "Entrar"}
@@ -89,19 +122,41 @@ function AuthPage() {
               <form onSubmit={handleSignup} className="space-y-4 pt-4">
                 <div className="space-y-2">
                   <Label htmlFor="s-nome">Nome completo</Label>
-                  <Input id="s-nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
+                  <Input
+                    id="s-nome"
+                    required
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="s-tel">Telefone</Label>
-                  <Input id="s-tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+                  <Input
+                    id="s-tel"
+                    value={telefone}
+                    onChange={(e) => setTelefone(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="s-email">E-mail</Label>
-                  <Input id="s-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <Input
+                    id="s-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="s-pass">Senha</Label>
-                  <Input id="s-pass" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <Input
+                    id="s-pass"
+                    type="password"
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
                 </div>
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? "Criando…" : "Criar conta"}

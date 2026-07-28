@@ -28,6 +28,8 @@ export interface AppUser {
   nicho: string | null;
   endereco_empresa: string | null;
   ein: string | null;
+  // Força troca de senha no 1º acesso.
+  must_change_password: boolean;
   created_at: string;
 }
 

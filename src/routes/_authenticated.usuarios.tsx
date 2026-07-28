@@ -195,6 +195,7 @@ type NovoForm = {
   endereco_empresa: string;
   ein: string;
   role: AppRole;
+  mode: "invite" | "password";
 };
 
 const emptyForm: NovoForm = {
@@ -205,7 +206,10 @@ const emptyForm: NovoForm = {
   endereco_empresa: "",
   ein: "",
   role: "parceiro",
+  mode: "invite",
 };
+
+type Resultado = { mode: "invite" | "password"; email: string; senha?: string | null };
 
 function NovoUsuarioDialog({
   open,
@@ -218,14 +222,14 @@ function NovoUsuarioDialog({
 }) {
   const [form, setForm] = useState<NovoForm>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [senha, setSenha] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<Resultado | null>(null);
 
   const set = <K extends keyof NovoForm>(key: K, value: NovoForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const reset = () => {
     setForm(emptyForm);
-    setSenha(null);
+    setResultado(null);
   };
 
   const submit = async () => {
@@ -234,7 +238,9 @@ function NovoUsuarioDialog({
       return;
     }
     setSaving(true);
-    const { data, error } = await supabase.functions.invoke("admin-create-user", { body: form });
+    const { data, error } = await supabase.functions.invoke("admin-create-user", {
+      body: { ...form, redirectTo: `${window.location.origin}/overview` },
+    });
     setSaving(false);
     if (error) {
       // A mensagem de erro (403/400 etc.) vem no corpo da resposta.
@@ -248,10 +254,19 @@ function NovoUsuarioDialog({
       }
       return toast.error(msg);
     }
-    const res = data as { ok?: boolean; senha_temporaria?: string; error?: string };
+    const res = data as {
+      ok?: boolean;
+      senha_temporaria?: string;
+      mode?: "invite" | "password";
+      error?: string;
+    };
     if (res?.error) return toast.error(res.error);
-    toast.success("Usuário criado");
-    setSenha(res?.senha_temporaria ?? null);
+    toast.success(res?.mode === "invite" ? "Convite enviado" : "Usuário criado");
+    setResultado({
+      mode: res?.mode ?? form.mode,
+      email: form.email,
+      senha: res?.senha_temporaria ?? null,
+    });
     onCreated();
   };
 
@@ -271,27 +286,36 @@ function NovoUsuarioDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {senha ? (
+        {resultado ? (
           <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">
-              Usuário criado. Compartilhe a senha temporária com o parceiro — ele entra com o e-mail
-              e essa senha.
-            </p>
-            <div className="flex items-center gap-2 rounded-md border bg-muted/40 p-3">
-              <code className="flex-1 text-sm font-semibold">{senha}</code>
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-8 w-8"
-                onClick={() => {
-                  navigator.clipboard.writeText(senha);
-                  toast.success("Senha copiada");
-                }}
-                title="Copiar"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
+            {resultado.mode === "invite" ? (
+              <p className="text-sm text-muted-foreground">
+                Convite enviado para <strong>{resultado.email}</strong>. O parceiro vai receber um
+                e-mail com um link para definir a própria senha e acessar a plataforma.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Usuário criado. Compartilhe a senha temporária com o parceiro — ele entra com o
+                  e-mail e essa senha, e será obrigado a trocá-la no primeiro acesso.
+                </p>
+                <div className="flex items-center gap-2 rounded-md border bg-muted/40 p-3">
+                  <code className="flex-1 text-sm font-semibold">{resultado.senha}</code>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      navigator.clipboard.writeText(resultado.senha ?? "");
+                      toast.success("Senha copiada");
+                    }}
+                    title="Copiar"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            )}
             <DialogFooter>
               <Button variant="outline" onClick={reset}>
                 Criar outro
@@ -351,13 +375,31 @@ function NovoUsuarioDialog({
               </div>
             )}
 
+            <div className="space-y-1.5">
+              <Label>Como o usuário vai acessar?</Label>
+              <Select value={form.mode} onValueChange={(v) => set("mode", v as NovoForm["mode"])}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="invite">Enviar convite por e-mail (define a senha)</SelectItem>
+                  <SelectItem value="password">Gerar senha temporária</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {form.mode === "invite"
+                  ? "O parceiro recebe um link por e-mail para criar a própria senha."
+                  : "Você recebe uma senha temporária para repassar; a troca é obrigatória no 1º acesso."}
+              </p>
+            </div>
+
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
                 Cancelar
               </Button>
               <Button onClick={submit} disabled={saving}>
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Criar usuário
+                {form.mode === "invite" ? "Criar e enviar convite" : "Criar usuário"}
               </Button>
             </DialogFooter>
           </div>
