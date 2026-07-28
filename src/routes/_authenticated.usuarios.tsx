@@ -328,26 +328,28 @@ function NovoUsuarioDialog({
               </div>
             </div>
 
-            <div className="rounded-lg border p-3">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Dados do parceiro
-              </p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Campo
-                  label="Nicho de atuação"
-                  value={form.nicho}
-                  onChange={(v) => set("nicho", v)}
-                />
-                <Campo label="EIN number" value={form.ein} onChange={(v) => set("ein", v)} />
-                <div className="sm:col-span-2">
+            {form.role === "parceiro" && (
+              <div className="rounded-lg border p-3">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Dados do parceiro <span className="font-normal normal-case">(opcional)</span>
+                </p>
+                <div className="grid gap-4 sm:grid-cols-2">
                   <Campo
-                    label="Endereço da empresa"
-                    value={form.endereco_empresa}
-                    onChange={(v) => set("endereco_empresa", v)}
+                    label="Nicho de atuação"
+                    value={form.nicho}
+                    onChange={(v) => set("nicho", v)}
                   />
+                  <Campo label="EIN number" value={form.ein} onChange={(v) => set("ein", v)} />
+                  <div className="sm:col-span-2">
+                    <Campo
+                      label="Endereço da empresa"
+                      value={form.endereco_empresa}
+                      onChange={(v) => set("endereco_empresa", v)}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
