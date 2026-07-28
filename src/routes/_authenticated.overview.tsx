@@ -127,8 +127,7 @@ function Overview() {
   }, [visitRows]);
 
   const count = (s: ProposalStage) => byStage[s].length;
-  const sumStage = (s: ProposalStage) =>
-    byStage[s].reduce((a, r) => a + (r.total_cliente ?? 0), 0);
+  const sumStage = (s: ProposalStage) => byStage[s].reduce((a, r) => a + (r.total_cliente ?? 0), 0);
 
   const totais = visitRows.length;
   const realizadas = visitRows.filter((r) => REALIZADAS.includes(r.stage)).length;
