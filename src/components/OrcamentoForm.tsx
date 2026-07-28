@@ -485,8 +485,8 @@ export function OrcamentoForm({
                   />
                 </div>
               </div>
-              <div className="flex items-end gap-2">
-                <div className="w-56 space-y-2">
+              <div className="grid items-start gap-3 md:grid-cols-2">
+                <div className="space-y-2">
                   <Label>Preparação</Label>
                   <RoomSelect
                     value={room.preparo}
@@ -494,28 +494,32 @@ export function OrcamentoForm({
                     onChange={(v) => updateRoom(room.localId, { preparo: v })}
                   />
                 </div>
-                <div className="flex-1 space-y-2">
+                <div className="space-y-2">
                   <Label>Fotos / vídeos</Label>
-                  <Input
-                    type="file"
-                    accept="image/*,video/*"
-                    multiple
-                    onChange={(e) => {
-                      addFiles(room.localId, e.target.files);
-                      e.target.value = "";
-                    }}
-                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      accept="image/*,video/*"
+                      multiple
+                      className="flex-1"
+                      onChange={(e) => {
+                        addFiles(room.localId, e.target.files);
+                        e.target.value = "";
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      disabled={rooms.length === 1}
+                      onClick={() => removeRoom(room.localId)}
+                      title="Remover ambiente"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  disabled={rooms.length === 1}
-                  onClick={() => removeRoom(room.localId)}
-                  title="Remover ambiente"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
               {room.media.length > 0 && (
                 <div className="flex flex-wrap gap-2">
