@@ -145,10 +145,10 @@ export function PipelineCalendar({ rows, weekStart, onWeekStart, onSelect, onCha
               {hours.map((h) => (
                 <div
                   key={h}
-                  className="relative border-b border-border/50"
+                  className="relative border-t border-border/50"
                   style={{ height: ROW_H }}
                 >
-                  <span className="absolute -top-2 right-2 text-[11px] text-muted-foreground">
+                  <span className="absolute right-2 top-0 -translate-y-1/2 bg-card px-1 text-[11px] text-muted-foreground">
                     {hourLabel(h)}
                   </span>
                 </div>
@@ -164,7 +164,7 @@ export function PipelineCalendar({ rows, weekStart, onWeekStart, onSelect, onCha
                   className={`relative border-l border-border/50 ${hoje ? "bg-primary/5" : ""}`}
                 >
                   {hours.map((h) => (
-                    <div key={h} className="border-b border-border/50" style={{ height: ROW_H }} />
+                    <div key={h} className="border-t border-border/50" style={{ height: ROW_H }} />
                   ))}
 
                   {hoje && nowTop !== null && (
