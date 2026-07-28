@@ -33,7 +33,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ParcelaDialog } from "@/components/ParcelaDialog";
+import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
 import { toast } from "sonner";
+
+type Range = { from: Date; to: Date };
+const inRange = (iso: string | null, r: Range) => {
+  if (!iso) return false;
+  const t = new Date(iso).getTime();
+  return t >= r.from.getTime() && t <= r.to.getTime();
+};
 
 export const Route = createFileRoute("/_authenticated/visao-interna")({
   head: () => ({ meta: [{ title: "Controle Financeiro · Ruche" }] }),
@@ -65,6 +73,8 @@ function VisaoInternaPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Deal | null>(null);
   const [busca, setBusca] = useState("");
+  // Filtro por data de fechamento do deal.
+  const [range, setRange] = useState<Range>(() => presetRange("mes"));
 
   const load = async () => {
     setLoading(true);
@@ -105,11 +115,13 @@ function VisaoInternaPage() {
 
   if (!isRuche) return <Navigate to="/overview" />;
 
-  // KPIs
-  const totalVendido = deals.reduce((a, d) => a + (d.total_cliente ?? 0), 0);
-  const totalParceiro = deals.reduce((a, d) => a + (d.total_repasse ?? 0), 0);
-  const totalRuche = deals.reduce((a, d) => a + (d.margem_ruche ?? 0), 0);
-  const totalRecebido = recebidoDe(parcelas);
+  // Deals dentro do período (por data de fechamento) + KPIs
+  const dealsNoPeriodo = deals.filter((d) => inRange(d.fechado_at, range));
+  const parcelasNoPeriodo = dealsNoPeriodo.flatMap((d) => parcelasDe[d.id] ?? []);
+  const totalVendido = dealsNoPeriodo.reduce((a, d) => a + (d.total_cliente ?? 0), 0);
+  const totalParceiro = dealsNoPeriodo.reduce((a, d) => a + (d.total_repasse ?? 0), 0);
+  const totalRuche = dealsNoPeriodo.reduce((a, d) => a + (d.margem_ruche ?? 0), 0);
+  const totalRecebido = recebidoDe(parcelasNoPeriodo);
   const pctRecebido = totalRuche > 0 ? Math.round((totalRecebido / totalRuche) * 100) : 0;
 
   const setContrato = async (id: string, cs: ContractStatus) => {
@@ -132,17 +144,20 @@ function VisaoInternaPage() {
     );
   }
 
-  const filtrados = deals.filter((d) =>
+  const filtrados = dealsNoPeriodo.filter((d) =>
     (d.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()),
   );
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Controle Financeiro</h1>
-        <p className="text-sm text-muted-foreground">
-          Deals vendidos: vendido, parceiro, Ruche e o que já foi recebido (repasse do parceiro).
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Controle Financeiro</h1>
+          <p className="text-sm text-muted-foreground">
+            Deals vendidos: vendido, parceiro, Ruche e o que já foi recebido (repasse do parceiro).
+          </p>
+        </div>
+        <DateRangePicker value={range} onChange={setRange} />
       </div>
 
       {/* KPIs */}
@@ -150,7 +165,7 @@ function VisaoInternaPage() {
         <div className="rounded-xl bg-[#2C2C2A] p-4">
           <p className="text-xs uppercase tracking-wide text-[#D3D1C7]">Total vendido</p>
           <p className="mt-1.5 text-2xl font-bold text-white">{money(totalVendido)}</p>
-          <p className="mt-1 text-xs text-[#B4B2A9]">{deals.length} deals fechados</p>
+          <p className="mt-1 text-xs text-[#B4B2A9]">{dealsNoPeriodo.length} deals fechados</p>
         </div>
         <div className="rounded-xl border bg-card p-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Total parceiro</p>
