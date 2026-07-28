@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import { ParcelaDialog } from "@/components/ParcelaDialog";
 import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
+import { ChartFaturamento } from "@/components/ChartFaturamento";
 import { toast } from "sonner";
 
 type Range = { from: Date; to: Date };
@@ -189,6 +190,8 @@ function VisaoInternaPage() {
           </p>
         </div>
       </div>
+
+      <ChartFaturamento deals={dealsNoPeriodo} />
 
       <Card>
         <CardContent className="pt-6">
