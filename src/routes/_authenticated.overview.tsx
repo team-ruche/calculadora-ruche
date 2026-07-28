@@ -4,11 +4,14 @@ import {
   Phone,
   MessageSquare,
   Calendar as CalendarIcon,
+  CalendarDays,
+  LayoutGrid,
   ExternalLink,
   ClipboardList,
   MapPin,
   DollarSign,
   Eye,
+  ArrowDownAZ,
 } from "lucide-react";
 import {
   supabase,
@@ -21,6 +24,15 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { OrcamentoForm } from "@/components/OrcamentoForm";
 import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
+import { PipelineCalendar, startOfWeek } from "@/components/PipelineCalendar";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +41,14 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+
+type ViewMode = "kanban" | "calendar";
+type SortBy = "visita" | "alpha" | "created";
+const SORT_LABEL: Record<SortBy, string> = {
+  visita: "Data da visita",
+  alpha: "Ordem alfabética",
+  created: "Data de criação",
+};
 
 export const Route = createFileRoute("/_authenticated/overview")({
   head: () => ({ meta: [{ title: "Overview · Ruche" }] }),
@@ -96,6 +116,9 @@ function Overview() {
   // Formulário de orçamento (= formulário de medição). advance move p/ negociação ao salvar.
   const [orc, setOrc] = useState<{ row: Row; advance: boolean } | null>(null);
   const [detail, setDetail] = useState<Row | null>(null);
+  const [view, setView] = useState<ViewMode>("kanban");
+  const [sortBy, setSortBy] = useState<SortBy>("visita");
+  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
 
   const load = async () => {
     setLoading(true);
@@ -123,8 +146,19 @@ function Overview() {
       deal: [],
     };
     for (const r of visitRows) (m[r.stage] ?? m.appointment_confirmed).push(r);
+    const cmp = (a: Row, b: Row) => {
+      if (sortBy === "alpha")
+        return (a.leads?.nome_cliente ?? "").localeCompare(b.leads?.nome_cliente ?? "");
+      if (sortBy === "created")
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      // visita: mais próxima primeiro (nulos por último)
+      const ta = a.visita_at ? new Date(a.visita_at).getTime() : Infinity;
+      const tb = b.visita_at ? new Date(b.visita_at).getTime() : Infinity;
+      return ta - tb;
+    };
+    for (const s of STAGE_ORDER) m[s].sort(cmp);
     return m;
-  }, [visitRows]);
+  }, [visitRows, sortBy]);
 
   const count = (s: ProposalStage) => byStage[s].length;
   const sumStage = (s: ProposalStage) => byStage[s].reduce((a, r) => a + (r.total_cliente ?? 0), 0);
@@ -185,50 +219,104 @@ function Overview() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        {STAGE_ORDER.map((stage) => (
-          <div
-            key={stage}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => {
-              const row = rows.find((r) => r.id === dragId);
-              setDragId(null);
-              if (row) changeStage(row, stage);
-            }}
-            className="flex flex-col rounded-xl border border-border/60 bg-muted/30 p-2"
+      {/* Toolbar: alternador de visão + ordenação */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex rounded-lg border bg-card p-0.5">
+          <button
+            type="button"
+            onClick={() => setView("kanban")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
+              view === "kanban" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+            }`}
           >
-            <div
-              className="mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
-              style={{ background: STAGE_COLOR[stage].head, color: STAGE_COLOR[stage].headText }}
-            >
-              <span>{STAGE_LABEL[stage]}</span>
-              <span className="rounded-full bg-background/70 px-1.5">{count(stage)}</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {loading && <p className="p-2 text-xs text-muted-foreground">Carregando…</p>}
-              {!loading && byStage[stage].length === 0 && (
-                <p className="p-2 text-xs text-muted-foreground">—</p>
-              )}
-              {byStage[stage].map((row) => (
-                <KanbanCard
-                  key={row.id}
-                  row={row}
-                  onDragStart={() => setDragId(row.id)}
-                  onOrcamento={() => setOrc({ row, advance: false })}
-                  onDetail={() => setDetail(row)}
-                />
-              ))}
-            </div>
-            <div
-              className="mt-auto flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
-              style={{ background: STAGE_COLOR[stage].head, color: STAGE_COLOR[stage].headText }}
-            >
-              <span>Total</span>
-              <span>{money(sumStage(stage))}</span>
-            </div>
+            <LayoutGrid className="h-4 w-4" /> Kanban
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("calendar")}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
+              view === "calendar" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+            }`}
+          >
+            <CalendarDays className="h-4 w-4" /> Calendário
+          </button>
+        </div>
+
+        {view === "kanban" && (
+          <div className="flex items-center gap-2">
+            <ArrowDownAZ className="h-4 w-4 text-muted-foreground" />
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+              <SelectTrigger className="h-9 w-52">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end">
+                {(Object.keys(SORT_LABEL) as SortBy[]).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {SORT_LABEL[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        ))}
+        )}
       </div>
+
+      {view === "calendar" ? (
+        <PipelineCalendar
+          rows={rows}
+          weekStart={weekStart}
+          onWeekStart={setWeekStart}
+          onSelect={(id) => {
+            const r = rows.find((x) => x.id === id);
+            if (r) setDetail(r);
+          }}
+        />
+      ) : (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+          {STAGE_ORDER.map((stage) => (
+            <div
+              key={stage}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => {
+                const row = rows.find((r) => r.id === dragId);
+                setDragId(null);
+                if (row) changeStage(row, stage);
+              }}
+              className="flex flex-col rounded-xl border border-border/60 bg-muted/30 p-2"
+            >
+              <div
+                className="mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
+                style={{ background: STAGE_COLOR[stage].head, color: STAGE_COLOR[stage].headText }}
+              >
+                <span>{STAGE_LABEL[stage]}</span>
+                <span className="rounded-full bg-background/70 px-1.5">{count(stage)}</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {loading && <p className="p-2 text-xs text-muted-foreground">Carregando…</p>}
+                {!loading && byStage[stage].length === 0 && (
+                  <p className="p-2 text-xs text-muted-foreground">—</p>
+                )}
+                {byStage[stage].map((row) => (
+                  <KanbanCard
+                    key={row.id}
+                    row={row}
+                    onDragStart={() => setDragId(row.id)}
+                    onOrcamento={() => setOrc({ row, advance: false })}
+                    onDetail={() => setDetail(row)}
+                  />
+                ))}
+              </div>
+              <div
+                className="mt-auto flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
+                style={{ background: STAGE_COLOR[stage].head, color: STAGE_COLOR[stage].headText }}
+              >
+                <span>Total</span>
+                <span>{money(sumStage(stage))}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Formulário de orçamento (mesmo de "Novo orçamento") */}
       <Dialog open={!!orc} onOpenChange={(o) => !o && setOrc(null)}>
