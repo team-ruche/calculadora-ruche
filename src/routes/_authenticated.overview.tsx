@@ -21,13 +21,7 @@ import {
 } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { MedicaoForm } from "@/components/MedicaoForm";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/overview")({
@@ -45,10 +39,18 @@ type Row = Proposal & {
   } | null;
 };
 
+type Range = { from: Date; to: Date };
+
 const money = (n: number | null | undefined) =>
   (n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 const pct = (num: number, den: number) => (den === 0 ? "0%" : `${Math.round((num / den) * 100)}%`);
+
+const inRange = (iso: string | null, r: Range) => {
+  if (!iso) return false;
+  const t = new Date(iso).getTime();
+  return t >= r.from.getTime() && t <= r.to.getTime();
+};
 
 const visitLabel = (iso: string | null) => {
   if (!iso) return "Visita a agendar";
@@ -71,51 +73,7 @@ const STAGE_COLOR: Record<ProposalStage, { bg: string; fg: string }> = {
   deal: { bg: "#97C459", fg: "#173404" },
 };
 
-// ---- filtro de período (por quadro) ----------------------------------------
-type Period = "hoje" | "7d" | "30d" | "mes" | "mes_passado" | "90d";
-const PERIOD_LABEL: Record<Period, string> = {
-  hoje: "Hoje",
-  "7d": "Últimos 7 dias",
-  "30d": "Últimos 30 dias",
-  mes: "Este mês",
-  mes_passado: "Mês passado",
-  "90d": "Últimos 90 dias",
-};
-
-function periodRange(p: Period): [Date, Date] {
-  const now = new Date();
-  const end = new Date(now);
-  end.setHours(23, 59, 59, 999);
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  switch (p) {
-    case "hoje":
-      return [start, end];
-    case "7d":
-      start.setDate(start.getDate() - 6);
-      return [start, end];
-    case "30d":
-      start.setDate(start.getDate() - 29);
-      return [start, end];
-    case "90d":
-      start.setDate(start.getDate() - 89);
-      return [start, end];
-    case "mes":
-      return [new Date(now.getFullYear(), now.getMonth(), 1), end];
-    case "mes_passado":
-      return [
-        new Date(now.getFullYear(), now.getMonth() - 1, 1),
-        new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999),
-      ];
-  }
-}
-
-const inPeriod = (iso: string | null, p: Period) => {
-  if (!iso) return false;
-  const [a, b] = periodRange(p);
-  const t = new Date(iso).getTime();
-  return t >= a.getTime() && t <= b.getTime();
-};
+const REALIZADAS: ProposalStage[] = ["negotiation", "no_deal", "deal"];
 
 function Overview() {
   const { user, isRuche } = useAuth();
@@ -123,6 +81,7 @@ function Overview() {
   const [loading, setLoading] = useState(true);
   const [medProposal, setMedProposal] = useState<Row | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [range, setRange] = useState<Range>(() => presetRange("mes"));
 
   const load = async () => {
     setLoading(true);
@@ -139,6 +98,9 @@ function Overview() {
     load();
   }, []);
 
+  // Filtro global — visitas dentro do período. Venda fechada usa fechado_at.
+  const visitRows = useMemo(() => rows.filter((r) => inRange(r.visita_at, range)), [rows, range]);
+
   const byStage = useMemo(() => {
     const m: Record<ProposalStage, Row[]> = {
       appointment_confirmed: [],
@@ -147,11 +109,23 @@ function Overview() {
       no_deal: [],
       deal: [],
     };
-    for (const r of rows) (m[r.stage] ?? m.appointment_confirmed).push(r);
+    for (const r of visitRows) (m[r.stage] ?? m.appointment_confirmed).push(r);
     return m;
-  }, [rows]);
+  }, [visitRows]);
 
   const count = (s: ProposalStage) => byStage[s].length;
+
+  // Métricas
+  const totais = visitRows.length;
+  const realizadas = visitRows.filter((r) => REALIZADAS.includes(r.stage)).length;
+  const negs = realizadas;
+  const deals = visitRows.filter((r) => r.stage === "deal").length;
+  const pipeline = visitRows
+    .filter((r) => r.stage === "negotiation")
+    .reduce((a, r) => a + (r.total_cliente ?? 0), 0);
+  const vendaFechada = rows
+    .filter((r) => r.stage === "deal" && inRange(r.fechado_at, range))
+    .reduce((a, r) => a + (r.total_cliente ?? 0), 0);
 
   const changeStage = async (row: Row, next: ProposalStage) => {
     if (row.stage === next) return;
@@ -167,64 +141,25 @@ function Overview() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
-        <p className="text-sm text-muted-foreground">
-          Bem-vindo, {user?.nome || user?.email}.{" "}
-          {isRuche ? "Você tem acesso total." : "Você é parceiro."}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
+          <p className="text-sm text-muted-foreground">
+            Bem-vindo, {user?.nome || user?.email}.{" "}
+            {isRuche ? "Você tem acesso total." : "Você é parceiro."}
+          </p>
+        </div>
+        <DateRangePicker value={range} onChange={setRange} />
       </div>
 
       {/* Funil + quadros */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Funnel counts={{ count }} className="lg:col-span-2" />
         <div className="space-y-3">
-          <MetricBox
-            label="Visitas realizadas"
-            compute={(p) => {
-              const totais = rows.filter((r) => inPeriod(r.visita_at, p)).length;
-              const realizadas = rows.filter(
-                (r) =>
-                  inPeriod(r.visita_at, p) && ["negotiation", "no_deal", "deal"].includes(r.stage),
-              ).length;
-              return pct(realizadas, totais);
-            }}
-          />
-          <MetricBox
-            label="Deal / Negociação"
-            compute={(p) => {
-              const negs = rows.filter(
-                (r) =>
-                  inPeriod(r.visita_at, p) && ["negotiation", "no_deal", "deal"].includes(r.stage),
-              ).length;
-              const deals = rows.filter(
-                (r) => inPeriod(r.visita_at, p) && r.stage === "deal",
-              ).length;
-              return pct(deals, negs);
-            }}
-          />
-          <MetricBox
-            label="Pipeline em negociação"
-            defaultPeriod="90d"
-            compute={() =>
-              money(
-                rows
-                  .filter((r) => r.stage === "negotiation")
-                  .reduce((a, r) => a + (r.total_cliente ?? 0), 0),
-              )
-            }
-          />
-          <MetricBox
-            label="Venda fechada"
-            success
-            compute={(p) =>
-              money(
-                rows
-                  .filter((r) => r.stage === "deal" && inPeriod(r.fechado_at, p))
-                  .reduce((a, r) => a + (r.total_cliente ?? 0), 0),
-              )
-            }
-          />
+          <MetricBox label="Visitas realizadas" value={pct(realizadas, totais)} />
+          <MetricBox label="Deal / Negociação" value={pct(deals, negs)} />
+          <MetricBox label="Pipeline em negociação" value={money(pipeline)} />
+          <MetricBox label="Venda fechada" value={money(vendaFechada)} success />
         </div>
       </div>
 
@@ -354,40 +289,12 @@ function Funnel({
   );
 }
 
-// ---- Quadro de métrica com filtro de período -------------------------------
-function MetricBox({
-  label,
-  compute,
-  defaultPeriod = "mes",
-  success,
-}: {
-  label: string;
-  compute: (p: Period) => string;
-  defaultPeriod?: Period;
-  success?: boolean;
-}) {
-  const [period, setPeriod] = useState<Period>(defaultPeriod);
+// ---- Quadro de métrica (sem filtro — usa o filtro global) ------------------
+function MetricBox({ label, value, success }: { label: string; value: string; success?: boolean }) {
   return (
     <div className="rounded-lg bg-muted/50 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] text-muted-foreground">{label}</p>
-        <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-          <SelectTrigger className="h-6 w-auto gap-1 border-none bg-transparent px-1 text-[11px] text-primary shadow-none">
-            <CalendarIcon className="h-3 w-3" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align="end">
-            {(Object.keys(PERIOD_LABEL) as Period[]).map((p) => (
-              <SelectItem key={p} value={p} className="text-xs">
-                {PERIOD_LABEL[p]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <p className={`mt-1 text-lg font-semibold ${success ? "text-emerald-600" : ""}`}>
-        {compute(period)}
-      </p>
+      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-lg font-semibold ${success ? "text-emerald-600" : ""}`}>{value}</p>
     </div>
   );
 }
