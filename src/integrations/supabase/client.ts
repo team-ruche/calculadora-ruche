@@ -78,6 +78,73 @@ export const STAGE_ORDER: ProposalStage[] = [
   "deal",
 ];
 
+// Status do contrato (Controle Financeiro)
+export type ContractStatus = "active" | "pending" | "on_hold" | "contractual_billing" | "encerrado";
+
+export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
+  active: "Active",
+  pending: "Pending",
+  on_hold: "On Hold",
+  contractual_billing: "Contractual Billing",
+  encerrado: "Encerrado",
+};
+
+// Status de uma parcela
+export type ParcelaStatus =
+  "pago" | "em_dia" | "vence_7d" | "vence_hoje" | "em_atraso" | "negociacao" | "processing";
+
+export const PARCELA_STATUS_LABEL: Record<ParcelaStatus, string> = {
+  pago: "Pago",
+  em_dia: "Em dia",
+  vence_7d: "Vence 7d",
+  vence_hoje: "Vence hoje",
+  em_atraso: "Em atraso",
+  negociacao: "Negociação",
+  processing: "Processing",
+};
+
+export const PAYMENT_METHODS = [
+  "Agreement",
+  "Auto Pay",
+  "Credit Card",
+  "Debit Card",
+  "Fatura",
+  "PayPal",
+  "Pix",
+  "Wire Transfer",
+  "Zelle",
+] as const;
+
+export const CONTAS = ["WISE", "Asaas"] as const;
+
+export type Direcao = "inflow" | "outflow";
+
+export interface Parcela {
+  id: string;
+  proposal_id: string;
+  numero: number;
+  date_added: string;
+  payment_method: string | null;
+  conta: string | null;
+  categoria: string | null;
+  direcao: Direcao;
+  periodo: string | null;
+  valor: number;
+  valor_parceiro: number | null;
+  valor_ruche: number | null;
+  vencimento: string | null;
+  data_pagamento: string | null;
+  valor_pago: number | null;
+  status: ParcelaStatus;
+  conciliado: boolean;
+  invoice_gerada: boolean;
+  valor_nativo: number | null;
+  moeda_nativa: string | null;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Proposal {
   id: string;
   lead_id: string;
@@ -85,6 +152,7 @@ export interface Proposal {
   status: string;
   // Kanban
   stage: ProposalStage;
+  contract_status: ContractStatus;
   visita_at: string | null;
   fechado_at: string | null;
   // Gate da medição
