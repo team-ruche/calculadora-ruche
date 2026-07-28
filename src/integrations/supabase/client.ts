@@ -47,19 +47,96 @@ export interface Lead {
   endereco: string | null;
   email: string | null;
   etapa_funil: string;
+  // Qualificação do setter (grupos A–F). Vem pré-preenchida da integração GHL.
+  qualificacao: LeadQualificacao | null;
   created_at: string;
 }
+
+// Estágios do kanban do Overview.
+export type ProposalStage =
+  "appointment_confirmed" | "appointment_canceled" | "negotiation" | "no_deal" | "deal";
+
+export const STAGE_LABEL: Record<ProposalStage, string> = {
+  appointment_confirmed: "Appointment Confirmed",
+  appointment_canceled: "Appointment Canceled",
+  negotiation: "Negotiation",
+  no_deal: "No Deal",
+  deal: "Deal",
+};
+
+export const STAGE_ORDER: ProposalStage[] = [
+  "appointment_confirmed",
+  "appointment_canceled",
+  "negotiation",
+  "no_deal",
+  "deal",
+];
 
 export interface Proposal {
   id: string;
   lead_id: string;
   partner_id: string;
   status: string;
+  // Kanban
+  stage: ProposalStage;
+  visita_at: string | null;
+  fechado_at: string | null;
+  // Gate da medição
+  medicao_preenchida: boolean;
+  medicao: MedicaoData | null;
+  medicao_at: string | null;
   total_cliente: number | null;
   total_repasse: number | null;
   margem_ruche: number | null;
   created_at: string;
   updated_at: string;
+}
+
+// Dados do formulário de medição (preenchido na aba Orçamento antes de negociar).
+export interface MedicaoData {
+  sqft_real: number | null;
+  piso_atual: string | null;
+  subfloor: string | null;
+  nivelamento_necessario: boolean | null;
+  umidade_ok: boolean | null;
+  observacoes: string | null;
+}
+
+// Qualificação do setter — grupos A a F do formulário de discovery (GHL).
+export interface LeadQualificacao {
+  // A — Contato
+  a_nome?: string;
+  a_telefone?: string;
+  a_email?: string;
+  a_endereco?: string;
+  a_fonte?: string;
+  // B — Elegibilidade
+  b_dono?: boolean;
+  b_zip_area?: boolean;
+  b_tipo_imovel?: string;
+  b_sqft_estimado?: number;
+  // C — Motivação
+  c_motivo?: string;
+  c_reforma_maior?: boolean;
+  c_quem_mora?: string;
+  c_data_limite?: string;
+  // D — Escopo
+  d_ambientes?: string[];
+  d_sqft_total?: number;
+  d_piso_atual?: string;
+  d_piso_desejado?: string;
+  d_material_comprado?: string;
+  d_cor_estilo?: string;
+  d_servico?: string;
+  // E — Dinheiro e concorrência
+  e_budget?: string;
+  e_pagamento?: string;
+  e_outros_orcamentos?: string;
+  // F — Decisão e agendamento
+  f_decisores?: string;
+  f_decisores_confirmados?: boolean;
+  f_temperatura?: number;
+  f_observacoes?: string;
 }
 
 export interface ProposalRoom {
