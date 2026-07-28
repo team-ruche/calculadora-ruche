@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, FileText, Printer, Plus, Pencil, Ruler } from "lucide-react";
+import { ArrowLeft, FileText, Printer, Plus, Pencil } from "lucide-react";
 import {
   supabase,
   type Proposal,
@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { OrcamentoForm } from "@/components/OrcamentoForm";
-import { MedicaoForm } from "@/components/MedicaoForm";
 import {
   Table,
   TableBody,
@@ -67,7 +66,6 @@ function OrcamentosPage() {
   const [items, setItems] = useState<ProposalItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(null);
-  const [medRow, setMedRow] = useState<ProposalRow | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -165,20 +163,9 @@ function OrcamentosPage() {
     );
   }
 
-  const medForm = (
-    <MedicaoForm
-      open={!!medRow}
-      proposalId={medRow?.id ?? null}
-      initial={medRow?.medicao ?? null}
-      onOpenChange={(o) => !o && setMedRow(null)}
-      onSaved={load}
-    />
-  );
-
   return (
     <div className="space-y-6">
       {formDialog}
-      {medForm}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Orçamentos</h1>
@@ -228,19 +215,9 @@ function OrcamentosPage() {
                     </TableCell>
                     <TableCell className="text-right">{money(row.total_cliente)}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant={row.medicao_preenchida ? "outline" : "secondary"}
-                          onClick={() => setMedRow(row)}
-                        >
-                          <Ruler className="mr-1 h-4 w-4" />
-                          {row.medicao_preenchida ? "Medição" : "Medir"}
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
-                          <FileText className="mr-1 h-4 w-4" /> Ver
-                        </Button>
-                      </div>
+                      <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
+                        <FileText className="mr-1 h-4 w-4" /> Ver
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

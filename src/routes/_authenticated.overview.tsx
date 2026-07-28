@@ -5,11 +5,10 @@ import {
   MessageSquare,
   Calendar as CalendarIcon,
   ExternalLink,
-  Ruler,
+  ClipboardList,
   MapPin,
   DollarSign,
-  ChevronDown,
-  ChevronUp,
+  Eye,
 } from "lucide-react";
 import {
   supabase,
@@ -20,8 +19,15 @@ import {
   STAGE_ORDER,
 } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { MedicaoForm } from "@/components/MedicaoForm";
+import { OrcamentoForm } from "@/components/OrcamentoForm";
 import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/overview")({
@@ -64,24 +70,32 @@ const visitLabel = (iso: string | null) => {
   });
 };
 
-// Cores por estágio (alinhadas ao mockup)
-const STAGE_COLOR: Record<ProposalStage, { bg: string; fg: string }> = {
-  appointment_confirmed: { bg: "#FAC775", fg: "#633806" },
-  appointment_canceled: { bg: "#F5C4B3", fg: "#712B13" },
-  negotiation: { bg: "#EF9F27", fg: "#412402" },
-  no_deal: { bg: "#D3D1C7", fg: "#2C2C2A" },
-  deal: { bg: "#97C459", fg: "#173404" },
+// Cores por estágio — tons com bom contraste (texto sempre no 900 da família).
+const STAGE_COLOR: Record<
+  ProposalStage,
+  { bar: string; text: string; head: string; headText: string }
+> = {
+  appointment_confirmed: { bar: "#F0A81E", text: "#3D2600", head: "#FBE7BF", headText: "#7A4E05" },
+  appointment_canceled: { bar: "#E07A52", text: "#3D1405", head: "#F6D6C7", headText: "#7A2E12" },
+  negotiation: { bar: "#D98416", text: "#3D2200", head: "#F5DDB4", headText: "#7A4405" },
+  no_deal: { bar: "#9C9A90", text: "#26251F", head: "#DEDCD2", headText: "#45443D" },
+  deal: { bar: "#5FA13B", text: "#173404", head: "#D3E8BC", headText: "#2C5212" },
 };
 
 const REALIZADAS: ProposalStage[] = ["negotiation", "no_deal", "deal"];
+
+// Orçamento feito = tem valor calculado. É o gate para ir a Negociação.
+const orcamentoFeito = (r: Row) => r.total_cliente != null && r.total_cliente > 0;
 
 function Overview() {
   const { user, isRuche } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  const [medProposal, setMedProposal] = useState<Row | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [range, setRange] = useState<Range>(() => presetRange("mes"));
+  // Formulário de orçamento (= formulário de medição). advance move p/ negociação ao salvar.
+  const [orc, setOrc] = useState<{ row: Row; advance: boolean } | null>(null);
+  const [detail, setDetail] = useState<Row | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -98,7 +112,6 @@ function Overview() {
     load();
   }, []);
 
-  // Filtro global — visitas dentro do período. Venda fechada usa fechado_at.
   const visitRows = useMemo(() => rows.filter((r) => inRange(r.visita_at, range)), [rows, range]);
 
   const byStage = useMemo(() => {
@@ -115,10 +128,8 @@ function Overview() {
 
   const count = (s: ProposalStage) => byStage[s].length;
 
-  // Métricas
   const totais = visitRows.length;
   const realizadas = visitRows.filter((r) => REALIZADAS.includes(r.stage)).length;
-  const negs = realizadas;
   const deals = visitRows.filter((r) => r.stage === "deal").length;
   const pipeline = visitRows
     .filter((r) => r.stage === "negotiation")
@@ -129,14 +140,25 @@ function Overview() {
 
   const changeStage = async (row: Row, next: ProposalStage) => {
     if (row.stage === next) return;
-    // Gate: só entra em negociação com a medição preenchida.
-    if (next === "negotiation" && !row.medicao_preenchida) {
-      setMedProposal(row);
+    // Gate: só entra em Negociação com o orçamento (medição) preenchido.
+    if (next === "negotiation" && !orcamentoFeito(row)) {
+      toast.info("Preencha o orçamento (medição) para mover para Negociação.");
+      setOrc({ row, advance: true });
       return;
     }
     const { error } = await supabase.from("proposals").update({ stage: next }).eq("id", row.id);
     if (error) return toast.error(error.message);
     load();
+  };
+
+  const onOrcSaved = async () => {
+    const current = orc;
+    setOrc(null);
+    await load();
+    if (current?.advance && current.row.stage === "appointment_confirmed") {
+      await supabase.from("proposals").update({ stage: "negotiation" }).eq("id", current.row.id);
+      await load();
+    }
   };
 
   return (
@@ -152,18 +174,16 @@ function Overview() {
         <DateRangePicker value={range} onChange={setRange} />
       </div>
 
-      {/* Funil + quadros */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Funnel counts={{ count }} className="lg:col-span-2" />
+        <Funnel counts={{ count }} totais={totais} className="lg:col-span-2" />
         <div className="space-y-3">
           <MetricBox label="Visitas realizadas" value={pct(realizadas, totais)} />
-          <MetricBox label="Deal / Negociação" value={pct(deals, negs)} />
+          <MetricBox label="Deal / Negociação" value={pct(deals, realizadas)} />
           <MetricBox label="Pipeline em negociação" value={money(pipeline)} />
           <MetricBox label="Venda fechada" value={money(vendaFechada)} success />
         </div>
       </div>
 
-      {/* Kanban */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {STAGE_ORDER.map((stage) => (
           <div
@@ -174,14 +194,14 @@ function Overview() {
               setDragId(null);
               if (row) changeStage(row, stage);
             }}
-            className="flex flex-col rounded-xl bg-muted/40 p-2"
+            className="flex flex-col rounded-xl border border-border/60 bg-muted/30 p-2"
           >
             <div
-              className="mb-2 flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium"
-              style={{ background: STAGE_COLOR[stage].bg, color: STAGE_COLOR[stage].fg }}
+              className="mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
+              style={{ background: STAGE_COLOR[stage].head, color: STAGE_COLOR[stage].headText }}
             >
               <span>{STAGE_LABEL[stage]}</span>
-              <span>{count(stage)}</span>
+              <span className="rounded-full bg-background/70 px-1.5">{count(stage)}</span>
             </div>
             <div className="flex flex-col gap-2">
               {loading && <p className="p-2 text-xs text-muted-foreground">Carregando…</p>}
@@ -193,7 +213,8 @@ function Overview() {
                   key={row.id}
                   row={row}
                   onDragStart={() => setDragId(row.id)}
-                  onMedicao={() => setMedProposal(row)}
+                  onOrcamento={() => setOrc({ row, advance: false })}
+                  onDetail={() => setDetail(row)}
                 />
               ))}
             </div>
@@ -201,16 +222,28 @@ function Overview() {
         ))}
       </div>
 
-      <MedicaoForm
-        open={!!medProposal}
-        proposalId={medProposal?.id ?? null}
-        initial={medProposal?.medicao ?? null}
-        advanceToStage={
-          medProposal && medProposal.stage === "appointment_confirmed" ? "negotiation" : undefined
-        }
-        onOpenChange={(o) => !o && setMedProposal(null)}
-        onSaved={load}
-      />
+      {/* Formulário de orçamento (mesmo de "Novo orçamento") */}
+      <Dialog open={!!orc} onOpenChange={(o) => !o && setOrc(null)}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Orçamento · medição</DialogTitle>
+            <DialogDescription>
+              Mesmo formulário de "Novo orçamento". Preenchê-lo libera a etapa de Negociação.
+            </DialogDescription>
+          </DialogHeader>
+          {orc && (
+            <OrcamentoForm
+              mode="edit"
+              proposalId={orc.row.id}
+              onSaved={onOrcSaved}
+              onCancel={() => setOrc(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Detalhe do card — grupos A–F */}
+      <DetalheDialog row={detail} onOpenChange={(o) => !o && setDetail(null)} />
     </div>
   );
 }
@@ -218,9 +251,11 @@ function Overview() {
 // ---- Funil ------------------------------------------------------------------
 function Funnel({
   counts,
+  totais,
   className,
 }: {
   counts: { count: (s: ProposalStage) => number };
+  totais: number;
   className?: string;
 }) {
   const { count } = counts;
@@ -230,34 +265,35 @@ function Funnel({
   const nodeal = count("no_deal");
   const deal = count("deal");
   const max = Math.max(conf, neg, deal, 1);
-  const bar = (v: number) => `${Math.max((v / max) * 100, 6)}%`;
+  const bar = (v: number) => `${Math.max((v / max) * 100, 8)}%`;
 
   const FunnelRow = ({
     label,
     value,
-    color,
-    fg,
+    stage,
     sub,
   }: {
     label: string;
     value: number;
-    color: string;
-    fg: string;
+    stage: ProposalStage;
     sub?: string;
   }) => (
     <div>
-      <div className="flex items-center gap-2">
-        <span className="w-24 shrink-0 text-xs text-muted-foreground">{label}</span>
-        <div
-          className="flex h-6 items-center justify-center rounded-md text-xs font-medium"
-          style={{ width: bar(value), background: color, color: fg }}
-        >
-          {value}
+      <div className="flex items-center gap-3">
+        <span className="w-24 shrink-0 text-sm font-medium text-foreground">{label}</span>
+        <div className="flex flex-1 items-center gap-2">
+          <div
+            className="flex h-8 items-center justify-center rounded-lg text-sm font-semibold"
+            style={{ width: bar(value), background: STAGE_COLOR[stage].bar, color: "#fff" }}
+          >
+            {value}
+          </div>
+          <span className="text-xs font-medium text-muted-foreground">{pct(value, totais)}</span>
         </div>
       </div>
       {sub && (
-        <div className="ml-[104px] mt-1">
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+        <div className="ml-[108px] mt-1.5">
+          <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
             {sub}
           </span>
         </div>
@@ -266,35 +302,38 @@ function Funnel({
   );
 
   return (
-    <div className={`rounded-xl border bg-card p-4 ${className ?? ""}`}>
-      <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">Funil · visitas</p>
-      <div className="space-y-2.5">
+    <div className={`rounded-xl border bg-card p-5 ${className ?? ""}`}>
+      <div className="mb-4 flex items-center gap-2">
+        <span
+          className="flex h-6 w-6 items-center justify-center rounded-md"
+          style={{ background: "#F0A81E", color: "#fff" }}
+        >
+          <CalendarIcon className="h-3.5 w-3.5" />
+        </span>
+        <h2 className="text-base font-semibold text-foreground">Funil · visitas</h2>
+      </div>
+      <div className="space-y-3">
         <FunnelRow
           label="Confirmadas"
           value={conf}
-          color={STAGE_COLOR.appointment_confirmed.bg}
-          fg={STAGE_COLOR.appointment_confirmed.fg}
+          stage="appointment_confirmed"
           sub={`−${canc} canceladas`}
         />
-        <FunnelRow
-          label="Negociação"
-          value={neg}
-          color={STAGE_COLOR.negotiation.bg}
-          fg={STAGE_COLOR.negotiation.fg}
-          sub={`−${nodeal} no deal`}
-        />
-        <FunnelRow label="Deal" value={deal} color={STAGE_COLOR.deal.bg} fg={STAGE_COLOR.deal.fg} />
+        <FunnelRow label="Negociação" value={neg} stage="negotiation" sub={`−${nodeal} no deal`} />
+        <FunnelRow label="Deal" value={deal} stage="deal" />
       </div>
     </div>
   );
 }
 
-// ---- Quadro de métrica (sem filtro — usa o filtro global) ------------------
+// ---- Quadro de métrica ------------------------------------------------------
 function MetricBox({ label, value, success }: { label: string; value: string; success?: boolean }) {
   return (
-    <div className="rounded-lg bg-muted/50 p-3">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-lg font-semibold ${success ? "text-emerald-600" : ""}`}>{value}</p>
+    <div className="rounded-xl border bg-card p-4">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-xl font-bold ${success ? "text-emerald-600" : "text-foreground"}`}>
+        {value}
+      </p>
     </div>
   );
 }
@@ -303,15 +342,15 @@ function MetricBox({ label, value, success }: { label: string; value: string; su
 function KanbanCard({
   row,
   onDragStart,
-  onMedicao,
+  onOrcamento,
+  onDetail,
 }: {
   row: Row;
   onDragStart: () => void;
-  onMedicao: () => void;
+  onOrcamento: () => void;
+  onDetail: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const lead = row.leads;
-  const q = lead?.qualificacao ?? null;
   const nome = lead?.nome_cliente ?? "Sem nome";
   const initials = nome
     .split(" ")
@@ -319,20 +358,37 @@ function KanbanCard({
     .map((s) => s[0])
     .join("")
     .toUpperCase();
-
   const tel = lead?.telefone ?? "";
   const endereco = lead?.endereco ?? "Endereço a confirmar";
+  const feito = orcamentoFeito(row);
 
-  const iconBtn = (child: React.ReactNode, label: string, onClick?: () => void, href?: string) =>
-    href ? (
+  const IconLink = ({
+    icon,
+    label,
+    onClick,
+    href,
+    accent,
+  }: {
+    icon: React.ReactNode;
+    label: string;
+    onClick?: () => void;
+    href?: string;
+    accent?: boolean;
+  }) => {
+    const cls = `flex h-7 w-7 items-center justify-center rounded-md border ${
+      accent
+        ? "border-primary/40 bg-primary/10 text-primary"
+        : "border-border bg-background text-muted-foreground hover:text-foreground"
+    }`;
+    return href ? (
       <a
         href={href}
         aria-label={label}
         title={label}
         onClick={(e) => e.stopPropagation()}
-        className="text-muted-foreground hover:text-foreground"
+        className={cls}
       >
-        {child}
+        {icon}
       </a>
     ) : (
       <button
@@ -343,98 +399,174 @@ function KanbanCard({
           e.stopPropagation();
           onClick?.();
         }}
-        className="text-muted-foreground hover:text-foreground"
+        className={cls}
       >
-        {child}
+        {icon}
       </button>
     );
+  };
 
   return (
     <div
       draggable
       onDragStart={onDragStart}
-      className="cursor-grab rounded-xl border bg-card p-3 active:cursor-grabbing"
+      className="cursor-grab rounded-xl border bg-card p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing"
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium leading-tight">{nome}</p>
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">
+        <p className="text-sm font-semibold leading-tight text-foreground">{nome}</p>
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
           {initials}
         </span>
       </div>
 
       <div className="mt-2 space-y-1 text-xs text-muted-foreground">
         <p className="flex items-center gap-1.5">
-          <CalendarIcon className="h-3.5 w-3.5" /> {visitLabel(row.visita_at)}
+          <CalendarIcon className="h-3.5 w-3.5 shrink-0" /> {visitLabel(row.visita_at)}
         </p>
         <p className="flex items-center gap-1.5">
-          <MapPin className="h-3.5 w-3.5" /> <span className="truncate">{endereco}</span>
+          <MapPin className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{endereco}</span>
         </p>
-        <p className="flex items-center gap-1.5">
-          <DollarSign className="h-3.5 w-3.5" /> {money(row.total_cliente)}
-          {!row.total_cliente && <span className="text-[10px]">(após orçamento)</span>}
+        <p className="flex items-center gap-1.5 font-medium text-foreground">
+          <DollarSign className="h-3.5 w-3.5 shrink-0" /> {money(row.total_cliente)}
+          {!feito && <span className="font-normal text-muted-foreground">(após orçamento)</span>}
         </p>
       </div>
 
-      <div className="mt-2.5 flex items-center gap-3 border-t pt-2 text-[15px]">
-        {iconBtn(<ExternalLink className="h-4 w-4" />, "GHL")}
-        {iconBtn(<CalendarIcon className="h-4 w-4" />, "Google Calendar")}
-        {iconBtn(<Phone className="h-4 w-4" />, "Ligar", undefined, tel ? `tel:${tel}` : undefined)}
-        {iconBtn(
-          <MessageSquare className="h-4 w-4" />,
-          "SMS",
-          undefined,
-          tel ? `sms:${tel}` : undefined,
-        )}
-        {iconBtn(
-          <Ruler className={`h-4 w-4 ${row.medicao_preenchida ? "" : "text-primary"}`} />,
-          "Formulário de medição",
-          onMedicao,
-        )}
+      <div className="mt-2.5 flex items-center gap-1.5 border-t pt-2.5">
+        <IconLink icon={<ExternalLink className="h-3.5 w-3.5" />} label="GHL" />
+        <IconLink icon={<CalendarIcon className="h-3.5 w-3.5" />} label="Google Calendar" />
+        <IconLink
+          icon={<Phone className="h-3.5 w-3.5" />}
+          label="Ligar"
+          href={tel ? `tel:${tel}` : undefined}
+        />
+        <IconLink
+          icon={<MessageSquare className="h-3.5 w-3.5" />}
+          label="SMS"
+          href={tel ? `sms:${tel}` : undefined}
+        />
+        <IconLink
+          icon={<ClipboardList className="h-3.5 w-3.5" />}
+          label="Orçamento / medição"
+          onClick={onOrcamento}
+          accent={!feito}
+        />
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
-          className="ml-auto text-muted-foreground hover:text-foreground"
-          aria-label={open ? "Fechar detalhes" : "Ver detalhes"}
+          onClick={onDetail}
+          className="ml-auto flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground"
         >
-          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <Eye className="h-3.5 w-3.5" /> Detalhes
         </button>
       </div>
-
-      {open && (
-        <div className="mt-3 space-y-2 border-t pt-3">
-          <Group title="A · Contato">
-            {q?.a_email ?? lead?.email ?? "—"} · {q?.a_telefone ?? (tel || "—")} ·{" "}
-            {q?.a_fonte ?? "fonte —"}
-          </Group>
-          <Group title="B · Elegibilidade">
-            Dono: {yn(q?.b_dono)} · Tipo: {q?.b_tipo_imovel ?? "—"} · Sqft est.:{" "}
-            {q?.b_sqft_estimado ?? "—"}
-          </Group>
-          <Group title="C · Motivação">
-            {q?.c_motivo ?? "—"}
-            {q?.c_data_limite ? ` · até ${q.c_data_limite}` : ""}
-          </Group>
-          <Group title="D · Escopo">
-            {(q?.d_ambientes ?? []).join(", ") || "ambientes —"} · {q?.d_sqft_total ?? "—"} sqft ·{" "}
-            {q?.d_piso_atual ?? "—"} → {q?.d_piso_desejado ?? "—"} · {q?.d_servico ?? "—"}
-          </Group>
-          <Group title="E · Dinheiro e concorrência">
-            Budget: {q?.e_budget ?? "—"} · Pagamento: {q?.e_pagamento ?? "—"} · Outros:{" "}
-            {q?.e_outros_orcamentos ?? "—"}
-          </Group>
-        </div>
-      )}
     </div>
   );
 }
 
-const yn = (v: boolean | undefined) => (v === undefined ? "—" : v ? "sim" : "não");
+// ---- Detalhe (grupos A–F, estilo do formulário) ----------------------------
+function DetalheDialog({
+  row,
+  onOpenChange,
+}: {
+  row: Row | null;
+  onOpenChange: (o: boolean) => void;
+}) {
+  const lead = row?.leads ?? null;
+  const q = lead?.qualificacao ?? null;
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
-      <p className="text-[10px] font-medium uppercase tracking-wide text-primary">{title}</p>
-      <p className="text-xs leading-relaxed text-muted-foreground">{children}</p>
+    <Dialog open={!!row} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{lead?.nome_cliente ?? "Detalhes do lead"}</DialogTitle>
+          <DialogDescription>
+            Discovery do setter — grupos A a F (formulário GHL).
+          </DialogDescription>
+        </DialogHeader>
+
+        {row && (
+          <div className="space-y-4">
+            <Section title="A · Contato">
+              <Field label="Nome completo" value={q?.a_nome ?? lead?.nome_cliente} />
+              <Field label="Telefone validado" value={q?.a_telefone ?? lead?.telefone} />
+              <Field label="E-mail" value={q?.a_email ?? lead?.email} />
+              <Field label="Endereço + ZIP" value={q?.a_endereco ?? lead?.endereco} />
+              <Field label="Fonte do lead" value={q?.a_fonte} />
+            </Section>
+
+            <Section title="B · Elegibilidade">
+              <Field label="É dono do imóvel?" value={yn(q?.b_dono)} />
+              <Field label="ZIP na área do parceiro?" value={yn(q?.b_zip_area)} />
+              <Field label="Tipo de imóvel" value={q?.b_tipo_imovel} />
+              <Field label="Sqft estimado" value={q?.b_sqft_estimado} />
+            </Section>
+
+            <Section title="C · Motivação">
+              <Field label="Por que trocar agora" value={q?.c_motivo} />
+              <Field label="Parte de reforma maior?" value={yn(q?.c_reforma_maior)} />
+              <Field label="Quem mora na casa" value={q?.c_quem_mora} />
+              <Field label="Data-limite" value={q?.c_data_limite} />
+            </Section>
+
+            <Section title="D · Escopo">
+              <Field label="Ambientes" value={(q?.d_ambientes ?? []).join(", ")} />
+              <Field label="Sqft total" value={q?.d_sqft_total} />
+              <Field label="Piso atual" value={q?.d_piso_atual} />
+              <Field label="Piso desejado" value={q?.d_piso_desejado} />
+              <Field label="Material comprado" value={q?.d_material_comprado} />
+              <Field label="Cor / estilo" value={q?.d_cor_estilo} />
+              <Field label="Serviço" value={q?.d_servico} />
+            </Section>
+
+            <Section title="E · Dinheiro e concorrência">
+              <Field label="Faixa de budget" value={q?.e_budget} />
+              <Field label="Forma de pagamento" value={q?.e_pagamento} />
+              <Field label="Outros orçamentos" value={q?.e_outros_orcamentos} />
+            </Section>
+
+            <Section title="F · Decisão e agendamento">
+              <Field label="Decisores" value={q?.f_decisores} />
+              <Field label="Decisores confirmados" value={yn(q?.f_decisores_confirmados)} />
+              <Field
+                label="Temperatura do lead"
+                value={q?.f_temperatura ? `${q.f_temperatura}/5` : undefined}
+              />
+              <Field label="Observações" value={q?.f_observacoes} full />
+            </Section>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const yn = (v: boolean | undefined) => (v === undefined ? undefined : v ? "Sim" : "Não");
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border bg-card p-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary">{title}</p>
+      <div className="grid gap-3 sm:grid-cols-2">{children}</div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  full,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+  full?: boolean;
+}) {
+  const shown = value === null || value === undefined || value === "" ? "—" : String(value);
+  return (
+    <div className={`space-y-1 ${full ? "sm:col-span-2" : ""}`}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="min-h-9 rounded-md border bg-background px-3 py-2 text-sm text-foreground">
+        {shown}
+      </div>
     </div>
   );
 }
