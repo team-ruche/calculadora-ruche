@@ -82,6 +82,8 @@ function OrcamentosPage() {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [leadDetail, setLeadDetail] = useState<LeadLike>(null);
+  // Proposta que deve avançar p/ Negociação assim que o orçamento for salvo (gate).
+  const [advanceNegId, setAdvanceNegId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -125,9 +127,17 @@ function OrcamentosPage() {
     await reloadItems(row.id);
   };
 
-  // Sincroniza o status com o kanban (mesmo campo `stage`).
-  const changeStage = async (id: string, next: ProposalStage) => {
-    const { error } = await supabase.from("proposals").update({ stage: next }).eq("id", id);
+  // Sincroniza o status com o kanban (mesmo campo `stage`), com o mesmo gate.
+  const changeStage = async (row: ProposalRow, next: ProposalStage) => {
+    if (row.stage === next) return;
+    // Gate: só entra em Negociação com o orçamento (medição) preenchido.
+    if (next === "negotiation" && !(row.total_cliente && row.total_cliente > 0)) {
+      toast.info("Preencha o orçamento (medição) para mover para Negociação.");
+      setAdvanceNegId(row.id);
+      setDialog({ mode: "edit", proposalId: row.id });
+      return;
+    }
+    const { error } = await supabase.from("proposals").update({ stage: next }).eq("id", row.id);
     if (error) return toast.error(error.message);
     toast.success("Status atualizado");
     load();
@@ -136,6 +146,23 @@ function OrcamentosPage() {
   const onSaved = async (proposalId: string) => {
     setDialog(null);
     await load();
+
+    // Após salvar o orçamento, avança p/ Negociação se estava pendente no gate.
+    if (advanceNegId === proposalId) {
+      setAdvanceNegId(null);
+      const { data: fresh } = await supabase
+        .from("proposals")
+        .select("total_cliente")
+        .eq("id", proposalId)
+        .maybeSingle();
+      const total = (fresh as { total_cliente: number | null } | null)?.total_cliente ?? 0;
+      if (total > 0) {
+        await supabase.from("proposals").update({ stage: "negotiation" }).eq("id", proposalId);
+        toast.success("Orçamento salvo · movido para Negociação");
+        await load();
+      }
+    }
+
     if (selected && selected.id === proposalId) {
       const { data } = await supabase
         .from("proposals")
@@ -251,7 +278,7 @@ function OrcamentosPage() {
                     <TableCell>
                       <Select
                         value={row.stage}
-                        onValueChange={(v) => changeStage(row.id, v as ProposalStage)}
+                        onValueChange={(v) => changeStage(row, v as ProposalStage)}
                       >
                         <SelectTrigger className="h-8 w-[190px] border-none px-2 shadow-none">
                           <span
