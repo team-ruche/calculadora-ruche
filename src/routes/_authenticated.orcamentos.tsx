@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { OrcamentoForm } from "@/components/OrcamentoForm";
 import { LeadDetalhe, type LeadLike } from "@/components/LeadDetalhe";
+import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
 import {
   Table,
   TableBody,
@@ -73,6 +74,13 @@ const money = (n: number | null) =>
 
 const shortDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("pt-BR") : "—");
 
+type Range = { from: Date; to: Date };
+const inRange = (iso: string | null, r: Range) => {
+  if (!iso) return false;
+  const t = new Date(iso).getTime();
+  return t >= r.from.getTime() && t <= r.to.getTime();
+};
+
 function OrcamentosPage() {
   const [rows, setRows] = useState<ProposalRow[]>([]);
   const [authors, setAuthors] = useState<Record<string, string>>({});
@@ -84,6 +92,8 @@ function OrcamentosPage() {
   const [leadDetail, setLeadDetail] = useState<LeadLike>(null);
   // Proposta que deve avançar p/ Negociação assim que o orçamento for salvo (gate).
   const [advanceNegId, setAdvanceNegId] = useState<string | null>(null);
+  // Filtro de período por data de criação do orçamento.
+  const [range, setRange] = useState<Range>(() => presetRange("mes"));
 
   const load = async () => {
     setLoading(true);
@@ -222,16 +232,19 @@ function OrcamentosPage() {
         open={!!leadDetail}
         onOpenChange={(o) => !o && setLeadDetail(null)}
       />
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Orçamentos</h1>
           <p className="text-sm text-muted-foreground">
             Propostas geradas. Abra para ver o orçamento do cliente e exportar.
           </p>
         </div>
-        <Button onClick={() => setDialog({ mode: "create" })}>
-          <Plus className="mr-1 h-4 w-4" /> Novo Orçamento
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <DateRangePicker value={range} onChange={setRange} />
+          <Button onClick={() => setDialog({ mode: "create" })}>
+            <Plus className="mr-1 h-4 w-4" /> Novo Orçamento
+          </Button>
+        </div>
       </div>
       <Card>
         <CardHeader>
@@ -254,64 +267,66 @@ function OrcamentosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => setLeadDetail(row.leads)}
-                        className="font-medium text-primary underline-offset-2 hover:underline"
-                        title="Abrir card do setter"
-                      >
-                        {row.leads?.nome_cliente || "—"}
-                      </button>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {authors[row.partner_id] || "—"}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {shortDate(row.created_at)}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {shortDate(row.updated_at)}
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={row.stage}
-                        onValueChange={(v) => changeStage(row, v as ProposalStage)}
-                      >
-                        <SelectTrigger className="h-8 w-[190px] border-none px-2 shadow-none">
-                          <span
-                            className="rounded-full px-2.5 py-1 text-xs font-semibold"
-                            style={{
-                              background: STAGE_BADGE[row.stage].bg,
-                              color: STAGE_BADGE[row.stage].fg,
-                            }}
-                          >
-                            {STAGE_LABEL[row.stage]}
-                          </span>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STAGE_ORDER.map((s) => (
-                            <SelectItem key={s} value={s}>
-                              {STAGE_LABEL[s]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="text-right">{money(row.total_cliente)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
-                        <FileText className="mr-1 h-4 w-4" /> Ver
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {rows.length === 0 && (
+                {rows
+                  .filter((row) => inRange(row.created_at, range))
+                  .map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell>
+                        <button
+                          type="button"
+                          onClick={() => setLeadDetail(row.leads)}
+                          className="font-medium text-primary underline-offset-2 hover:underline"
+                          title="Abrir card do setter"
+                        >
+                          {row.leads?.nome_cliente || "—"}
+                        </button>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {authors[row.partner_id] || "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {shortDate(row.created_at)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {shortDate(row.updated_at)}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={row.stage}
+                          onValueChange={(v) => changeStage(row, v as ProposalStage)}
+                        >
+                          <SelectTrigger className="h-8 w-[190px] border-none px-2 shadow-none">
+                            <span
+                              className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                              style={{
+                                background: STAGE_BADGE[row.stage].bg,
+                                color: STAGE_BADGE[row.stage].fg,
+                              }}
+                            >
+                              {STAGE_LABEL[row.stage]}
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STAGE_ORDER.map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {STAGE_LABEL[s]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-right">{money(row.total_cliente)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
+                          <FileText className="mr-1 h-4 w-4" /> Ver
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {rows.filter((row) => inRange(row.created_at, range)).length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      Nenhum orçamento ainda. Crie um em "Novo Orçamento".
+                      Nenhum orçamento no período selecionado.
                     </TableCell>
                   </TableRow>
                 )}
