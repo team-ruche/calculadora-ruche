@@ -1,12 +1,19 @@
+import { Fragment } from "react";
 import type { OrcamentoLayout } from "@/integrations/supabase/client";
 
 // Dados que variam por orçamento (no editor usamos exemplo; no documento real vêm do lead/proposta).
+export type DocLinha = { tamanho: string; valor: string };
+export type DocAmbiente = {
+  nome: string;
+  instalacao?: DocLinha;
+  remocao?: DocLinha;
+};
 export type DocData = {
   clienteNome: string;
   clienteContato: string;
   projetoEndereco: string;
   escopo: string;
-  itens: { nome: string; qtd: string; valor: string }[];
+  ambientes: DocAmbiente[];
   total: string;
   termos: string;
   fotoUrl?: string | null;
@@ -17,9 +24,17 @@ export const SAMPLE_DATA: DocData = {
   clienteContato: "(339) 933-0322 · Dzk100@gmail.com",
   projetoEndereco: "1 Mead Street, Somerville, MA",
   escopo: "Sala, cozinha · 1.150 sqft · Carpete → Vinyl/LVP · Troca",
-  itens: [
-    { nome: "Instalação Vinyl", qtd: "1150 sqft", valor: "$3,850" },
-    { nome: "Remoção carpete", qtd: "1150 sqft", valor: "$450" },
+  ambientes: [
+    {
+      nome: "Sala",
+      instalacao: { tamanho: "650 sqft", valor: "$2,180" },
+      remocao: { tamanho: "650 sqft", valor: "$260" },
+    },
+    {
+      nome: "Cozinha",
+      instalacao: { tamanho: "500 sqft", valor: "$1,670" },
+      remocao: { tamanho: "500 sqft", valor: "$190" },
+    },
   ],
   total: "$4,300",
   termos: "Validade de 15 dias. 50% na assinatura, 50% na entrega.",
@@ -99,7 +114,7 @@ export function OrcamentoDocPreview({
                   </div>
                 )}
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 500 }}>{empresa}</div>
+                  <div style={{ fontSize: 15, fontWeight: 500, color: cor2 }}>{empresa}</div>
                   {layout.slogan && (
                     <div style={{ fontSize: 11, color: "#555" }}>{layout.slogan}</div>
                   )}
@@ -147,7 +162,15 @@ export function OrcamentoDocPreview({
         return (
           <div
             key={s.id}
-            style={{ textAlign: "center", fontSize: 14, fontWeight: 500, margin: "2px 0 12px" }}
+            style={{
+              textAlign: "center",
+              fontSize: 14,
+              fontWeight: 500,
+              color: cor2,
+              borderBottom: `2px solid ${cor1}`,
+              paddingBottom: 6,
+              margin: "2px 0 12px",
+            }}
           >
             {layout.titulo || "Orçamento"}
           </div>
@@ -217,13 +240,40 @@ export function OrcamentoDocPreview({
           <div key={s.id} style={{ marginBottom: 12 }}>
             <Head t="Itens e preços" />
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ color: "#888", fontSize: 10, textTransform: "uppercase" }}>
+                  <td style={{ padding: "2px 0" }}>Ambiente</td>
+                  <td style={{ padding: "2px 0" }}>Serviço</td>
+                  <td style={{ padding: "2px 0", textAlign: "right" }}>Tamanho</td>
+                  <td style={{ padding: "2px 0", textAlign: "right" }}>Valor</td>
+                </tr>
+              </thead>
               <tbody>
-                {data.itens.map((i, k) => (
-                  <tr key={k} style={{ color: "#555" }}>
-                    <td>{i.nome}</td>
-                    <td style={{ textAlign: "right" }}>{i.qtd}</td>
-                    <td style={{ textAlign: "right" }}>{i.valor}</td>
-                  </tr>
+                {data.ambientes.map((a, k) => (
+                  <Fragment key={k}>
+                    {a.instalacao && (
+                      <tr style={{ color: "#333", borderTop: "0.5px solid #eee" }}>
+                        <td style={{ padding: "3px 0", fontWeight: 500 }}>{a.nome}</td>
+                        <td style={{ padding: "3px 0", color: cor1 }}>Instalação</td>
+                        <td style={{ padding: "3px 0", textAlign: "right" }}>
+                          {a.instalacao.tamanho}
+                        </td>
+                        <td style={{ padding: "3px 0", textAlign: "right" }}>
+                          {a.instalacao.valor}
+                        </td>
+                      </tr>
+                    )}
+                    {a.remocao && (
+                      <tr style={{ color: "#333" }}>
+                        <td style={{ padding: "3px 0" }} />
+                        <td style={{ padding: "3px 0", color: "#993C1D" }}>Remoção</td>
+                        <td style={{ padding: "3px 0", textAlign: "right" }}>
+                          {a.remocao.tamanho}
+                        </td>
+                        <td style={{ padding: "3px 0", textAlign: "right" }}>{a.remocao.valor}</td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

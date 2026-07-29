@@ -22,6 +22,31 @@ import { Textarea } from "@/components/ui/textarea";
 import { OrcamentoDocPreview } from "@/components/OrcamentoDocPreview";
 import { toast } from "sonner";
 
+// Definido fora do componente para não ser recriado a cada tecla (senão o input perde o foco).
+function Fld({
+  label,
+  value,
+  onChange,
+  ph,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (v: string) => void;
+  ph?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={ph}
+        className="h-9"
+      />
+    </div>
+  );
+}
+
 export function OrcamentoLayoutEditor({
   partnerId,
   onBack,
@@ -108,28 +133,6 @@ export function OrcamentoLayoutEditor({
     if (!confirm("Restaurar o layout padrão? As alterações não salvas serão perdidas.")) return;
     setLayout({ ...defaultLayout(partnerId), logo_url: L.logo_url });
   };
-
-  const Fld = ({
-    label,
-    value,
-    onChange,
-    ph,
-  }: {
-    label: string;
-    value: string | null;
-    onChange: (v: string) => void;
-    ph?: string;
-  }) => (
-    <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <Input
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={ph}
-        className="h-9"
-      />
-    </div>
-  );
 
   return (
     <div className="space-y-4">
