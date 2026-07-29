@@ -23,6 +23,7 @@ import {
 } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { OrcamentoForm } from "@/components/OrcamentoForm";
+import { OrcamentoView } from "@/components/OrcamentoView";
 import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
 import { PipelineCalendar, startOfWeek } from "@/components/PipelineCalendar";
 import { LeadDetalhe } from "@/components/LeadDetalhe";
@@ -116,6 +117,7 @@ function Overview() {
   const [range, setRange] = useState<Range>(() => presetRange("mes"));
   // Formulário de orçamento (= formulário de medição). advance move p/ negociação ao salvar.
   const [orc, setOrc] = useState<{ row: Row; advance: boolean } | null>(null);
+  const [orcView, setOrcView] = useState<Row | null>(null);
   const [detail, setDetail] = useState<Row | null>(null);
   const [view, setView] = useState<ViewMode>("kanban");
   const [sortBy, setSortBy] = useState<SortBy>("visita");
@@ -195,6 +197,12 @@ function Overview() {
       await supabase.from("proposals").update({ stage: "negotiation" }).eq("id", current.row.id);
       await load();
     }
+  };
+
+  // Ao clicar no orçamento: se já criado, abre o documento; senão, abre o formulário.
+  const abrirOrcamento = (row: Row) => {
+    if (orcamentoFeito(row)) setOrcView(row);
+    else setOrc({ row, advance: false });
   };
 
   return (
@@ -277,7 +285,7 @@ function Overview() {
           }}
           onOrcamento={(id) => {
             const r = rows.find((x) => x.id === id);
-            if (r) setOrc({ row: r, advance: false });
+            if (r) abrirOrcamento(r);
           }}
         />
       ) : (
@@ -310,7 +318,7 @@ function Overview() {
                     key={row.id}
                     row={row}
                     onDragStart={() => setDragId(row.id)}
-                    onOrcamento={() => setOrc({ row, advance: false })}
+                    onOrcamento={() => abrirOrcamento(row)}
                     onDetail={() => setDetail(row)}
                   />
                 ))}
@@ -346,6 +354,18 @@ function Overview() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Documento do orçamento (após criado) */}
+      <OrcamentoView
+        open={!!orcView}
+        proposalId={orcView?.id ?? null}
+        onOpenChange={(o) => !o && setOrcView(null)}
+        onEdit={() => {
+          const r = orcView;
+          setOrcView(null);
+          if (r) setOrc({ row: r, advance: false });
+        }}
+      />
 
       {/* Detalhe do card — grupos A–F (card do setter) */}
       <LeadDetalhe
