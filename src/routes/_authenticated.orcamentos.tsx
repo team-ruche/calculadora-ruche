@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, FileText, Printer, Plus, Pencil } from "lucide-react";
+import { ArrowLeft, FileText, Printer, Plus, Pencil, Settings } from "lucide-react";
 import {
   supabase,
   type Proposal,
@@ -23,7 +23,9 @@ import {
 } from "@/components/ui/select";
 import { OrcamentoForm } from "@/components/OrcamentoForm";
 import { LeadDetalhe, type LeadLike } from "@/components/LeadDetalhe";
+import { OrcamentoLayoutEditor } from "@/components/OrcamentoLayoutEditor";
 import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Table,
   TableBody,
@@ -94,6 +96,26 @@ function OrcamentosPage() {
   const [advanceNegId, setAdvanceNegId] = useState<string | null>(null);
   // Filtro de período por data de criação do orçamento.
   const [range, setRange] = useState<Range>(() => presetRange("mes"));
+  // Configuração do layout do orçamento (por parceiro).
+  const { user, isRuche } = useAuth();
+  const [configOpen, setConfigOpen] = useState(false);
+  const [configPid, setConfigPid] = useState<string | null>(null);
+  const [partners, setPartners] = useState<{ id: string; nome: string }[]>([]);
+
+  const abrirConfig = async () => {
+    if (isRuche) {
+      const { data } = await supabase.from("users").select("id, nome, email").order("nome");
+      const ps = ((data as { id: string; nome: string; email: string }[]) ?? []).map((u) => ({
+        id: u.id,
+        nome: u.nome || u.email,
+      }));
+      setPartners(ps);
+      setConfigPid(user?.id ?? ps[0]?.id ?? null);
+    } else {
+      setConfigPid(user?.id ?? null);
+    }
+    setConfigOpen(true);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -206,6 +228,35 @@ function OrcamentosPage() {
     </Dialog>
   );
 
+  if (configOpen && configPid) {
+    return (
+      <div className="space-y-4">
+        {isRuche && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Parceiro:</span>
+            <Select value={configPid} onValueChange={setConfigPid}>
+              <SelectTrigger className="h-9 w-64">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {partners.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <OrcamentoLayoutEditor
+          key={configPid}
+          partnerId={configPid}
+          onBack={() => setConfigOpen(false)}
+        />
+      </div>
+    );
+  }
+
   if (selected) {
     return (
       <>
@@ -241,6 +292,9 @@ function OrcamentosPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <DateRangePicker value={range} onChange={setRange} />
+          <Button variant="outline" onClick={abrirConfig}>
+            <Settings className="mr-1 h-4 w-4" /> Configuração
+          </Button>
           <Button onClick={() => setDialog({ mode: "create" })}>
             <Plus className="mr-1 h-4 w-4" /> Novo Orçamento
           </Button>

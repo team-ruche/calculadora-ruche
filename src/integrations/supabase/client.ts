@@ -266,6 +266,66 @@ export interface ProposalItem {
   created_at: string;
 }
 
+// ---- Template de orçamento por parceiro ------------------------------------
+export type OrcSecaoTipo = "sistema" | "custom";
+
+export interface OrcSecao {
+  id: string;
+  tipo: OrcSecaoTipo;
+  label: string;
+  on: boolean;
+  title?: string;
+  body?: string;
+}
+
+export interface OrcamentoLayout {
+  partner_id: string;
+  logo_url: string | null;
+  empresa: string | null;
+  slogan: string | null;
+  titulo: string | null;
+  cor1: string;
+  cor2: string;
+  telefone: string | null;
+  site: string | null;
+  instagram: string | null;
+  endereco: string | null;
+  email: string | null;
+  license: string | null;
+  hic: string | null;
+  secoes: OrcSecao[];
+  updated_at: string;
+}
+
+export const DEFAULT_SECOES: OrcSecao[] = [
+  { id: "capa", tipo: "sistema", label: "Cabeçalho", on: true },
+  { id: "titulo", tipo: "sistema", label: "Título do documento", on: true },
+  { id: "partes", tipo: "sistema", label: "Cliente / Projeto", on: true },
+  { id: "foto", tipo: "sistema", label: "Foto do projeto", on: true },
+  { id: "escopo", tipo: "sistema", label: "Escopo / ambientes", on: true },
+  { id: "itens", tipo: "sistema", label: "Itens e preços", on: true },
+  { id: "termos", tipo: "sistema", label: "Termos e condições", on: true },
+];
+
+export const defaultLayout = (partnerId: string): OrcamentoLayout => ({
+  partner_id: partnerId,
+  logo_url: null,
+  empresa: null,
+  slogan: null,
+  titulo: "Orçamento",
+  cor1: "#1D9E75",
+  cor2: "#1A1A1A",
+  telefone: null,
+  site: null,
+  instagram: null,
+  endereco: null,
+  email: null,
+  license: null,
+  hic: null,
+  secoes: DEFAULT_SECOES,
+  updated_at: new Date().toISOString(),
+});
+
 export interface MotorPrice {
   id: string;
   grupo: MotorGrupo;
