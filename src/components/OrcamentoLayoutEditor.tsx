@@ -266,7 +266,7 @@ export function OrcamentoLayoutEditor({
                         <span className="ml-1 text-[10px] text-muted-foreground">· custom</span>
                       )}
                     </span>
-                    {s.tipo === "custom" && (
+                    {(s.tipo === "custom" || s.id === "termos") && (
                       <button
                         type="button"
                         onClick={() => setEditId(editId === s.id ? null : s.id)}
@@ -285,21 +285,25 @@ export function OrcamentoLayoutEditor({
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  {s.tipo === "custom" && editId === s.id && (
+                  {(s.tipo === "custom" || s.id === "termos") && editId === s.id && (
                     <div className="mt-2 space-y-1.5">
-                      <Input
-                        value={s.title ?? ""}
-                        onChange={(e) =>
-                          patchSecao(s.id, { title: e.target.value, label: e.target.value })
-                        }
-                        placeholder="Título"
-                        className="h-8 text-xs"
-                      />
+                      {s.tipo === "custom" && (
+                        <Input
+                          value={s.title ?? ""}
+                          onChange={(e) =>
+                            patchSecao(s.id, { title: e.target.value, label: e.target.value })
+                          }
+                          placeholder="Título"
+                          className="h-8 text-xs"
+                        />
+                      )}
                       <Textarea
-                        rows={2}
+                        rows={3}
                         value={s.body ?? ""}
                         onChange={(e) => patchSecao(s.id, { body: e.target.value })}
-                        placeholder="Conteúdo"
+                        placeholder={
+                          s.id === "termos" ? "Texto dos termos e condições" : "Conteúdo"
+                        }
                         className="text-xs"
                       />
                     </div>

@@ -1,43 +1,46 @@
-import { Fragment } from "react";
 import type { OrcamentoLayout } from "@/integrations/supabase/client";
 
 // Dados que variam por orçamento (no editor usamos exemplo; no documento real vêm do lead/proposta).
-export type DocLinha = { tamanho: string; valor: string };
-export type DocAmbiente = {
-  nome: string;
-  instalacao?: DocLinha;
-  remocao?: DocLinha;
-};
+export type DocItem = { item: string; qtd: string; unit: string; subtotal: string };
+export type DocGrupo = { grupo: string; itens: DocItem[] };
 export type DocData = {
   clienteNome: string;
   clienteContato: string;
   projetoEndereco: string;
   escopo: string;
-  ambientes: DocAmbiente[];
+  grupos: DocGrupo[];
   total: string;
-  termos: string;
   fotoUrl?: string | null;
 };
+
+// Texto padrão dos termos (editável por parceiro na configuração).
+export const DEFAULT_TERMOS =
+  "Validade de 15 dias. 50% na assinatura, 50% na entrega. Garantia de 1 ano na instalação.";
 
 export const SAMPLE_DATA: DocData = {
   clienteNome: "David Zig-Kreger",
   clienteContato: "(339) 933-0322 · Dzk100@gmail.com",
   projetoEndereco: "1 Mead Street, Somerville, MA",
-  escopo: "Sala, cozinha · 1.150 sqft · Carpete → Vinyl/LVP · Troca",
-  ambientes: [
+  escopo: "Sala · 800 sqft · Laminado · Troca",
+  grupos: [
     {
-      nome: "Sala",
-      instalacao: { tamanho: "650 sqft", valor: "$2,180" },
-      remocao: { tamanho: "650 sqft", valor: "$260" },
+      grupo: "Instalação",
+      itens: [{ item: "Sala — Laminado", qtd: "800 sqft", unit: "$3.50", subtotal: "$2,800.00" }],
     },
     {
-      nome: "Cozinha",
-      instalacao: { tamanho: "500 sqft", valor: "$1,670" },
-      remocao: { tamanho: "500 sqft", valor: "$190" },
+      grupo: "Remoção",
+      itens: [
+        { item: "Sala — remover Laminado", qtd: "800 sqft", unit: "$1.00", subtotal: "$800.00" },
+      ],
+    },
+    {
+      grupo: "Preparação",
+      itens: [
+        { item: "Sala — Prep simples", qtd: "800 sqft", unit: "$1.70", subtotal: "$1,360.00" },
+      ],
     },
   ],
-  total: "$4,300",
-  termos: "Validade de 15 dias. 50% na assinatura, 50% na entrega.",
+  total: "$4,960.00",
 };
 
 // Renderiza o documento do orçamento a partir do layout do parceiro + dados.
@@ -239,46 +242,43 @@ export function OrcamentoDocPreview({
         return (
           <div key={s.id} style={{ marginBottom: 12 }}>
             <Head t="Itens e preços" />
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ color: "#888", fontSize: 10, textTransform: "uppercase" }}>
-                  <td style={{ padding: "2px 0" }}>Ambiente</td>
-                  <td style={{ padding: "2px 0" }}>Serviço</td>
-                  <td style={{ padding: "2px 0", textAlign: "right" }}>Tamanho</td>
-                  <td style={{ padding: "2px 0", textAlign: "right" }}>Valor</td>
-                </tr>
-              </thead>
-              <tbody>
-                {data.ambientes.map((a, k) => (
-                  <Fragment key={k}>
-                    {a.instalacao && (
-                      <tr style={{ color: "#333", borderTop: "0.5px solid #eee" }}>
-                        <td style={{ padding: "3px 0", fontWeight: 500 }}>{a.nome}</td>
-                        <td style={{ padding: "3px 0", color: cor1 }}>Instalação</td>
-                        <td style={{ padding: "3px 0", textAlign: "right" }}>
-                          {a.instalacao.tamanho}
-                        </td>
-                        <td style={{ padding: "3px 0", textAlign: "right" }}>
-                          {a.instalacao.valor}
-                        </td>
+            {data.grupos.map((g, gi) => (
+              <div key={gi} style={{ marginBottom: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 500, color: cor1, marginBottom: 3 }}>
+                  {g.grupo}
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ color: "#999", fontSize: 10 }}>
+                      <td style={{ padding: "2px 0" }}>Item</td>
+                      <td style={{ padding: "2px 0", textAlign: "right" }}>Qtd</td>
+                      <td style={{ padding: "2px 0", textAlign: "right" }}>Unit</td>
+                      <td style={{ padding: "2px 0", textAlign: "right" }}>Subtotal</td>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.itens.map((i, ii) => (
+                      <tr key={ii} style={{ color: "#333", borderTop: "0.5px solid #eee" }}>
+                        <td style={{ padding: "3px 0" }}>{i.item}</td>
+                        <td style={{ padding: "3px 0", textAlign: "right" }}>{i.qtd}</td>
+                        <td style={{ padding: "3px 0", textAlign: "right" }}>{i.unit}</td>
+                        <td style={{ padding: "3px 0", textAlign: "right" }}>{i.subtotal}</td>
                       </tr>
-                    )}
-                    {a.remocao && (
-                      <tr style={{ color: "#333" }}>
-                        <td style={{ padding: "3px 0" }} />
-                        <td style={{ padding: "3px 0", color: "#993C1D" }}>Remoção</td>
-                        <td style={{ padding: "3px 0", textAlign: "right" }}>
-                          {a.remocao.tamanho}
-                        </td>
-                        <td style={{ padding: "3px 0", textAlign: "right" }}>{a.remocao.valor}</td>
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-            <div style={{ textAlign: "right", fontWeight: 500, marginTop: 6 }}>
-              Total: {data.total}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+            <div
+              style={{
+                textAlign: "right",
+                fontWeight: 500,
+                marginTop: 6,
+                borderTop: `1px solid #ddd`,
+                paddingTop: 6,
+              }}
+            >
+              Valor da proposta: {data.total}
             </div>
           </div>
         );
@@ -286,7 +286,7 @@ export function OrcamentoDocPreview({
         return (
           <div key={s.id} style={{ marginBottom: 12 }}>
             <Head t="Termos e condições" />
-            {data.termos}
+            <div style={{ whiteSpace: "pre-wrap" }}>{s.body || DEFAULT_TERMOS}</div>
           </div>
         );
       default:
