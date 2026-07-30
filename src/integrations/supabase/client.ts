@@ -162,6 +162,8 @@ export interface Proposal {
   total_cliente: number | null;
   total_repasse: number | null;
   margem_ruche: number | null;
+  // Snapshot do layout do orçamento (congelado ao gerar).
+  orcamento_layout: OrcamentoLayout | null;
   created_at: string;
   updated_at: string;
 }

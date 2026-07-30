@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Pencil, Printer } from "lucide-react";
+import { Pencil, Printer, RefreshCw } from "lucide-react";
 import {
   supabase,
   type Proposal,
   type ProposalItem,
   type MotorGrupo,
+  type OrcamentoLayout,
+  defaultLayout,
 } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,14 +16,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { OrcamentoDocPreview, type DocData, type DocGrupo } from "@/components/OrcamentoDocPreview";
 import { toast } from "sonner";
 
 const GRUPO_LABEL: Record<MotorGrupo, string> = {
@@ -36,11 +31,49 @@ const money = (n: number | null) =>
   (n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 type PropRow = Proposal & {
-  leads: { nome_cliente: string; endereco: string | null; telefone: string | null } | null;
+  leads: {
+    nome_cliente: string;
+    endereco: string | null;
+    telefone: string | null;
+    email: string | null;
+  } | null;
 };
 
-// Documento do orçamento (somente leitura) + exportar PDF + editar.
-// Reutilizado no Overview (kanban/calendário) e onde for preciso abrir o orçamento.
+async function resolveLayout(prop: PropRow): Promise<OrcamentoLayout> {
+  if (prop.orcamento_layout) return prop.orcamento_layout as OrcamentoLayout;
+  const { data } = await supabase
+    .from("partner_orcamento_layout")
+    .select("*")
+    .eq("partner_id", prop.partner_id)
+    .maybeSingle();
+  return (data as OrcamentoLayout) ?? defaultLayout(prop.partner_id);
+}
+
+function buildDocData(prop: PropRow, items: ProposalItem[]): DocData {
+  const grupos: DocGrupo[] = GRUPO_ORDER.map((g) => ({
+    grupo: GRUPO_LABEL[g],
+    itens: items
+      .filter((i) => i.grupo === g)
+      .map((i) => ({
+        item: i.componente,
+        qtd: `${i.quantidade} ${i.unidade}`,
+        unit: money(i.preco_cliente_unit),
+        subtotal: money(i.subtotal_cliente),
+      })),
+  })).filter((g) => g.itens.length > 0);
+
+  const contato = [prop.leads?.telefone, prop.leads?.email].filter(Boolean).join(" · ");
+  return {
+    clienteNome: prop.leads?.nome_cliente || "Cliente",
+    clienteContato: contato || "—",
+    projetoEndereco: prop.leads?.endereco || "—",
+    escopo: prop.leads?.endereco || "",
+    grupos,
+    total: money(prop.total_cliente),
+  };
+}
+
+// Documento do orçamento (renderiza com o layout do parceiro) + PDF + editar + atualizar template.
 export function OrcamentoView({
   open,
   proposalId,
@@ -54,54 +87,62 @@ export function OrcamentoView({
 }) {
   const [row, setRow] = useState<PropRow | null>(null);
   const [items, setItems] = useState<ProposalItem[]>([]);
+  const [layout, setLayout] = useState<OrcamentoLayout | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const carregar = async () => {
+    if (!proposalId) return;
+    setLoading(true);
+    const { data: prop } = await supabase
+      .from("proposals")
+      .select("*, leads(nome_cliente, endereco, telefone, email)")
+      .eq("id", proposalId)
+      .maybeSingle();
+    const pr = (prop as PropRow) ?? null;
+    setRow(pr);
+    const { data: its } = await supabase
+      .from("proposal_items")
+      .select("*")
+      .eq("proposal_id", proposalId)
+      .order("grupo");
+    setItems((its as ProposalItem[]) ?? []);
+    if (pr) setLayout(await resolveLayout(pr));
+    setLoading(false);
+  };
+
   useEffect(() => {
-    if (!open || !proposalId) return;
-    (async () => {
-      setLoading(true);
-      const { data: prop } = await supabase
-        .from("proposals")
-        .select("*, leads(nome_cliente, endereco, telefone)")
-        .eq("id", proposalId)
-        .maybeSingle();
-      setRow((prop as PropRow) ?? null);
-      const { data: its } = await supabase
-        .from("proposal_items")
-        .select("*")
-        .eq("proposal_id", proposalId)
-        .order("grupo");
-      setItems((its as ProposalItem[]) ?? []);
-      setLoading(false);
-    })();
+    if (open && proposalId) carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, proposalId]);
 
   const cliente = row?.leads?.nome_cliente || "Cliente";
+  const usandoSnapshot = !!row?.orcamento_layout;
+
+  const atualizarTemplate = async () => {
+    if (!row || !proposalId) return;
+    const { data } = await supabase
+      .from("partner_orcamento_layout")
+      .select("*")
+      .eq("partner_id", row.partner_id)
+      .maybeSingle();
+    const lay = (data as OrcamentoLayout) ?? defaultLayout(row.partner_id);
+    const { error } = await supabase
+      .from("proposals")
+      .update({ orcamento_layout: lay })
+      .eq("id", proposalId);
+    if (error) return toast.error(error.message);
+    setLayout(lay);
+    toast.success("Documento atualizado com o template atual do parceiro");
+    carregar();
+  };
 
   const printPdf = () => {
-    const linhas = GRUPO_ORDER.map((grupo) => {
-      const grp = items.filter((i) => i.grupo === grupo);
-      if (!grp.length) return "";
-      const rows = grp
-        .map(
-          (i) => `<tr><td>${i.componente}</td>
-            <td style="text-align:right">${i.quantidade} ${i.unidade}</td>
-            <td style="text-align:right">${money(i.preco_cliente_unit)}</td>
-            <td style="text-align:right">${money(i.subtotal_cliente)}</td></tr>`,
-        )
-        .join("");
-      return `<tr><th colspan="4" style="text-align:left;background:#f3f3f3;padding:6px">${GRUPO_LABEL[grupo]}</th></tr>${rows}`;
-    }).join("");
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Orçamento — ${cliente}</title>
-      <style>body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:32px}h1{margin:0 0 4px}.muted{color:#666;font-size:13px}table{width:100%;border-collapse:collapse;margin-top:16px;font-size:13px}td,th{border-bottom:1px solid #ddd;padding:6px}.total{font-size:18px;font-weight:bold;text-align:right;margin-top:16px}</style>
-      </head><body><h1>Orçamento — ${cliente}</h1>
-      <div class="muted">${row?.leads?.endereco ?? ""}${row?.leads?.endereco ? " · " : ""}${row?.leads?.telefone ?? ""}</div>
-      <table><thead><tr><th style="text-align:left">Item</th><th style="text-align:right">Qtd</th><th style="text-align:right">Unit</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>${linhas}</tbody></table>
-      <div class="total">Total: ${money(row?.total_cliente ?? 0)}</div>
-      <script>window.onload=function(){window.print()}</script></body></html>`;
-    const w = window.open("", "_blank", "width=800,height=900");
+    const w = window.open("", "_blank", "width=820,height=1000");
     if (!w) return toast.error("Permita pop-ups para exportar o PDF");
-    w.document.write(html);
+    const node = document.getElementById("orc-doc");
+    w.document.write(
+      `<!doctype html><html><head><meta charset="utf-8"><title>Orçamento — ${cliente}</title></head><body style="margin:0">${node?.innerHTML ?? ""}<script>window.onload=function(){window.print()}</script></body></html>`,
+    );
     w.document.close();
   };
 
@@ -109,12 +150,19 @@ export function OrcamentoView({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <DialogTitle>Orçamento — {cliente}</DialogTitle>
-              <DialogDescription>{row?.leads?.endereco || "Sem endereço"}</DialogDescription>
+              <DialogDescription>
+                {usandoSnapshot
+                  ? "Layout congelado desta proposta"
+                  : "Usando o template atual do parceiro"}
+              </DialogDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={atualizarTemplate}>
+                <RefreshCw className="mr-1 h-4 w-4" /> Atualizar com template atual
+              </Button>
               {onEdit && (
                 <Button variant="outline" size="sm" onClick={onEdit}>
                   <Pencil className="mr-1 h-4 w-4" /> Editar
@@ -132,55 +180,15 @@ export function OrcamentoView({
           </div>
         </DialogHeader>
 
-        {loading ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">Carregando itens…</p>
+        {loading || !layout ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Carregando…</p>
         ) : items.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             Sem itens precificados neste orçamento.
           </p>
         ) : (
-          <div className="space-y-4">
-            {GRUPO_ORDER.map((grupo) => {
-              const grp = items.filter((i) => i.grupo === grupo);
-              if (!grp.length) return null;
-              return (
-                <div key={grupo}>
-                  <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
-                    {GRUPO_LABEL[grupo]}
-                  </h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Item</TableHead>
-                        <TableHead className="text-right">Qtd</TableHead>
-                        <TableHead className="text-right">Unit</TableHead>
-                        <TableHead className="text-right">Subtotal</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {grp.map((i) => (
-                        <TableRow key={i.id}>
-                          <TableCell>{i.componente}</TableCell>
-                          <TableCell className="text-right">
-                            {i.quantidade} {i.unidade}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {money(i.preco_cliente_unit)}
-                          </TableCell>
-                          <TableCell className="text-right">{money(i.subtotal_cliente)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              );
-            })}
-            <div className="flex justify-end border-t pt-4">
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Valor da proposta</p>
-                <p className="text-3xl font-bold">{money(row?.total_cliente ?? 0)}</p>
-              </div>
-            </div>
+          <div id="orc-doc" className="overflow-hidden rounded-lg border">
+            <OrcamentoDocPreview layout={layout} data={buildDocData(row as PropRow, items)} />
           </div>
         )}
       </DialogContent>
