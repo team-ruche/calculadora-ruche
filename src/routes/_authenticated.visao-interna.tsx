@@ -229,15 +229,15 @@ function VisaoInternaPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-xl border bg-card p-4">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Recebido do cliente
-            </p>
-            <p className="mt-1.5 text-2xl font-bold text-emerald-600">{money(recebidoCliente)}</p>
-          </div>
-          <div className="rounded-xl border bg-card p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
               A receber (aberto)
             </p>
             <p className="mt-1.5 text-2xl font-bold">{money(aReceberTotal)}</p>
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Vencido (atrasado)
+            </p>
+            <p className="mt-1.5 text-2xl font-bold text-destructive">{money(vencidoTotal)}</p>
           </div>
           <div className="rounded-xl border bg-card p-4">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Vence em 7 dias</p>
@@ -247,9 +247,9 @@ function VisaoInternaPage() {
           </div>
           <div className="rounded-xl border bg-card p-4">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Vencido (atrasado)
+              Coletado (recebido do cliente)
             </p>
-            <p className="mt-1.5 text-2xl font-bold text-destructive">{money(vencidoTotal)}</p>
+            <p className="mt-1.5 text-2xl font-bold text-emerald-600">{money(recebidoCliente)}</p>
           </div>
         </div>
       </div>
