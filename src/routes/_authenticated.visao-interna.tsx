@@ -751,6 +751,7 @@ function VisaoInternaPage() {
                           {vencFiltro === "todas" ? "A receber" : VENC_LABEL[vencFiltro]}
                           <ColumnFilter
                             type="num"
+                            align="end"
                             value={fcli.aReceber}
                             onChange={(v) => setColFcli("aReceber", v)}
                           />
@@ -759,6 +760,7 @@ function VisaoInternaPage() {
                           Vencido
                           <ColumnFilter
                             type="num"
+                            align="end"
                             value={fcli.vencido}
                             onChange={(v) => setColFcli("vencido", v)}
                           />
@@ -767,6 +769,7 @@ function VisaoInternaPage() {
                           Dias
                           <ColumnFilter
                             type="num"
+                            align="end"
                             value={fcli.dias}
                             onChange={(v) => setColFcli("dias", v)}
                           />
@@ -775,6 +778,7 @@ function VisaoInternaPage() {
                           Parcelas
                           <ColumnFilter
                             type="num"
+                            align="end"
                             value={fcli.parcelas}
                             onChange={(v) => setColFcli("parcelas", v)}
                           />
@@ -783,6 +787,7 @@ function VisaoInternaPage() {
                           Próx. vencimento
                           <ColumnFilter
                             type="date"
+                            align="end"
                             value={fcli.proxVenc}
                             onChange={(v) => setColFcli("proxVenc", v)}
                           />
@@ -1101,6 +1106,7 @@ function VisaoInternaPage() {
                             Vencimento
                             <ColumnFilter
                               type="date"
+                              align="end"
                               value={fparc.vencimento}
                               onChange={(v) => setColFparc("vencimento", v)}
                             />
@@ -1109,6 +1115,7 @@ function VisaoInternaPage() {
                             Pago em
                             <ColumnFilter
                               type="date"
+                              align="end"
                               value={fparc.pagoEm}
                               onChange={(v) => setColFparc("pagoEm", v)}
                             />
@@ -1117,6 +1124,7 @@ function VisaoInternaPage() {
                             Período
                             <ColumnFilter
                               type="text"
+                              align="end"
                               value={fparc.periodo}
                               onChange={(v) => setColFparc("periodo", v)}
                             />
@@ -1125,6 +1133,7 @@ function VisaoInternaPage() {
                             Status
                             <ColumnFilter
                               type="select"
+                              align="end"
                               options={Object.keys(PARCELA_STATUS_LABEL)}
                               labelFor={(o) => PARCELA_STATUS_LABEL[o as ParcelaStatus]}
                               value={fparc.status}

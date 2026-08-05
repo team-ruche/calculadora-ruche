@@ -43,12 +43,14 @@ export function ColumnFilter({
   value,
   onChange,
   labelFor,
+  align = "start",
 }: {
   type: FilterType;
   options?: readonly string[];
   value?: FVal;
   onChange: (v: FVal | undefined) => void;
   labelFor?: (o: string) => string;
+  align?: "start" | "end";
 }) {
   const [open, setOpen] = useState(false);
   const v = value ?? {};
@@ -78,7 +80,12 @@ export function ColumnFilter({
           <Filter className="h-3.5 w-3.5" fill={active ? "currentColor" : "none"} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-56 p-3" onClick={(e) => e.stopPropagation()}>
+      <PopoverContent
+        align={align}
+        collisionPadding={8}
+        className="w-52 p-3"
+        onClick={(e) => e.stopPropagation()}
+      >
         {type === "text" && (
           <Input
             autoFocus
@@ -88,34 +95,49 @@ export function ColumnFilter({
           />
         )}
         {type === "num" && (
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              placeholder="mín"
-              value={v.min ?? ""}
-              onChange={(e) => set({ min: e.target.value || undefined })}
-            />
-            <span className="text-muted-foreground">–</span>
-            <Input
-              type="number"
-              placeholder="máx"
-              value={v.max ?? ""}
-              onChange={(e) => set({ max: e.target.value || undefined })}
-            />
+          <div className="space-y-2">
+            <label className="block text-xs text-muted-foreground">
+              Mínimo
+              <Input
+                type="number"
+                placeholder="—"
+                className="mt-1"
+                value={v.min ?? ""}
+                onChange={(e) => set({ min: e.target.value || undefined })}
+              />
+            </label>
+            <label className="block text-xs text-muted-foreground">
+              Máximo
+              <Input
+                type="number"
+                placeholder="—"
+                className="mt-1"
+                value={v.max ?? ""}
+                onChange={(e) => set({ max: e.target.value || undefined })}
+              />
+            </label>
           </div>
         )}
         {type === "date" && (
-          <div className="flex items-center gap-2">
-            <Input
-              type="date"
-              value={v.from ?? ""}
-              onChange={(e) => set({ from: e.target.value || undefined })}
-            />
-            <Input
-              type="date"
-              value={v.to ?? ""}
-              onChange={(e) => set({ to: e.target.value || undefined })}
-            />
+          <div className="space-y-2">
+            <label className="block text-xs text-muted-foreground">
+              De
+              <Input
+                type="date"
+                className="mt-1"
+                value={v.from ?? ""}
+                onChange={(e) => set({ from: e.target.value || undefined })}
+              />
+            </label>
+            <label className="block text-xs text-muted-foreground">
+              Até
+              <Input
+                type="date"
+                className="mt-1"
+                value={v.to ?? ""}
+                onChange={(e) => set({ to: e.target.value || undefined })}
+              />
+            </label>
           </div>
         )}
         {type === "select" && (
