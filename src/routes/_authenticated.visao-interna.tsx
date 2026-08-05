@@ -15,6 +15,7 @@ import {
   TrendingUp,
   Users,
   Building2,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -249,6 +250,21 @@ function VisaoInternaPage() {
   const [statusFiltro, setStatusFiltro] = useState<"abertas" | "vencidas" | "pagas" | "todas">(
     "todas",
   );
+  // Filtro por inconsistência (vindo dos cards da Prioridade). null = sem filtro.
+  const [incFiltro, setIncFiltro] = useState<"semConta" | "naoRec" | "semData" | null>(null);
+  const INC_LABEL: Record<"semConta" | "naoRec" | "semData", string> = {
+    semConta: "Aberto sem conta definida",
+    naoRec: "Recebido não reconciliado",
+    semData: "Pago sem data de pagamento",
+  };
+  // Abre a visão Parcelas já filtrada por uma inconsistência.
+  const abrirInconsistencia = (k: "semConta" | "naoRec" | "semData") => {
+    setStatusFiltro("todas");
+    setBusca("");
+    setVencRange(null);
+    setIncFiltro(k);
+    setCobrView("parc");
+  };
   // Parcela em edição (dialog) na visão Parcelas.
   const [parcelaEdit, setParcelaEdit] = useState<{ parcela: Parcela | null; deal: Deal } | null>(
     null,
@@ -338,15 +354,19 @@ function VisaoInternaPage() {
       const q = busca.toLowerCase();
       if (q && !nome.includes(q)) return false;
       if (vencRange && !inRange(p.vencimento, vencRange)) return false;
+      if (incFiltro === "semConta" && !(isAberta(p) && !p.conta)) return false;
+      if (incFiltro === "naoRec" && !((p.valor_pago ?? 0) > 0 && !p.conciliado)) return false;
+      if (
+        incFiltro === "semData" &&
+        !((p.status === "pago" || (p.valor_pago ?? 0) > 0) && !p.data_pagamento)
+      )
+        return false;
       if (statusFiltro === "abertas") return isAberta(p);
       if (statusFiltro === "pagas") return p.status === "pago";
       if (statusFiltro === "vencidas") return isAberta(p) && bucketVenc(p) === "vencida";
       return true;
     })
     .sort((a, b) => (b.p.vencimento ?? "").localeCompare(a.p.vencimento ?? ""));
-  const parcAbertas = parcelasFlat.filter(({ p }) => isAberta(p));
-  const parcVencidas = parcelasFlat.filter(({ p }) => isAberta(p) && bucketVenc(p) === "vencida");
-  const parcPagas = parcelasFlat.filter(({ p }) => p.status === "pago");
   const parcFaturado = parcelasFlat.reduce((a, { p }) => a + (p.valor ?? 0), 0);
 
   // ---- VENDAS NO PERÍODO (filtrado por data de fechamento) ----------------
@@ -447,8 +467,8 @@ function VisaoInternaPage() {
             />
           </div>
 
-          {/* Sub-abas */}
-          <div className="inline-flex gap-1">
+          {/* Sub-abas (underline, para distinguir do toggle de topo) */}
+          <div className="flex gap-5 border-b">
             {(
               [
                 ["prio", "Prioridade"],
@@ -460,9 +480,9 @@ function VisaoInternaPage() {
                 key={v}
                 type="button"
                 onClick={() => setCobrView(v)}
-                className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                className={`-mb-px border-b-2 px-1 pb-2.5 text-sm font-medium transition-colors ${
                   cobrView === v
-                    ? "bg-card text-foreground shadow-sm"
+                    ? "border-foreground text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -479,7 +499,11 @@ function VisaoInternaPage() {
                   Inconsistências a revisar
                 </p>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-lg bg-card p-3">
+                  <button
+                    type="button"
+                    onClick={() => abrirInconsistencia("semConta")}
+                    className="group rounded-lg bg-card p-3 text-left transition-colors hover:bg-accent"
+                  >
                     <p>
                       <span className="text-xl font-bold" style={{ color: "#BA7517" }}>
                         {incAbertoSemConta.length}
@@ -488,9 +512,16 @@ function VisaoInternaPage() {
                         {money(somaValor(incAbertoSemConta))}
                       </span>
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">Aberto sem conta definida</p>
-                  </div>
-                  <div className="rounded-lg bg-card p-3">
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      Aberto sem conta definida
+                      <ChevronRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => abrirInconsistencia("naoRec")}
+                    className="group rounded-lg bg-card p-3 text-left transition-colors hover:bg-accent"
+                  >
                     <p>
                       <span className="text-xl font-bold" style={{ color: "#BA7517" }}>
                         {incRecebNaoRec.length}
@@ -499,16 +530,26 @@ function VisaoInternaPage() {
                         {money(somaPago(incRecebNaoRec))}
                       </span>
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">Recebido não reconciliado</p>
-                  </div>
-                  <div className="rounded-lg bg-card p-3">
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      Recebido não reconciliado
+                      <ChevronRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => abrirInconsistencia("semData")}
+                    className="group rounded-lg bg-card p-3 text-left transition-colors hover:bg-accent"
+                  >
                     <p>
                       <span className="text-xl font-bold" style={{ color: "#BA7517" }}>
                         {incPagoSemData.length}
                       </span>
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">Pago sem data de pagamento</p>
-                  </div>
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      Pago sem data de pagamento
+                      <ChevronRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                    </p>
+                  </button>
                 </div>
               </div>
 
@@ -537,35 +578,50 @@ function VisaoInternaPage() {
                       Nenhum cliente com parcela vencida.
                     </p>
                   ) : (
-                    <div className="divide-y">
-                      {prioridade.map((r, i) => {
-                        const cc = CONTRACT_STATUS_COLOR[r.d.contract_status];
-                        return (
-                          <div
-                            key={r.d.id}
-                            className="flex cursor-pointer items-center gap-3 py-2.5 transition-colors hover:bg-muted/40"
-                            onClick={() => setSelected(r.d)}
-                          >
-                            <span className="w-4 text-sm text-muted-foreground">{i + 1}</span>
-                            <span className="flex-1 font-medium">{nomeDe(r.d)}</span>
-                            <span
-                              className="rounded-full px-2.5 py-1 text-xs font-semibold"
-                              style={{ background: cc.bg, color: cc.fg }}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-8">#</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Contrato</TableHead>
+                          <TableHead className="text-center">Dias</TableHead>
+                          <TableHead className="text-center">Parcelas</TableHead>
+                          <TableHead className="text-right">Vencido</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {prioridade.map((r, i) => {
+                          const cc = CONTRACT_STATUS_COLOR[r.d.contract_status];
+                          return (
+                            <TableRow
+                              key={r.d.id}
+                              className="cursor-pointer transition-colors hover:bg-muted/40"
+                              onClick={() => setSelected(r.d)}
                             >
-                              {CONTRACT_STATUS_LABEL[r.d.contract_status]}
-                            </span>
-                            <DiasBadge dias={r.maxDias} />
-                            <span className="w-14 text-right text-xs text-muted-foreground">
-                              {r.nParc} parc.
-                            </span>
-                            <span className="w-20 text-right font-bold tabular-nums text-destructive">
-                              {money(r.total)}
-                            </span>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        );
-                      })}
-                    </div>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {i + 1}
+                              </TableCell>
+                              <TableCell className="font-medium">{nomeDe(r.d)}</TableCell>
+                              <TableCell>
+                                <span
+                                  className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                                  style={{ background: cc.bg, color: cc.fg }}
+                                >
+                                  {CONTRACT_STATUS_LABEL[r.d.contract_status]}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <DiasBadge dias={r.maxDias} />
+                              </TableCell>
+                              <TableCell className="text-center text-sm">{r.nParc}</TableCell>
+                              <TableCell className="text-right font-bold tabular-nums text-destructive">
+                                {money(r.total)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   )}
                 </CardContent>
               </Card>
@@ -825,7 +881,10 @@ function VisaoInternaPage() {
                       <button
                         key={v}
                         type="button"
-                        onClick={() => setStatusFiltro(v)}
+                        onClick={() => {
+                          setStatusFiltro(v);
+                          setIncFiltro(null);
+                        }}
                         className={`rounded-md px-3 py-1.5 text-xs font-medium ${
                           statusFiltro === v
                             ? "bg-primary text-primary-foreground"
@@ -864,43 +923,33 @@ function VisaoInternaPage() {
                   </Select>
                 </div>
 
-                {/* KPIs do filtro */}
-                <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                  <div className="rounded-lg bg-muted/50 p-3">
-                    <p className="text-lg font-bold tabular-nums">{parcelasFlat.length}</p>
-                    <p className="text-xs text-muted-foreground">Parcelas no filtro</p>
+                {incFiltro && (
+                  <div className="mb-3 flex items-center gap-2">
+                    <span
+                      className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium"
+                      style={{ background: "#FAEEDA", color: "#7A4E05" }}
+                    >
+                      Filtrando: {INC_LABEL[incFiltro]}
+                      <button
+                        type="button"
+                        onClick={() => setIncFiltro(null)}
+                        aria-label="Limpar filtro"
+                        className="hover:opacity-70"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
                   </div>
-                  <div className="rounded-lg bg-muted/50 p-3">
-                    <p className="text-lg font-bold tabular-nums" style={{ color: "#0C447C" }}>
-                      {parcAbertas.length}{" "}
-                      <span className="text-xs font-normal text-muted-foreground">
-                        {money(somaValor(parcAbertas.map(({ p }) => p)))}
-                      </span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">Abertas (a receber)</p>
-                  </div>
-                  <div className="rounded-lg bg-muted/50 p-3">
-                    <p className="text-lg font-bold tabular-nums text-destructive">
-                      {parcVencidas.length}{" "}
-                      <span className="text-xs font-normal text-muted-foreground">
-                        {money(somaValor(parcVencidas.map(({ p }) => p)))}
-                      </span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">Vencidas</p>
-                  </div>
-                  <div className="rounded-lg bg-muted/50 p-3">
-                    <p className="text-lg font-bold tabular-nums text-emerald-600">
-                      {parcPagas.length}{" "}
-                      <span className="text-xs font-normal text-muted-foreground">
-                        {money(somaPago(parcPagas.map(({ p }) => p)))}
-                      </span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">Pagas (recebido)</p>
-                  </div>
-                  <div className="rounded-lg bg-muted/50 p-3">
-                    <p className="text-lg font-bold tabular-nums">{money(parcFaturado)}</p>
-                    <p className="text-xs text-muted-foreground">Total faturado</p>
-                  </div>
+                )}
+
+                {/* KPIs contextuais — só o que é específico desta visão */}
+                <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                  <Kpi
+                    label="Parcelas no filtro"
+                    value={String(parcelasFlat.length)}
+                    icon={FileText}
+                  />
+                  <Kpi label="Total faturado" value={money(parcFaturado)} icon={Wallet} />
                 </div>
 
                 {loading ? (
