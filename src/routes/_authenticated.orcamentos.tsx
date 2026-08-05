@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, FileText, Printer, Plus, Pencil, Settings } from "lucide-react";
+import { ArrowLeft, FileText, Printer, Plus, Pencil, Settings, Search } from "lucide-react";
 import {
   supabase,
   type Proposal,
@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { OrcamentoForm } from "@/components/OrcamentoForm";
+import { OrcamentoView } from "@/components/OrcamentoView";
 import { LeadDetalhe, type LeadLike } from "@/components/LeadDetalhe";
 import { OrcamentoLayoutEditor } from "@/components/OrcamentoLayoutEditor";
 import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
@@ -96,6 +97,9 @@ function OrcamentosPage() {
   const [advanceNegId, setAdvanceNegId] = useState<string | null>(null);
   // Filtro de período por data de criação do orçamento.
   const [range, setRange] = useState<Range>(() => presetRange("mes"));
+  // Busca por nome do cliente + documento do orçamento (layout do parceiro).
+  const [busca, setBusca] = useState("");
+  const [viewId, setViewId] = useState<string | null>(null);
   // Configuração do layout do orçamento (por parceiro).
   const { user, isRuche } = useAuth();
   const [configOpen, setConfigOpen] = useState(false);
@@ -154,10 +158,8 @@ function OrcamentosPage() {
     setItemsLoading(false);
   };
 
-  const openDetail = async (row: ProposalRow) => {
-    setSelected(row);
-    await reloadItems(row.id);
-  };
+  // Abre o documento do orçamento com o layout do parceiro (mesma visão do Overview).
+  const openDetail = (row: ProposalRow) => setViewId(row.id);
 
   // Sincroniza o status com o kanban (mesmo campo `stage`), com o mesmo gate.
   const changeStage = async (row: ProposalRow, next: ProposalStage) => {
@@ -283,6 +285,16 @@ function OrcamentosPage() {
         open={!!leadDetail}
         onOpenChange={(o) => !o && setLeadDetail(null)}
       />
+      <OrcamentoView
+        open={!!viewId}
+        proposalId={viewId}
+        onOpenChange={(o) => !o && setViewId(null)}
+        onEdit={() => {
+          const id = viewId;
+          setViewId(null);
+          if (id) setDialog({ mode: "edit", proposalId: id });
+        }}
+      />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Orçamentos</h1>
@@ -305,6 +317,15 @@ function OrcamentosPage() {
           <CardTitle>Propostas</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-3 flex items-center gap-2 rounded-lg border px-3 py-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar cliente…"
+              className="w-full bg-transparent text-sm outline-none"
+            />
+          </div>
           {loading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
           ) : (
@@ -323,6 +344,9 @@ function OrcamentosPage() {
               <TableBody>
                 {rows
                   .filter((row) => inRange(row.created_at, range))
+                  .filter((row) =>
+                    (row.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()),
+                  )
                   .map((row) => (
                     <TableRow key={row.id}>
                       <TableCell>
@@ -377,10 +401,14 @@ function OrcamentosPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-                {rows.filter((row) => inRange(row.created_at, range)).length === 0 && (
+                {rows
+                  .filter((row) => inRange(row.created_at, range))
+                  .filter((row) =>
+                    (row.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()),
+                  ).length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      Nenhum orçamento no período selecionado.
+                      Nenhum orçamento encontrado.
                     </TableCell>
                   </TableRow>
                 )}

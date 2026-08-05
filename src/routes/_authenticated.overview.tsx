@@ -12,6 +12,7 @@ import {
   DollarSign,
   Eye,
   ArrowDownAZ,
+  Search,
 } from "lucide-react";
 import {
   supabase,
@@ -122,6 +123,7 @@ function Overview() {
   const [view, setView] = useState<ViewMode>("kanban");
   const [sortBy, setSortBy] = useState<SortBy>("visita");
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
+  const [busca, setBusca] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -148,7 +150,11 @@ function Overview() {
       no_deal: [],
       deal: [],
     };
-    for (const r of visitRows) (m[r.stage] ?? m.appointment_confirmed).push(r);
+    const q = busca.trim().toLowerCase();
+    for (const r of visitRows) {
+      if (q && !(r.leads?.nome_cliente ?? "").toLowerCase().includes(q)) continue;
+      (m[r.stage] ?? m.appointment_confirmed).push(r);
+    }
     const cmp = (a: Row, b: Row) => {
       if (sortBy === "alpha")
         return (a.leads?.nome_cliente ?? "").localeCompare(b.leads?.nome_cliente ?? "");
@@ -161,7 +167,7 @@ function Overview() {
     };
     for (const s of STAGE_ORDER) m[s].sort(cmp);
     return m;
-  }, [visitRows, sortBy]);
+  }, [visitRows, sortBy, busca]);
 
   const count = (s: ProposalStage) => byStage[s].length;
   const sumStage = (s: ProposalStage) => byStage[s].reduce((a, r) => a + (r.total_cliente ?? 0), 0);
@@ -251,28 +257,41 @@ function Overview() {
           </button>
         </div>
 
-        {view === "kanban" && (
-          <div className="flex items-center gap-2">
-            <ArrowDownAZ className="h-4 w-4 text-muted-foreground" />
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-              <SelectTrigger className="h-9 w-52">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent align="end">
-                {(Object.keys(SORT_LABEL) as SortBy[]).map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {SORT_LABEL[s]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar cliente…"
+              className="w-40 bg-transparent text-sm outline-none"
+            />
           </div>
-        )}
+          {view === "kanban" && (
+            <div className="flex items-center gap-2">
+              <ArrowDownAZ className="h-4 w-4 text-muted-foreground" />
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+                <SelectTrigger className="h-9 w-52">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  {(Object.keys(SORT_LABEL) as SortBy[]).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {SORT_LABEL[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
       </div>
 
       {view === "calendar" ? (
         <PipelineCalendar
-          rows={rows}
+          rows={rows.filter((r) =>
+            (r.leads?.nome_cliente ?? "").toLowerCase().includes(busca.trim().toLowerCase()),
+          )}
           weekStart={weekStart}
           onWeekStart={setWeekStart}
           onSelect={(id) => {
