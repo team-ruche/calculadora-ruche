@@ -456,7 +456,7 @@ function VisaoInternaPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Controle Financeiro</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Controle Financeiro</h1>
           <p className="text-sm text-muted-foreground">
             Cobrança dos contratos e acompanhamento das vendas.
           </p>
@@ -709,256 +709,260 @@ function VisaoInternaPage() {
                 {loading ? (
                   <p className="text-sm text-muted-foreground">Carregando…</p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-8" />
-                        <TableHead>
-                          Cliente
-                          <ColumnFilter
-                            type="text"
-                            value={fcli.cliente}
-                            onChange={(v) => setColFcli("cliente", v)}
-                          />
-                        </TableHead>
-                        <TableHead>
-                          Contrato
-                          <ColumnFilter
-                            type="select"
-                            options={Object.keys(CONTRACT_STATUS_LABEL)}
-                            labelFor={(o) => CONTRACT_STATUS_LABEL[o as ContractStatus]}
-                            value={fcli.contrato}
-                            onChange={(v) => setColFcli("contrato", v)}
-                          />
-                        </TableHead>
-                        <TableHead className="text-right">
-                          Faturado
-                          <ColumnFilter
-                            type="num"
-                            value={fcli.faturado}
-                            onChange={(v) => setColFcli("faturado", v)}
-                          />
-                        </TableHead>
-                        <TableHead className="text-right">
-                          Recebido
-                          <ColumnFilter
-                            type="num"
-                            value={fcli.recebido}
-                            onChange={(v) => setColFcli("recebido", v)}
-                          />
-                        </TableHead>
-                        <TableHead className="text-right">
-                          {vencFiltro === "todas" ? "A receber" : VENC_LABEL[vencFiltro]}
-                          <ColumnFilter
-                            type="num"
-                            align="end"
-                            value={fcli.aReceber}
-                            onChange={(v) => setColFcli("aReceber", v)}
-                          />
-                        </TableHead>
-                        <TableHead className="text-right">
-                          Vencido
-                          <ColumnFilter
-                            type="num"
-                            align="end"
-                            value={fcli.vencido}
-                            onChange={(v) => setColFcli("vencido", v)}
-                          />
-                        </TableHead>
-                        <TableHead className="text-center">
-                          Dias
-                          <ColumnFilter
-                            type="num"
-                            align="end"
-                            value={fcli.dias}
-                            onChange={(v) => setColFcli("dias", v)}
-                          />
-                        </TableHead>
-                        <TableHead className="text-center">
-                          Parcelas
-                          <ColumnFilter
-                            type="num"
-                            align="end"
-                            value={fcli.parcelas}
-                            onChange={(v) => setColFcli("parcelas", v)}
-                          />
-                        </TableHead>
-                        <TableHead>
-                          Próx. vencimento
-                          <ColumnFilter
-                            type="date"
-                            align="end"
-                            value={fcli.proxVenc}
-                            onChange={(v) => setColFcli("proxVenc", v)}
-                          />
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {linhas.map(({ d, ps, noFiltro, prox }) => {
-                        const pagas = ps.filter((p) => p.status === "pago").length;
-                        const pago = ps.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
-                        const aberto = noFiltro.reduce((a, p) => a + (p.valor ?? 0), 0);
-                        const venc = vencidoDe(ps);
-                        const dias = prox ? diasParaVenc(prox) : null;
-                        const cc = CONTRACT_STATUS_COLOR[d.contract_status];
-                        const aberto0 = expandido.has(d.id);
-                        return (
-                          <Fragment key={d.id}>
-                            <TableRow
-                              className="cursor-pointer transition-colors hover:bg-muted/40"
-                              onClick={() => toggle(d.id)}
-                            >
-                              <TableCell className="text-muted-foreground">
-                                {aberto0 ? (
-                                  <ChevronDown className="h-4 w-4" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4" />
-                                )}
-                              </TableCell>
-                              <TableCell className="font-medium">
-                                {d.leads?.nome_cliente || "—"}
-                              </TableCell>
-                              <TableCell onClick={(e) => e.stopPropagation()}>
-                                <Select
-                                  value={d.contract_status}
-                                  onValueChange={(v) => setContrato(d.id, v as ContractStatus)}
-                                >
-                                  <SelectTrigger
-                                    className="h-7 w-[150px] rounded-full border-none text-xs font-semibold"
-                                    style={{ background: cc.bg, color: cc.fg }}
-                                  >
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {(Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).map(
-                                      (s) => (
-                                        <SelectItem key={s} value={s}>
-                                          {CONTRACT_STATUS_LABEL[s]}
-                                        </SelectItem>
-                                      ),
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {money(d.total_cliente)}
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums text-emerald-600">
-                                {money(pago)}
-                              </TableCell>
-                              <TableCell className="text-right font-semibold tabular-nums">
-                                {money(aberto)}
-                              </TableCell>
-                              <TableCell
-                                className={`text-right tabular-nums ${venc > 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-[820px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-8" />
+                          <TableHead>
+                            Cliente
+                            <ColumnFilter
+                              type="text"
+                              value={fcli.cliente}
+                              onChange={(v) => setColFcli("cliente", v)}
+                            />
+                          </TableHead>
+                          <TableHead>
+                            Contrato
+                            <ColumnFilter
+                              type="select"
+                              options={Object.keys(CONTRACT_STATUS_LABEL)}
+                              labelFor={(o) => CONTRACT_STATUS_LABEL[o as ContractStatus]}
+                              value={fcli.contrato}
+                              onChange={(v) => setColFcli("contrato", v)}
+                            />
+                          </TableHead>
+                          <TableHead className="text-right">
+                            Faturado
+                            <ColumnFilter
+                              type="num"
+                              value={fcli.faturado}
+                              onChange={(v) => setColFcli("faturado", v)}
+                            />
+                          </TableHead>
+                          <TableHead className="text-right">
+                            Recebido
+                            <ColumnFilter
+                              type="num"
+                              value={fcli.recebido}
+                              onChange={(v) => setColFcli("recebido", v)}
+                            />
+                          </TableHead>
+                          <TableHead className="text-right">
+                            {vencFiltro === "todas" ? "A receber" : VENC_LABEL[vencFiltro]}
+                            <ColumnFilter
+                              type="num"
+                              align="end"
+                              value={fcli.aReceber}
+                              onChange={(v) => setColFcli("aReceber", v)}
+                            />
+                          </TableHead>
+                          <TableHead className="text-right">
+                            Vencido
+                            <ColumnFilter
+                              type="num"
+                              align="end"
+                              value={fcli.vencido}
+                              onChange={(v) => setColFcli("vencido", v)}
+                            />
+                          </TableHead>
+                          <TableHead className="text-center">
+                            Dias
+                            <ColumnFilter
+                              type="num"
+                              align="end"
+                              value={fcli.dias}
+                              onChange={(v) => setColFcli("dias", v)}
+                            />
+                          </TableHead>
+                          <TableHead className="text-center">
+                            Parcelas
+                            <ColumnFilter
+                              type="num"
+                              align="end"
+                              value={fcli.parcelas}
+                              onChange={(v) => setColFcli("parcelas", v)}
+                            />
+                          </TableHead>
+                          <TableHead>
+                            Próx. vencimento
+                            <ColumnFilter
+                              type="date"
+                              align="end"
+                              value={fcli.proxVenc}
+                              onChange={(v) => setColFcli("proxVenc", v)}
+                            />
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {linhas.map(({ d, ps, noFiltro, prox }) => {
+                          const pagas = ps.filter((p) => p.status === "pago").length;
+                          const pago = ps.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
+                          const aberto = noFiltro.reduce((a, p) => a + (p.valor ?? 0), 0);
+                          const venc = vencidoDe(ps);
+                          const dias = prox ? diasParaVenc(prox) : null;
+                          const cc = CONTRACT_STATUS_COLOR[d.contract_status];
+                          const aberto0 = expandido.has(d.id);
+                          return (
+                            <Fragment key={d.id}>
+                              <TableRow
+                                className="cursor-pointer transition-colors hover:bg-muted/40"
+                                onClick={() => toggle(d.id)}
                               >
-                                {money(venc)}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <DiasBadge dias={dias} />
-                              </TableCell>
-                              <TableCell className="text-center text-sm">
-                                {pagas}/{ps.length}
-                              </TableCell>
-                              <TableCell className="text-sm">
-                                {prox?.vencimento
-                                  ? new Date(prox.vencimento).toLocaleDateString("pt-BR")
-                                  : "—"}
-                              </TableCell>
-                            </TableRow>
-                            {aberto0 && (
-                              <TableRow className="bg-muted/20 hover:bg-muted/20">
-                                <TableCell />
-                                <TableCell colSpan={9} className="py-3">
-                                  <div className="rounded-lg border bg-card p-3">
-                                    <div className="mb-2 flex items-center justify-between">
-                                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                        Parcelas de {d.leads?.nome_cliente || "—"}
-                                      </span>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setSelected(d);
-                                        }}
-                                      >
-                                        Abrir e editar
-                                      </Button>
-                                    </div>
-                                    {ps.length === 0 ? (
-                                      <p className="text-sm text-muted-foreground">Sem parcelas.</p>
-                                    ) : (
-                                      <Table>
-                                        <TableHeader>
-                                          <TableRow>
-                                            <TableHead className="w-8">#</TableHead>
-                                            <TableHead>Vencimento</TableHead>
-                                            <TableHead>Forma</TableHead>
-                                            <TableHead className="text-right">Valor</TableHead>
-                                            <TableHead className="text-right">
-                                              Parte Ruche
-                                            </TableHead>
-                                            <TableHead className="text-right">Pago</TableHead>
-                                            <TableHead>Status</TableHead>
-                                          </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                          {ps.map((p) => (
-                                            <TableRow key={p.id}>
-                                              <TableCell>{p.numero}</TableCell>
-                                              <TableCell>
-                                                {p.vencimento
-                                                  ? new Date(p.vencimento).toLocaleDateString(
-                                                      "pt-BR",
-                                                    )
-                                                  : "—"}
-                                              </TableCell>
-                                              <TableCell>{p.payment_method || "—"}</TableCell>
-                                              <TableCell className="text-right tabular-nums">
-                                                {money(p.valor)}
-                                              </TableCell>
-                                              <TableCell className="text-right tabular-nums text-muted-foreground">
-                                                {money(p.valor_ruche)}
-                                              </TableCell>
-                                              <TableCell className="text-right tabular-nums">
-                                                {p.valor_pago != null ? money(p.valor_pago) : "—"}
-                                              </TableCell>
-                                              <TableCell>
-                                                <span
-                                                  className="rounded-full px-2.5 py-1 text-xs font-medium"
-                                                  style={{
-                                                    background: PARCELA_BADGE[p.status].bg,
-                                                    color: PARCELA_BADGE[p.status].fg,
-                                                  }}
-                                                >
-                                                  {PARCELA_STATUS_LABEL[p.status]}
-                                                </span>
-                                              </TableCell>
-                                            </TableRow>
-                                          ))}
-                                        </TableBody>
-                                      </Table>
-                                    )}
-                                  </div>
+                                <TableCell className="text-muted-foreground">
+                                  {aberto0 ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                </TableCell>
+                                <TableCell className="font-medium">
+                                  {d.leads?.nome_cliente || "—"}
+                                </TableCell>
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                  <Select
+                                    value={d.contract_status}
+                                    onValueChange={(v) => setContrato(d.id, v as ContractStatus)}
+                                  >
+                                    <SelectTrigger
+                                      className="h-7 w-[150px] rounded-full border-none text-xs font-semibold"
+                                      style={{ background: cc.bg, color: cc.fg }}
+                                    >
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {(Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).map(
+                                        (s) => (
+                                          <SelectItem key={s} value={s}>
+                                            {CONTRACT_STATUS_LABEL[s]}
+                                          </SelectItem>
+                                        ),
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                  {money(d.total_cliente)}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-emerald-600">
+                                  {money(pago)}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold tabular-nums">
+                                  {money(aberto)}
+                                </TableCell>
+                                <TableCell
+                                  className={`text-right tabular-nums ${venc > 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}
+                                >
+                                  {money(venc)}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <DiasBadge dias={dias} />
+                                </TableCell>
+                                <TableCell className="text-center text-sm">
+                                  {pagas}/{ps.length}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                  {prox?.vencimento
+                                    ? new Date(prox.vencimento).toLocaleDateString("pt-BR")
+                                    : "—"}
                                 </TableCell>
                               </TableRow>
-                            )}
-                          </Fragment>
-                        );
-                      })}
-                      {linhas.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={10} className="text-center text-muted-foreground">
-                            {vencFiltro === "todas"
-                              ? "Nenhum deal com parcelas."
-                              : `Nenhuma parcela ${VENC_LABEL[vencFiltro].toLowerCase()}.`}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                              {aberto0 && (
+                                <TableRow className="bg-muted/20 hover:bg-muted/20">
+                                  <TableCell />
+                                  <TableCell colSpan={9} className="py-3">
+                                    <div className="rounded-lg border bg-card p-3">
+                                      <div className="mb-2 flex items-center justify-between">
+                                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                          Parcelas de {d.leads?.nome_cliente || "—"}
+                                        </span>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelected(d);
+                                          }}
+                                        >
+                                          Abrir e editar
+                                        </Button>
+                                      </div>
+                                      {ps.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                          Sem parcelas.
+                                        </p>
+                                      ) : (
+                                        <Table>
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead className="w-8">#</TableHead>
+                                              <TableHead>Vencimento</TableHead>
+                                              <TableHead>Forma</TableHead>
+                                              <TableHead className="text-right">Valor</TableHead>
+                                              <TableHead className="text-right">
+                                                Parte Ruche
+                                              </TableHead>
+                                              <TableHead className="text-right">Pago</TableHead>
+                                              <TableHead>Status</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {ps.map((p) => (
+                                              <TableRow key={p.id}>
+                                                <TableCell>{p.numero}</TableCell>
+                                                <TableCell>
+                                                  {p.vencimento
+                                                    ? new Date(p.vencimento).toLocaleDateString(
+                                                        "pt-BR",
+                                                      )
+                                                    : "—"}
+                                                </TableCell>
+                                                <TableCell>{p.payment_method || "—"}</TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                  {money(p.valor)}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums text-muted-foreground">
+                                                  {money(p.valor_ruche)}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums">
+                                                  {p.valor_pago != null ? money(p.valor_pago) : "—"}
+                                                </TableCell>
+                                                <TableCell>
+                                                  <span
+                                                    className="rounded-full px-2.5 py-1 text-xs font-medium"
+                                                    style={{
+                                                      background: PARCELA_BADGE[p.status].bg,
+                                                      color: PARCELA_BADGE[p.status].fg,
+                                                    }}
+                                                  >
+                                                    {PARCELA_STATUS_LABEL[p.status]}
+                                                  </span>
+                                                </TableCell>
+                                              </TableRow>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </Fragment>
+                          );
+                        })}
+                        {linhas.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={10} className="text-center text-muted-foreground">
+                              {vencFiltro === "todas"
+                                ? "Nenhum deal com parcelas."
+                                : `Nenhuma parcela ${VENC_LABEL[vencFiltro].toLowerCase()}.`}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1302,59 +1306,61 @@ function DealDetail({
 
       <Card>
         <CardContent className="pt-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-8">#</TableHead>
-                <TableHead>Vencimento</TableHead>
-                <TableHead>Período</TableHead>
-                <TableHead>Forma</TableHead>
-                <TableHead>Conta</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-                <TableHead className="text-right">Parte Ruche</TableHead>
-                <TableHead className="text-right">Pago</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {parcelas.map((p) => (
-                <TableRow key={p.id} className="cursor-pointer" onClick={() => setEditing(p)}>
-                  <TableCell>{p.numero}</TableCell>
-                  <TableCell>
-                    {p.vencimento ? new Date(p.vencimento).toLocaleDateString("pt-BR") : "—"}
-                  </TableCell>
-                  <TableCell>{p.periodo || "—"}</TableCell>
-                  <TableCell>{p.payment_method || "—"}</TableCell>
-                  <TableCell>{p.conta || "—"}</TableCell>
-                  <TableCell className="text-right">{money(p.valor)}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {money(p.valor_ruche)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {p.valor_pago != null ? money(p.valor_pago) : "—"}
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className="rounded-full px-2.5 py-1 text-xs font-medium"
-                      style={{
-                        background: PARCELA_BADGE[p.status].bg,
-                        color: PARCELA_BADGE[p.status].fg,
-                      }}
-                    >
-                      {PARCELA_STATUS_LABEL[p.status]}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {parcelas.length === 0 && (
+          <div className="overflow-x-auto">
+            <Table className="min-w-[720px]">
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    Nenhuma parcela. As parcelas vêm acordadas na venda, ou adicione manualmente.
-                  </TableCell>
+                  <TableHead className="w-8">#</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Período</TableHead>
+                  <TableHead>Forma</TableHead>
+                  <TableHead>Conta</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="text-right">Parte Ruche</TableHead>
+                  <TableHead className="text-right">Pago</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {parcelas.map((p) => (
+                  <TableRow key={p.id} className="cursor-pointer" onClick={() => setEditing(p)}>
+                    <TableCell>{p.numero}</TableCell>
+                    <TableCell>
+                      {p.vencimento ? new Date(p.vencimento).toLocaleDateString("pt-BR") : "—"}
+                    </TableCell>
+                    <TableCell>{p.periodo || "—"}</TableCell>
+                    <TableCell>{p.payment_method || "—"}</TableCell>
+                    <TableCell>{p.conta || "—"}</TableCell>
+                    <TableCell className="text-right">{money(p.valor)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {money(p.valor_ruche)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {p.valor_pago != null ? money(p.valor_pago) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className="rounded-full px-2.5 py-1 text-xs font-medium"
+                        style={{
+                          background: PARCELA_BADGE[p.status].bg,
+                          color: PARCELA_BADGE[p.status].fg,
+                        }}
+                      >
+                        {PARCELA_STATUS_LABEL[p.status]}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {parcelas.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center text-muted-foreground">
+                      Nenhuma parcela. As parcelas vêm acordadas na venda, ou adicione manualmente.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

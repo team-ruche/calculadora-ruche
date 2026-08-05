@@ -124,7 +124,7 @@ export function PipelineCalendar({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        <div className="ml-auto flex items-center gap-3 text-[11px] text-muted-foreground">
+        <div className="ml-auto hidden items-center gap-3 text-[11px] text-muted-foreground sm:flex">
           {STAGE_ORDER.map((s) => (
             <span key={s} className="flex items-center gap-1">
               <span

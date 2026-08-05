@@ -193,7 +193,7 @@ export function OrcamentoLayoutEditor({
                 value={L.titulo}
                 onChange={(v) => setL({ titulo: v })}
               />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Cor 1</Label>
                   <input
@@ -226,7 +226,7 @@ export function OrcamentoLayoutEditor({
               <Fld label="Instagram" value={L.instagram} onChange={(v) => setL({ instagram: v })} />
               <Fld label="Endereço" value={L.endereco} onChange={(v) => setL({ endereco: v })} />
               <Fld label="E-mail" value={L.email} onChange={(v) => setL({ email: v })} />
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <Fld label="License" value={L.license} onChange={(v) => setL({ license: v })} />
                 <Fld label="HIC" value={L.hic} onChange={(v) => setL({ hic: v })} />
               </div>

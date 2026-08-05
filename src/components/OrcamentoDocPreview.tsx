@@ -87,6 +87,7 @@ export function OrcamentoDocPreview({
             <div
               style={{
                 display: "flex",
+                flexWrap: "wrap",
                 justifyContent: "space-between",
                 alignItems: "flex-start",
                 gap: 12,
@@ -184,7 +185,7 @@ export function OrcamentoDocPreview({
             key={s.id}
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
+              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
               gap: 14,
               marginBottom: 12,
               fontSize: 11,

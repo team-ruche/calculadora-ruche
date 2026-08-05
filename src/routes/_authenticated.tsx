@@ -60,7 +60,7 @@ function AuthenticatedLayout() {
             <SidebarTrigger />
             <div className="text-sm text-muted-foreground">Calculadora de Orçamento</div>
           </header>
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-4 sm:p-6">
             <Outlet />
           </main>
         </div>

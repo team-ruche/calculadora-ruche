@@ -240,7 +240,7 @@ function Overview() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Overview</h1>
           <p className="text-sm text-muted-foreground">
             Bem-vindo, {user?.nome || user?.email}.{" "}
             {isRuche ? "Você tem acesso total." : "Você é parceiro."}
@@ -283,20 +283,20 @@ function Overview() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5">
+          <div className="flex w-full items-center gap-2 rounded-lg border bg-card px-3 py-1.5 sm:w-auto">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar cliente…"
-              className="w-40 bg-transparent text-sm outline-none"
+              className="w-full bg-transparent text-sm outline-none sm:w-40"
             />
           </div>
           {view === "kanban" && (
-            <div className="flex items-center gap-2">
-              <ArrowDownAZ className="h-4 w-4 text-muted-foreground" />
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              <ArrowDownAZ className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-                <SelectTrigger className="h-9 w-52">
+                <SelectTrigger className="h-9 w-full sm:w-52">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent align="end">
@@ -333,7 +333,7 @@ function Overview() {
           }}
         />
       ) : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
           {STAGE_ORDER.map((stage) => (
             <div
               key={stage}
@@ -605,7 +605,7 @@ function KanbanCard({
         </p>
       </div>
 
-      <div className="mt-2.5 flex items-center gap-1.5 border-t pt-2.5">
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
         <IconLink
           icon={<ExternalLink className="h-3.5 w-3.5" />}
           label="GHL"

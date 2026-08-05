@@ -154,7 +154,7 @@ function MotorPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Precificação</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Precificação</h1>
         <p className="text-sm text-muted-foreground">
           Preço cobrado do cliente e banda de repasse ao parceiro (partida → teto), por unidade.
         </p>
@@ -182,128 +182,130 @@ function MotorPage() {
                 )}
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Componente</TableHead>
-                      <TableHead>Unidade</TableHead>
-                      <TableHead className="w-32">Preço cliente</TableHead>
-                      <TableHead className="w-32">Repasse partida</TableHead>
-                      <TableHead className="w-32">Teto repasse</TableHead>
-                      <TableHead className="w-20">Ativo</TableHead>
-                      <TableHead className="w-36 text-right">Ação</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell className="font-medium">{row.componente}</TableCell>
-                        <TableCell className="text-muted-foreground">{row.unidade}</TableCell>
-                        <TableCell>
-                          <NumCell
-                            value={row.preco_cliente}
-                            onChange={(v) => patchLocal(row.id, { preco_cliente: v })}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <NumCell
-                            value={row.repasse_partida}
-                            onChange={(v) => patchLocal(row.id, { repasse_partida: v })}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <NumCell
-                            value={row.teto_repasse}
-                            onChange={(v) => patchLocal(row.id, { teto_repasse: v })}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Switch
-                            checked={row.ativo}
-                            onCheckedChange={(v) => toggleAtivo(row, v)}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              size="sm"
-                              disabled={savingId === row.id}
-                              onClick={() => saveRow(row)}
-                            >
-                              {savingId === row.id ? "Salvando…" : "Salvar"}
-                            </Button>
-                            {canEditRows && (
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="h-8 w-8 text-muted-foreground hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive"
-                                onClick={() => deleteRow(row)}
-                                title="Remover"
-                                aria-label="Remover"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {addingGrupo === grupo && (
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[760px]">
+                    <TableHeader>
                       <TableRow>
-                        <TableCell>
-                          <Input
-                            placeholder="Nome (ex: Bamboo)"
-                            value={draft.componente}
-                            onChange={(e) =>
-                              setDraft((d) => ({ ...d, componente: e.target.value }))
-                            }
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            value={draft.unidade}
-                            onChange={(e) => setDraft((d) => ({ ...d, unidade: e.target.value }))}
-                            className="h-8 w-20"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <NumCell
-                            value={draft.preco_cliente}
-                            onChange={(v) => setDraft((d) => ({ ...d, preco_cliente: v }))}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <NumCell
-                            value={draft.repasse_partida}
-                            onChange={(v) => setDraft((d) => ({ ...d, repasse_partida: v }))}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <NumCell
-                            value={draft.teto_repasse}
-                            onChange={(v) => setDraft((d) => ({ ...d, teto_repasse: v }))}
-                          />
-                        </TableCell>
-                        <TableCell />
-                        <TableCell>
-                          <div className="flex items-center justify-end gap-2">
-                            <Button size="sm" onClick={() => addSub(grupo)}>
-                              Adicionar
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setAddingGrupo(null)}
-                            >
-                              Cancelar
-                            </Button>
-                          </div>
-                        </TableCell>
+                        <TableHead>Componente</TableHead>
+                        <TableHead>Unidade</TableHead>
+                        <TableHead className="w-32">Preço cliente</TableHead>
+                        <TableHead className="w-32">Repasse partida</TableHead>
+                        <TableHead className="w-32">Teto repasse</TableHead>
+                        <TableHead className="w-20">Ativo</TableHead>
+                        <TableHead className="w-36 text-right">Ação</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell className="font-medium">{row.componente}</TableCell>
+                          <TableCell className="text-muted-foreground">{row.unidade}</TableCell>
+                          <TableCell>
+                            <NumCell
+                              value={row.preco_cliente}
+                              onChange={(v) => patchLocal(row.id, { preco_cliente: v })}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <NumCell
+                              value={row.repasse_partida}
+                              onChange={(v) => patchLocal(row.id, { repasse_partida: v })}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <NumCell
+                              value={row.teto_repasse}
+                              onChange={(v) => patchLocal(row.id, { teto_repasse: v })}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Switch
+                              checked={row.ativo}
+                              onCheckedChange={(v) => toggleAtivo(row, v)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                size="sm"
+                                disabled={savingId === row.id}
+                                onClick={() => saveRow(row)}
+                              >
+                                {savingId === row.id ? "Salvando…" : "Salvar"}
+                              </Button>
+                              {canEditRows && (
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-8 w-8 text-muted-foreground hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive"
+                                  onClick={() => deleteRow(row)}
+                                  title="Remover"
+                                  aria-label="Remover"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {addingGrupo === grupo && (
+                        <TableRow>
+                          <TableCell>
+                            <Input
+                              placeholder="Nome (ex: Bamboo)"
+                              value={draft.componente}
+                              onChange={(e) =>
+                                setDraft((d) => ({ ...d, componente: e.target.value }))
+                              }
+                              className="h-8"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={draft.unidade}
+                              onChange={(e) => setDraft((d) => ({ ...d, unidade: e.target.value }))}
+                              className="h-8 w-20"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <NumCell
+                              value={draft.preco_cliente}
+                              onChange={(v) => setDraft((d) => ({ ...d, preco_cliente: v }))}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <NumCell
+                              value={draft.repasse_partida}
+                              onChange={(v) => setDraft((d) => ({ ...d, repasse_partida: v }))}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <NumCell
+                              value={draft.teto_repasse}
+                              onChange={(v) => setDraft((d) => ({ ...d, teto_repasse: v }))}
+                            />
+                          </TableCell>
+                          <TableCell />
+                          <TableCell>
+                            <div className="flex items-center justify-end gap-2">
+                              <Button size="sm" onClick={() => addSub(grupo)}>
+                                Adicionar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setAddingGrupo(null)}
+                              >
+                                Cancelar
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           );

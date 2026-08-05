@@ -79,7 +79,7 @@ function UsuariosPage() {
       <NovoUsuarioDialog open={novoOpen} onOpenChange={setNovoOpen} onCreated={load} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Usuários</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Usuários</h1>
           <p className="text-sm text-muted-foreground">
             Crie parceiros, aprove cadastros e defina o papel.
           </p>
@@ -96,89 +96,91 @@ function UsuariosPage() {
           {loading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>E-mail</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>Papel</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((u) => {
-                  const isSelf = u.id === current?.id;
-                  return (
-                    <TableRow key={u.id}>
-                      <TableCell className="font-medium">
-                        {u.nome || "—"}
-                        {isSelf && (
-                          <span className="ml-1 text-xs text-muted-foreground">(você)</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{u.email}</TableCell>
-                      <TableCell>{u.telefone || "—"}</TableCell>
-                      <TableCell>
-                        <Select
-                          value={u.role}
-                          onValueChange={(v) => updateUser(u.id, { role: v as AppRole })}
-                          disabled={isSelf}
-                        >
-                          <SelectTrigger className="h-8 w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="parceiro">parceiro</SelectItem>
-                            <SelectItem value="ruche">ruche</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            u.status === "aprovado"
-                              ? "default"
-                              : u.status === "reprovado"
-                                ? "destructive"
-                                : "outline"
-                          }
-                        >
-                          {u.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="space-x-2 text-right">
-                        {u.status !== "aprovado" && (
-                          <Button
-                            size="sm"
-                            onClick={() => updateUser(u.id, { status: "aprovado" })}
+            <div className="overflow-x-auto">
+              <Table className="min-w-[680px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>E-mail</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Papel</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((u) => {
+                    const isSelf = u.id === current?.id;
+                    return (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-medium">
+                          {u.nome || "—"}
+                          {isSelf && (
+                            <span className="ml-1 text-xs text-muted-foreground">(você)</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{u.email}</TableCell>
+                        <TableCell>{u.telefone || "—"}</TableCell>
+                        <TableCell>
+                          <Select
+                            value={u.role}
+                            onValueChange={(v) => updateUser(u.id, { role: v as AppRole })}
+                            disabled={isSelf}
                           >
-                            Aprovar
-                          </Button>
-                        )}
-                        {u.status !== "reprovado" && !isSelf && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateUser(u.id, { status: "reprovado" })}
+                            <SelectTrigger className="h-8 w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="parceiro">parceiro</SelectItem>
+                              <SelectItem value="ruche">ruche</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              u.status === "aprovado"
+                                ? "default"
+                                : u.status === "reprovado"
+                                  ? "destructive"
+                                  : "outline"
+                            }
                           >
-                            Reprovar
-                          </Button>
-                        )}
+                            {u.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="space-x-2 text-right">
+                          {u.status !== "aprovado" && (
+                            <Button
+                              size="sm"
+                              onClick={() => updateUser(u.id, { status: "aprovado" })}
+                            >
+                              Aprovar
+                            </Button>
+                          )}
+                          {u.status !== "reprovado" && !isSelf && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updateUser(u.id, { status: "reprovado" })}
+                            >
+                              Reprovar
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {users.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        Nenhum usuário ainda.
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-                {users.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      Nenhum usuário ainda.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

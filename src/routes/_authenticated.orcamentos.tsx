@@ -297,7 +297,7 @@ function OrcamentosPage() {
       />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Orçamentos</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Orçamentos</h1>
           <p className="text-sm text-muted-foreground">
             Propostas geradas. Abra para ver o orçamento do cliente e exportar.
           </p>
@@ -329,91 +329,93 @@ function OrcamentosPage() {
           {loading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Autor</TableHead>
-                  <TableHead>Criado em</TableHead>
-                  <TableHead>Última edição</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Valor da proposta</TableHead>
-                  <TableHead className="text-right">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows
-                  .filter((row) => inRange(row.created_at, range))
-                  .filter((row) =>
-                    (row.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()),
-                  )
-                  .map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell>
-                        <button
-                          type="button"
-                          onClick={() => setLeadDetail(row.leads)}
-                          className="font-medium text-primary underline-offset-2 hover:underline"
-                          title="Abrir card do setter"
-                        >
-                          {row.leads?.nome_cliente || "—"}
-                        </button>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {authors[row.partner_id] || "—"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {shortDate(row.created_at)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {shortDate(row.updated_at)}
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={row.stage}
-                          onValueChange={(v) => changeStage(row, v as ProposalStage)}
-                        >
-                          <SelectTrigger className="h-8 w-[190px] border-none px-2 shadow-none">
-                            <span
-                              className="rounded-full px-2.5 py-1 text-xs font-semibold"
-                              style={{
-                                background: STAGE_BADGE[row.stage].bg,
-                                color: STAGE_BADGE[row.stage].fg,
-                              }}
-                            >
-                              {STAGE_LABEL[row.stage]}
-                            </span>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {STAGE_ORDER.map((s) => (
-                              <SelectItem key={s} value={s}>
-                                {STAGE_LABEL[s]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="text-right">{money(row.total_cliente)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
-                          <FileText className="mr-1 h-4 w-4" /> Ver
-                        </Button>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[720px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Autor</TableHead>
+                    <TableHead>Criado em</TableHead>
+                    <TableHead>Última edição</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Valor da proposta</TableHead>
+                    <TableHead className="text-right">Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows
+                    .filter((row) => inRange(row.created_at, range))
+                    .filter((row) =>
+                      (row.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()),
+                    )
+                    .map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell>
+                          <button
+                            type="button"
+                            onClick={() => setLeadDetail(row.leads)}
+                            className="font-medium text-primary underline-offset-2 hover:underline"
+                            title="Abrir card do setter"
+                          >
+                            {row.leads?.nome_cliente || "—"}
+                          </button>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {authors[row.partner_id] || "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {shortDate(row.created_at)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {shortDate(row.updated_at)}
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={row.stage}
+                            onValueChange={(v) => changeStage(row, v as ProposalStage)}
+                          >
+                            <SelectTrigger className="h-8 w-[190px] border-none px-2 shadow-none">
+                              <span
+                                className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                                style={{
+                                  background: STAGE_BADGE[row.stage].bg,
+                                  color: STAGE_BADGE[row.stage].fg,
+                                }}
+                              >
+                                {STAGE_LABEL[row.stage]}
+                              </span>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STAGE_ORDER.map((s) => (
+                                <SelectItem key={s} value={s}>
+                                  {STAGE_LABEL[s]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="text-right">{money(row.total_cliente)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
+                            <FileText className="mr-1 h-4 w-4" /> Ver
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {rows
+                    .filter((row) => inRange(row.created_at, range))
+                    .filter((row) =>
+                      (row.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()),
+                    ).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                        Nenhum orçamento encontrado.
                       </TableCell>
                     </TableRow>
-                  ))}
-                {rows
-                  .filter((row) => inRange(row.created_at, range))
-                  .filter((row) =>
-                    (row.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()),
-                  ).length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      Nenhum orçamento encontrado.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
