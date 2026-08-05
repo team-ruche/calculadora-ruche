@@ -184,6 +184,7 @@ Deno.serve(async (req) => {
         canceled_stage_id: config.canceled_stage_id,
         quote_link_field_id: config.quote_link_field_id,
         scope_summary_field_id: config.scope_summary_field_id,
+        measurements_done_stage_id: config.measurements_done_stage_id,
       },
       payload,
     }),
