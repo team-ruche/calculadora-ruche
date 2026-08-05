@@ -67,12 +67,51 @@ const PARCELA_BADGE: Record<ParcelaStatus, { bg: string; fg: string }> = {
 const recebidoDe = (ps: Parcela[]) =>
   ps.reduce((a, p) => a + (p.status === "pago" ? (p.valor_pago ?? p.valor) : 0), 0);
 
+// Escala de cor do status do contrato.
+const CONTRACT_STATUS_COLOR: Record<ContractStatus, { bg: string; fg: string }> = {
+  active: { bg: "#D3E8BC", fg: "#2C5212" },
+  pending: { bg: "#FBE7BF", fg: "#7A4E05" },
+  on_hold: { bg: "#E6F1FB", fg: "#0C447C" },
+  contractual_billing: { bg: "#F5DDB4", fg: "#7A4405" },
+  encerrado: { bg: "#DEDCD2", fg: "#45443D" },
+};
+
+// Bucket de vencimento de uma parcela aberta (não paga).
+type VencBucket = "vencida" | "prox7" | "depois";
+const startOfToday = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+const bucketVenc = (p: Parcela): VencBucket => {
+  if (!p.vencimento) return "depois";
+  const hoje = startOfToday().getTime();
+  const venc = new Date(p.vencimento).getTime();
+  if (venc < hoje) return "vencida";
+  if (venc <= hoje + 7 * 86400000) return "prox7";
+  return "depois";
+};
+const isAberta = (p: Parcela) => p.status !== "pago";
+const abertoDe = (ps: Parcela[]) => ps.filter(isAberta).reduce((a, p) => a + (p.valor ?? 0), 0);
+const vencidoDe = (ps: Parcela[]) =>
+  ps
+    .filter((p) => isAberta(p) && bucketVenc(p) === "vencida")
+    .reduce((a, p) => a + (p.valor ?? 0), 0);
+
+const VENC_LABEL: Record<"todas" | VencBucket, string> = {
+  todas: "Todas",
+  vencida: "Vencidas",
+  prox7: "Próximos 7 dias",
+  depois: "Após 7 dias",
+};
+
 function VisaoInternaPage() {
   const { isRuche } = useAuth();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Deal | null>(null);
+  const [vencFiltro, setVencFiltro] = useState<"todas" | VencBucket>("todas");
   const [busca, setBusca] = useState("");
   // Filtro por data de fechamento do deal.
   const [range, setRange] = useState<Range>(() => presetRange("mes"));
@@ -124,6 +163,14 @@ function VisaoInternaPage() {
   const totalRuche = dealsNoPeriodo.reduce((a, d) => a + (d.margem_ruche ?? 0), 0);
   const totalRecebido = recebidoDe(parcelasNoPeriodo);
   const pctRecebido = totalRuche > 0 ? Math.round((totalRecebido / totalRuche) * 100) : 0;
+
+  // Recebíveis (parcelas): a receber, vencido e recebido do cliente
+  const aReceberTotal = abertoDe(parcelasNoPeriodo);
+  const vencidoTotal = vencidoDe(parcelasNoPeriodo);
+  const recebidoCliente = parcelasNoPeriodo.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
+  const venceProx7 = parcelasNoPeriodo
+    .filter((p) => isAberta(p) && bucketVenc(p) === "prox7")
+    .reduce((a, p) => a + (p.valor ?? 0), 0);
 
   const setContrato = async (id: string, cs: ContractStatus) => {
     const { error } = await supabase.from("proposals").update({ contract_status: cs }).eq("id", id);
@@ -191,18 +238,64 @@ function VisaoInternaPage() {
         </div>
       </div>
 
+      {/* Recebíveis */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Recebido do cliente
+          </p>
+          <p className="mt-1.5 text-2xl font-bold text-emerald-600">{money(recebidoCliente)}</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            A receber (aberto)
+          </p>
+          <p className="mt-1.5 text-2xl font-bold">{money(aReceberTotal)}</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Vence em 7 dias</p>
+          <p className="mt-1.5 text-2xl font-bold" style={{ color: "#7A4E05" }}>
+            {money(venceProx7)}
+          </p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Vencido (atrasado)
+          </p>
+          <p className="mt-1.5 text-2xl font-bold text-destructive">{money(vencidoTotal)}</p>
+        </div>
+      </div>
+
       <ChartFaturamento deals={dealsNoPeriodo} />
 
       <Card>
         <CardContent className="pt-6">
-          <div className="mb-3 flex items-center gap-2 rounded-lg border px-3 py-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar cliente…"
-              className="w-full bg-transparent text-sm outline-none"
-            />
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <div className="flex flex-1 items-center gap-2 rounded-lg border px-3 py-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar cliente…"
+                className="w-full bg-transparent text-sm outline-none"
+              />
+            </div>
+            <div className="inline-flex rounded-lg border bg-background p-0.5">
+              {(["todas", "vencida", "prox7", "depois"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setVencFiltro(v)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                    vencFiltro === v
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {VENC_LABEL[v]}
+                </button>
+              ))}
+            </div>
           </div>
           {loading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
@@ -210,62 +303,80 @@ function VisaoInternaPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Projeto</TableHead>
+                  <TableHead>Cliente</TableHead>
                   <TableHead>Contrato</TableHead>
                   <TableHead className="text-center">Parcelas</TableHead>
-                  <TableHead className="text-right">Vendido</TableHead>
-                  <TableHead className="text-right">Parceiro</TableHead>
-                  <TableHead className="text-right">Ruche</TableHead>
-                  <TableHead className="text-right">Recebido</TableHead>
-                  <TableHead className="text-right">A receber</TableHead>
+                  <TableHead className="text-right">Faturado</TableHead>
+                  <TableHead className="text-right">Pago</TableHead>
+                  <TableHead className="text-right">Aberto</TableHead>
+                  <TableHead className="text-right">Vencido</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtrados.map((d) => {
-                  const ps = parcelasDe[d.id] ?? [];
-                  const pagas = ps.filter((p) => p.status === "pago").length;
-                  const receb = recebidoDe(ps);
-                  const aReceber = (d.margem_ruche ?? 0) - receb;
-                  return (
-                    <TableRow key={d.id} className="cursor-pointer" onClick={() => setSelected(d)}>
-                      <TableCell className="font-medium text-primary underline-offset-2 hover:underline">
-                        {d.leads?.nome_cliente || "—"}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Select
-                          value={d.contract_status}
-                          onValueChange={(v) => setContrato(d.id, v as ContractStatus)}
-                        >
-                          <SelectTrigger className="h-8 w-[160px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).map((s) => (
-                              <SelectItem key={s} value={s}>
-                                {CONTRACT_STATUS_LABEL[s]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="text-center text-sm">
-                        {pagas}/{ps.length}
-                      </TableCell>
-                      <TableCell className="text-right">{money(d.total_cliente)}</TableCell>
-                      <TableCell className="text-right">{money(d.total_repasse)}</TableCell>
-                      <TableCell className="text-right">{money(d.margem_ruche)}</TableCell>
-                      <TableCell className="text-right text-emerald-600">{money(receb)}</TableCell>
-                      <TableCell
-                        className={`text-right font-medium ${aReceber > 0 ? "" : "text-emerald-600"}`}
+                {filtrados
+                  .map((d) => {
+                    const ps = parcelasDe[d.id] ?? [];
+                    const abertas = ps.filter(isAberta);
+                    // Aplica o filtro de vencimento nas parcelas abertas.
+                    const noFiltro =
+                      vencFiltro === "todas"
+                        ? abertas
+                        : abertas.filter((p) => bucketVenc(p) === vencFiltro);
+                    return { d, ps, noFiltro };
+                  })
+                  .filter(({ noFiltro }) => vencFiltro === "todas" || noFiltro.length > 0)
+                  .map(({ d, ps, noFiltro }) => {
+                    const pagas = ps.filter((p) => p.status === "pago").length;
+                    const pago = ps.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
+                    const aberto = noFiltro.reduce((a, p) => a + (p.valor ?? 0), 0);
+                    const venc = vencidoDe(ps);
+                    const cc = CONTRACT_STATUS_COLOR[d.contract_status];
+                    return (
+                      <TableRow
+                        key={d.id}
+                        className="cursor-pointer"
+                        onClick={() => setSelected(d)}
                       >
-                        {money(aReceber)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        <TableCell className="font-medium text-primary underline-offset-2 hover:underline">
+                          {d.leads?.nome_cliente || "—"}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Select
+                            value={d.contract_status}
+                            onValueChange={(v) => setContrato(d.id, v as ContractStatus)}
+                          >
+                            <SelectTrigger
+                              className="h-8 w-[160px] border-none font-medium"
+                              style={{ background: cc.bg, color: cc.fg }}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).map((s) => (
+                                <SelectItem key={s} value={s}>
+                                  {CONTRACT_STATUS_LABEL[s]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="text-center text-sm">
+                          {pagas}/{ps.length}
+                        </TableCell>
+                        <TableCell className="text-right">{money(d.total_cliente)}</TableCell>
+                        <TableCell className="text-right text-emerald-600">{money(pago)}</TableCell>
+                        <TableCell className="text-right font-medium">{money(aberto)}</TableCell>
+                        <TableCell
+                          className={`text-right ${venc > 0 ? "font-medium text-destructive" : "text-muted-foreground"}`}
+                        >
+                          {money(venc)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 {filtrados.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       Nenhum deal vendido ainda.
                     </TableCell>
                   </TableRow>
