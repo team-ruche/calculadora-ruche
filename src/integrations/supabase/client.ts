@@ -26,6 +26,15 @@ export async function callGhlSync(
   if (error) throw error;
 }
 
+// Cria a opção do parceiro no dropdown "Assigned Partner" do GHL + a linha
+// em ghl_partner_map. Chamar quando um parceiro é aprovado/criado.
+export async function callGhlSyncPartner(partnerUserId: string) {
+  const { error } = await supabase.functions.invoke("ghl-sync", {
+    body: { action: "provision_partner", partner_user_id: partnerUserId },
+  });
+  if (error) throw error;
+}
+
 export type AppRole = "ruche" | "parceiro";
 export type UserStatus = "pendente" | "aprovado" | "reprovado";
 
