@@ -242,6 +242,17 @@ function VisaoInternaPage() {
   const [range, setRange] = useState<Range>(() => presetRange("mes"));
   // Filtro por data de VENCIMENTO na tabela de cobrança (null = todas as datas).
   const [vencRange, setVencRange] = useState<Range | null>(null);
+  // Navegação: nível topo (Cobrança/Tracker) e sub-visão da cobrança.
+  const [topView, setTopView] = useState<"cobranca" | "tracker">("cobranca");
+  const [cobrView, setCobrView] = useState<"prio" | "cli" | "parc">("prio");
+  // Filtro de status na visão Parcelas (todas).
+  const [statusFiltro, setStatusFiltro] = useState<"abertas" | "vencidas" | "pagas" | "todas">(
+    "todas",
+  );
+  // Parcela em edição (dialog) na visão Parcelas.
+  const [parcelaEdit, setParcelaEdit] = useState<{ parcela: Parcela | null; deal: Deal } | null>(
+    null,
+  );
 
   const load = async () => {
     setLoading(true);
@@ -293,6 +304,51 @@ function VisaoInternaPage() {
     .filter((p) => isAberta(p) && bucketVenc(p) === "prox7")
     .reduce((a, p) => a + (p.valor ?? 0), 0);
 
+  const dealsById: Record<string, Deal> = {};
+  for (const d of deals) dealsById[d.id] = d;
+  const nomeDe = (d: Deal) => d.leads?.nome_cliente || "—";
+
+  // ---- INCONSISTÊNCIAS a revisar (qualidade de dado) ----------------------
+  const incAbertoSemConta = todasParcelas.filter((p) => isAberta(p) && !p.conta);
+  const incRecebNaoRec = todasParcelas.filter((p) => (p.valor_pago ?? 0) > 0 && !p.conciliado);
+  const incPagoSemData = todasParcelas.filter(
+    (p) => (p.status === "pago" || (p.valor_pago ?? 0) > 0) && !p.data_pagamento,
+  );
+  const somaValor = (ps: Parcela[]) => ps.reduce((a, p) => a + (p.valor ?? 0), 0);
+  const somaPago = (ps: Parcela[]) => ps.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
+
+  // ---- PRIORIDADE de cobrança: clientes com vencido, por valor × atraso ----
+  const prioridade = deals
+    .map((d) => {
+      const ps = parcelasDe[d.id] ?? [];
+      const vencidas = ps.filter((p) => isAberta(p) && bucketVenc(p) === "vencida");
+      const total = vencidas.reduce((a, p) => a + (p.valor ?? 0), 0);
+      const maxDias = vencidas.reduce((a, p) => Math.max(a, diasParaVenc(p) ?? 0), 0);
+      return { d, nParc: vencidas.length, total, maxDias, score: total * (maxDias || 1) };
+    })
+    .filter((r) => r.total > 0)
+    .sort((a, b) => b.score - a.score);
+  const prioTotal = prioridade.reduce((a, r) => a + r.total, 0);
+
+  // ---- PARCELAS (todas): flat + filtros de status/busca/vencimento ---------
+  const parcelasFlat = deals
+    .flatMap((d) => (parcelasDe[d.id] ?? []).map((p) => ({ p, d })))
+    .filter(({ p, d }) => {
+      const nome = nomeDe(d).toLowerCase();
+      const q = busca.toLowerCase();
+      if (q && !nome.includes(q)) return false;
+      if (vencRange && !inRange(p.vencimento, vencRange)) return false;
+      if (statusFiltro === "abertas") return isAberta(p);
+      if (statusFiltro === "pagas") return p.status === "pago";
+      if (statusFiltro === "vencidas") return isAberta(p) && bucketVenc(p) === "vencida";
+      return true;
+    })
+    .sort((a, b) => (b.p.vencimento ?? "").localeCompare(a.p.vencimento ?? ""));
+  const parcAbertas = parcelasFlat.filter(({ p }) => isAberta(p));
+  const parcVencidas = parcelasFlat.filter(({ p }) => isAberta(p) && bucketVenc(p) === "vencida");
+  const parcPagas = parcelasFlat.filter(({ p }) => p.status === "pago");
+  const parcFaturado = parcelasFlat.reduce((a, { p }) => a + (p.valor ?? 0), 0);
+
   // ---- VENDAS NO PERÍODO (filtrado por data de fechamento) ----------------
   const dealsNoPeriodo = deals.filter((d) => inRange(d.fechado_at, range));
   const totalVendido = dealsNoPeriodo.reduce((a, d) => a + (d.total_cliente ?? 0), 0);
@@ -337,281 +393,638 @@ function VisaoInternaPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Controle Financeiro</h1>
-        <p className="text-sm text-muted-foreground">
-          Cobrança por vencimento (sempre visível) e vendas fechadas no período selecionado.
-        </p>
-      </div>
-
-      {/* ===== COBRANÇA / RECEBÍVEIS (não depende de data) ===== */}
-      <div className="space-y-3">
-        <SectionTitle dot="#0C447C">Cobrança · todos os contratos</SectionTitle>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi label="A receber" value={money(aReceberTotal)} tone="primary" icon={Wallet} />
-          <Kpi
-            label="Vencido (atrasado)"
-            value={money(vencidoTotal)}
-            tone="danger"
-            icon={AlertTriangle}
-          />
-          <Kpi label="Vence em 7 dias" value={money(venceProx7)} tone="warn" icon={CalendarClock} />
-          <Kpi
-            label="Coletado"
-            value={money(recebidoCliente)}
-            sub="recebido do cliente"
-            tone="success"
-            icon={CheckCircle2}
-          />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Controle Financeiro</h1>
+          <p className="text-sm text-muted-foreground">
+            Cobrança dos contratos e acompanhamento das vendas.
+          </p>
+        </div>
+        <div className="inline-flex rounded-full bg-muted p-1">
+          {(
+            [
+              ["cobranca", "Cobrança"],
+              ["tracker", "Tracker"],
+            ] as const
+          ).map(([v, l]) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setTopView(v)}
+              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                topView === v ? "bg-background shadow-sm" : "text-muted-foreground"
+              }`}
+            >
+              {l}
+            </button>
+          ))}
         </div>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <div className="flex flex-1 items-center gap-2 rounded-lg border px-3 py-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <input
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar cliente…"
-                className="w-full bg-transparent text-sm outline-none"
-              />
-            </div>
-            <div className="inline-flex rounded-lg border bg-background p-0.5">
-              {(["todas", "vencida", "prox7", "depois"] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setVencFiltro(v)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium ${
-                    vencFiltro === v
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {VENC_LABEL[v]}
-                </button>
-              ))}
-            </div>
-            <DateRangePicker
-              value={vencRange}
-              onChange={setVencRange}
-              clearable
-              placeholder="Vencimento: todas as datas"
+      {topView === "cobranca" && (
+        <div className="space-y-6">
+          {/* KPIs de recebíveis — sempre visíveis */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Kpi label="A receber" value={money(aReceberTotal)} tone="primary" icon={Wallet} />
+            <Kpi
+              label="Vencido (atrasado)"
+              value={money(vencidoTotal)}
+              tone="danger"
+              icon={AlertTriangle}
+            />
+            <Kpi
+              label="Vence em 7 dias"
+              value={money(venceProx7)}
+              tone="warn"
+              icon={CalendarClock}
+            />
+            <Kpi
+              label="Coletado"
+              value={money(recebidoCliente)}
+              sub="recebido do cliente"
+              tone="success"
+              icon={CheckCircle2}
             />
           </div>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Carregando…</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-8" />
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Contrato</TableHead>
-                  <TableHead className="text-right">Faturado</TableHead>
-                  <TableHead className="text-right">Recebido</TableHead>
-                  <TableHead className="text-right">
-                    {vencFiltro === "todas" ? "A receber" : VENC_LABEL[vencFiltro]}
-                  </TableHead>
-                  <TableHead className="text-right">Vencido</TableHead>
-                  <TableHead className="text-center">Dias</TableHead>
-                  <TableHead className="text-center">Parcelas</TableHead>
-                  <TableHead>Próx. vencimento</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {linhas.map(({ d, ps, noFiltro, prox }) => {
-                  const pagas = ps.filter((p) => p.status === "pago").length;
-                  const pago = ps.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
-                  const aberto = noFiltro.reduce((a, p) => a + (p.valor ?? 0), 0);
-                  const venc = vencidoDe(ps);
-                  const dias = prox ? diasParaVenc(prox) : null;
-                  const cc = CONTRACT_STATUS_COLOR[d.contract_status];
-                  const aberto0 = expandido.has(d.id);
-                  return (
-                    <Fragment key={d.id}>
-                      <TableRow
-                        className="cursor-pointer transition-colors hover:bg-muted/40"
-                        onClick={() => toggle(d.id)}
-                      >
-                        <TableCell className="text-muted-foreground">
-                          {aberto0 ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {d.leads?.nome_cliente || "—"}
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Select
-                            value={d.contract_status}
-                            onValueChange={(v) => setContrato(d.id, v as ContractStatus)}
+
+          {/* Sub-abas */}
+          <div className="inline-flex gap-1">
+            {(
+              [
+                ["prio", "Prioridade"],
+                ["cli", "Por cliente"],
+                ["parc", "Parcelas (todas)"],
+              ] as const
+            ).map(([v, l]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setCobrView(v)}
+                className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  cobrView === v
+                    ? "bg-card text-foreground shadow-sm"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+
+          {/* ===== PRIORIDADE ===== */}
+          {cobrView === "prio" && (
+            <div className="space-y-4">
+              <div className="rounded-xl bg-muted/40 p-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Inconsistências a revisar
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg bg-card p-3">
+                    <p>
+                      <span className="text-xl font-bold" style={{ color: "#BA7517" }}>
+                        {incAbertoSemConta.length}
+                      </span>{" "}
+                      <span className="text-sm text-muted-foreground">
+                        {money(somaValor(incAbertoSemConta))}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">Aberto sem conta definida</p>
+                  </div>
+                  <div className="rounded-lg bg-card p-3">
+                    <p>
+                      <span className="text-xl font-bold" style={{ color: "#BA7517" }}>
+                        {incRecebNaoRec.length}
+                      </span>{" "}
+                      <span className="text-sm text-muted-foreground">
+                        {money(somaPago(incRecebNaoRec))}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">Recebido não reconciliado</p>
+                  </div>
+                  <div className="rounded-lg bg-card p-3">
+                    <p>
+                      <span className="text-xl font-bold" style={{ color: "#BA7517" }}>
+                        {incPagoSemData.length}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">Pago sem data de pagamento</p>
+                  </div>
+                </div>
+              </div>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="flex items-center gap-1.5 font-semibold text-destructive">
+                        <AlertTriangle className="h-4 w-4" /> Prioridade de cobrança
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Clientes com parcelas vencidas, ranqueados por valor × atraso.
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-bold tabular-nums text-destructive">
+                        {money(prioTotal)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {prioridade.length} clientes vencidos
+                      </p>
+                    </div>
+                  </div>
+                  {prioridade.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-muted-foreground">
+                      Nenhum cliente com parcela vencida.
+                    </p>
+                  ) : (
+                    <div className="divide-y">
+                      {prioridade.map((r, i) => {
+                        const cc = CONTRACT_STATUS_COLOR[r.d.contract_status];
+                        return (
+                          <div
+                            key={r.d.id}
+                            className="flex cursor-pointer items-center gap-3 py-2.5 transition-colors hover:bg-muted/40"
+                            onClick={() => setSelected(r.d)}
                           >
-                            <SelectTrigger
-                              className="h-7 w-[150px] rounded-full border-none text-xs font-semibold"
+                            <span className="w-4 text-sm text-muted-foreground">{i + 1}</span>
+                            <span className="flex-1 font-medium">{nomeDe(r.d)}</span>
+                            <span
+                              className="rounded-full px-2.5 py-1 text-xs font-semibold"
                               style={{ background: cc.bg, color: cc.fg }}
                             >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).map((s) => (
-                                <SelectItem key={s} value={s}>
-                                  {CONTRACT_STATUS_LABEL[s]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {money(d.total_cliente)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums text-emerald-600">
-                          {money(pago)}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold tabular-nums">
-                          {money(aberto)}
-                        </TableCell>
-                        <TableCell
-                          className={`text-right tabular-nums ${venc > 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}
-                        >
-                          {money(venc)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <DiasBadge dias={dias} />
-                        </TableCell>
-                        <TableCell className="text-center text-sm">
-                          {pagas}/{ps.length}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {prox?.vencimento
-                            ? new Date(prox.vencimento).toLocaleDateString("pt-BR")
-                            : "—"}
-                        </TableCell>
+                              {CONTRACT_STATUS_LABEL[r.d.contract_status]}
+                            </span>
+                            <DiasBadge dias={r.maxDias} />
+                            <span className="w-14 text-right text-xs text-muted-foreground">
+                              {r.nParc} parc.
+                            </span>
+                            <span className="w-20 text-right font-bold tabular-nums text-destructive">
+                              {money(r.total)}
+                            </span>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* ===== POR CLIENTE ===== */}
+          {cobrView === "cli" && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <div className="flex flex-1 items-center gap-2 rounded-lg border px-3 py-2">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                    <input
+                      value={busca}
+                      onChange={(e) => setBusca(e.target.value)}
+                      placeholder="Buscar cliente…"
+                      className="w-full bg-transparent text-sm outline-none"
+                    />
+                  </div>
+                  <div className="inline-flex rounded-lg border bg-background p-0.5">
+                    {(["todas", "vencida", "prox7", "depois"] as const).map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setVencFiltro(v)}
+                        className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                          vencFiltro === v
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {VENC_LABEL[v]}
+                      </button>
+                    ))}
+                  </div>
+                  <DateRangePicker
+                    value={vencRange}
+                    onChange={setVencRange}
+                    clearable
+                    placeholder="Vencimento: todas as datas"
+                  />
+                </div>
+                {loading ? (
+                  <p className="text-sm text-muted-foreground">Carregando…</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8" />
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Contrato</TableHead>
+                        <TableHead className="text-right">Faturado</TableHead>
+                        <TableHead className="text-right">Recebido</TableHead>
+                        <TableHead className="text-right">
+                          {vencFiltro === "todas" ? "A receber" : VENC_LABEL[vencFiltro]}
+                        </TableHead>
+                        <TableHead className="text-right">Vencido</TableHead>
+                        <TableHead className="text-center">Dias</TableHead>
+                        <TableHead className="text-center">Parcelas</TableHead>
+                        <TableHead>Próx. vencimento</TableHead>
                       </TableRow>
-                      {aberto0 && (
-                        <TableRow className="bg-muted/20 hover:bg-muted/20">
-                          <TableCell />
-                          <TableCell colSpan={9} className="py-3">
-                            <div className="rounded-lg border bg-card p-3">
-                              <div className="mb-2 flex items-center justify-between">
-                                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                  Parcelas de {d.leads?.nome_cliente || "—"}
-                                </span>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelected(d);
-                                  }}
+                    </TableHeader>
+                    <TableBody>
+                      {linhas.map(({ d, ps, noFiltro, prox }) => {
+                        const pagas = ps.filter((p) => p.status === "pago").length;
+                        const pago = ps.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
+                        const aberto = noFiltro.reduce((a, p) => a + (p.valor ?? 0), 0);
+                        const venc = vencidoDe(ps);
+                        const dias = prox ? diasParaVenc(prox) : null;
+                        const cc = CONTRACT_STATUS_COLOR[d.contract_status];
+                        const aberto0 = expandido.has(d.id);
+                        return (
+                          <Fragment key={d.id}>
+                            <TableRow
+                              className="cursor-pointer transition-colors hover:bg-muted/40"
+                              onClick={() => toggle(d.id)}
+                            >
+                              <TableCell className="text-muted-foreground">
+                                {aberto0 ? (
+                                  <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {d.leads?.nome_cliente || "—"}
+                              </TableCell>
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <Select
+                                  value={d.contract_status}
+                                  onValueChange={(v) => setContrato(d.id, v as ContractStatus)}
                                 >
-                                  Abrir e editar
-                                </Button>
-                              </div>
-                              {ps.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">Sem parcelas.</p>
-                              ) : (
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead className="w-8">#</TableHead>
-                                      <TableHead>Vencimento</TableHead>
-                                      <TableHead>Forma</TableHead>
-                                      <TableHead className="text-right">Valor</TableHead>
-                                      <TableHead className="text-right">Parte Ruche</TableHead>
-                                      <TableHead className="text-right">Pago</TableHead>
-                                      <TableHead>Status</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {ps.map((p) => (
-                                      <TableRow key={p.id}>
-                                        <TableCell>{p.numero}</TableCell>
-                                        <TableCell>
-                                          {p.vencimento
-                                            ? new Date(p.vencimento).toLocaleDateString("pt-BR")
-                                            : "—"}
-                                        </TableCell>
-                                        <TableCell>{p.payment_method || "—"}</TableCell>
-                                        <TableCell className="text-right tabular-nums">
-                                          {money(p.valor)}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums text-muted-foreground">
-                                          {money(p.valor_ruche)}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums">
-                                          {p.valor_pago != null ? money(p.valor_pago) : "—"}
-                                        </TableCell>
-                                        <TableCell>
-                                          <span
-                                            className="rounded-full px-2.5 py-1 text-xs font-medium"
-                                            style={{
-                                              background: PARCELA_BADGE[p.status].bg,
-                                              color: PARCELA_BADGE[p.status].fg,
-                                            }}
-                                          >
-                                            {PARCELA_STATUS_LABEL[p.status]}
-                                          </span>
-                                        </TableCell>
-                                      </TableRow>
-                                    ))}
-                                  </TableBody>
-                                </Table>
-                              )}
-                            </div>
+                                  <SelectTrigger
+                                    className="h-7 w-[150px] rounded-full border-none text-xs font-semibold"
+                                    style={{ background: cc.bg, color: cc.fg }}
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {(Object.keys(CONTRACT_STATUS_LABEL) as ContractStatus[]).map(
+                                      (s) => (
+                                        <SelectItem key={s} value={s}>
+                                          {CONTRACT_STATUS_LABEL[s]}
+                                        </SelectItem>
+                                      ),
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                {money(d.total_cliente)}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums text-emerald-600">
+                                {money(pago)}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold tabular-nums">
+                                {money(aberto)}
+                              </TableCell>
+                              <TableCell
+                                className={`text-right tabular-nums ${venc > 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}
+                              >
+                                {money(venc)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <DiasBadge dias={dias} />
+                              </TableCell>
+                              <TableCell className="text-center text-sm">
+                                {pagas}/{ps.length}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {prox?.vencimento
+                                  ? new Date(prox.vencimento).toLocaleDateString("pt-BR")
+                                  : "—"}
+                              </TableCell>
+                            </TableRow>
+                            {aberto0 && (
+                              <TableRow className="bg-muted/20 hover:bg-muted/20">
+                                <TableCell />
+                                <TableCell colSpan={9} className="py-3">
+                                  <div className="rounded-lg border bg-card p-3">
+                                    <div className="mb-2 flex items-center justify-between">
+                                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                        Parcelas de {d.leads?.nome_cliente || "—"}
+                                      </span>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelected(d);
+                                        }}
+                                      >
+                                        Abrir e editar
+                                      </Button>
+                                    </div>
+                                    {ps.length === 0 ? (
+                                      <p className="text-sm text-muted-foreground">Sem parcelas.</p>
+                                    ) : (
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow>
+                                            <TableHead className="w-8">#</TableHead>
+                                            <TableHead>Vencimento</TableHead>
+                                            <TableHead>Forma</TableHead>
+                                            <TableHead className="text-right">Valor</TableHead>
+                                            <TableHead className="text-right">
+                                              Parte Ruche
+                                            </TableHead>
+                                            <TableHead className="text-right">Pago</TableHead>
+                                            <TableHead>Status</TableHead>
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {ps.map((p) => (
+                                            <TableRow key={p.id}>
+                                              <TableCell>{p.numero}</TableCell>
+                                              <TableCell>
+                                                {p.vencimento
+                                                  ? new Date(p.vencimento).toLocaleDateString(
+                                                      "pt-BR",
+                                                    )
+                                                  : "—"}
+                                              </TableCell>
+                                              <TableCell>{p.payment_method || "—"}</TableCell>
+                                              <TableCell className="text-right tabular-nums">
+                                                {money(p.valor)}
+                                              </TableCell>
+                                              <TableCell className="text-right tabular-nums text-muted-foreground">
+                                                {money(p.valor_ruche)}
+                                              </TableCell>
+                                              <TableCell className="text-right tabular-nums">
+                                                {p.valor_pago != null ? money(p.valor_pago) : "—"}
+                                              </TableCell>
+                                              <TableCell>
+                                                <span
+                                                  className="rounded-full px-2.5 py-1 text-xs font-medium"
+                                                  style={{
+                                                    background: PARCELA_BADGE[p.status].bg,
+                                                    color: PARCELA_BADGE[p.status].fg,
+                                                  }}
+                                                >
+                                                  {PARCELA_STATUS_LABEL[p.status]}
+                                                </span>
+                                              </TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </Fragment>
+                        );
+                      })}
+                      {linhas.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={10} className="text-center text-muted-foreground">
+                            {vencFiltro === "todas"
+                              ? "Nenhum deal com parcelas."
+                              : `Nenhuma parcela ${VENC_LABEL[vencFiltro].toLowerCase()}.`}
                           </TableCell>
                         </TableRow>
                       )}
-                    </Fragment>
-                  );
-                })}
-                {linhas.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={10} className="text-center text-muted-foreground">
-                      {vencFiltro === "todas"
-                        ? "Nenhum deal com parcelas."
-                        : `Nenhuma parcela ${VENC_LABEL[vencFiltro].toLowerCase()}.`}
-                    </TableCell>
-                  </TableRow>
+                    </TableBody>
+                  </Table>
                 )}
-              </TableBody>
-            </Table>
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
 
-      {/* ===== VENDAS NO PERÍODO (filtrado por data de fechamento) ===== */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-        <SectionTitle dot="#F0A81E">Vendas no período</SectionTitle>
-        <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Kpi
-          label="Total vendido"
-          value={money(totalVendido)}
-          sub={`${dealsNoPeriodo.length} deals fechados`}
-          tone="dark"
-          icon={TrendingUp}
-        />
-        <Kpi
-          label="Total parceiro"
-          value={money(totalParceiro)}
-          sub="fica com o parceiro"
-          icon={Users}
-        />
-        <Kpi
-          label="Total Ruche"
-          value={money(totalRuche)}
-          sub="margem da Ruche no período"
-          icon={Building2}
-        />
-      </div>
+          {/* ===== PARCELAS (todas) ===== */}
+          {cobrView === "parc" && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <div className="flex flex-1 items-center gap-2 rounded-lg border px-3 py-2">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                    <input
+                      value={busca}
+                      onChange={(e) => setBusca(e.target.value)}
+                      placeholder="Buscar cliente…"
+                      className="w-full bg-transparent text-sm outline-none"
+                    />
+                  </div>
+                  <div className="inline-flex rounded-lg border bg-background p-0.5">
+                    {(
+                      [
+                        ["abertas", "Abertas"],
+                        ["vencidas", "Vencidas"],
+                        ["pagas", "Pagas"],
+                        ["todas", "Todas"],
+                      ] as const
+                    ).map(([v, l]) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setStatusFiltro(v)}
+                        className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                          statusFiltro === v
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                  <DateRangePicker
+                    value={vencRange}
+                    onChange={setVencRange}
+                    clearable
+                    placeholder="Vencimento: todas as datas"
+                  />
+                  <Select
+                    value=""
+                    onValueChange={(id) => {
+                      const d = dealsById[id];
+                      if (d) setParcelaEdit({ parcela: null, deal: d });
+                    }}
+                  >
+                    <SelectTrigger className="h-9 w-[170px]">
+                      <span className="flex items-center gap-1 text-sm">
+                        <Plus className="h-4 w-4" /> Nova cobrança
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {deals.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {nomeDe(d)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-      <ChartFaturamento deals={dealsNoPeriodo} />
+                {/* KPIs do filtro */}
+                <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <p className="text-lg font-bold tabular-nums">{parcelasFlat.length}</p>
+                    <p className="text-xs text-muted-foreground">Parcelas no filtro</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <p className="text-lg font-bold tabular-nums" style={{ color: "#0C447C" }}>
+                      {parcAbertas.length}{" "}
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {money(somaValor(parcAbertas.map(({ p }) => p)))}
+                      </span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">Abertas (a receber)</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <p className="text-lg font-bold tabular-nums text-destructive">
+                      {parcVencidas.length}{" "}
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {money(somaValor(parcVencidas.map(({ p }) => p)))}
+                      </span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">Vencidas</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <p className="text-lg font-bold tabular-nums text-emerald-600">
+                      {parcPagas.length}{" "}
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {money(somaPago(parcPagas.map(({ p }) => p)))}
+                      </span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">Pagas (recebido)</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <p className="text-lg font-bold tabular-nums">{money(parcFaturado)}</p>
+                    <p className="text-xs text-muted-foreground">Total faturado</p>
+                  </div>
+                </div>
+
+                {loading ? (
+                  <p className="text-sm text-muted-foreground">Carregando…</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Método</TableHead>
+                          <TableHead className="text-right">Valor</TableHead>
+                          <TableHead>Conta</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Pago em</TableHead>
+                          <TableHead>Período</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {parcelasFlat.map(({ p, d }) => (
+                          <TableRow
+                            key={p.id}
+                            className="cursor-pointer transition-colors hover:bg-muted/40"
+                            onClick={() => setParcelaEdit({ parcela: p, deal: d })}
+                          >
+                            <TableCell className="font-medium">{nomeDe(d)}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {p.payment_method || "—"}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {money(p.valor)}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {p.conta || "—"}
+                            </TableCell>
+                            <TableCell>
+                              {p.vencimento
+                                ? new Date(p.vencimento).toLocaleDateString("pt-BR")
+                                : "—"}
+                            </TableCell>
+                            <TableCell>
+                              {p.data_pagamento
+                                ? new Date(p.data_pagamento).toLocaleDateString("pt-BR")
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {p.periodo || "—"}
+                            </TableCell>
+                            <TableCell>
+                              <span
+                                className="rounded-full px-2.5 py-1 text-xs font-medium"
+                                style={{
+                                  background: PARCELA_BADGE[p.status].bg,
+                                  color: PARCELA_BADGE[p.status].fg,
+                                }}
+                              >
+                                {PARCELA_STATUS_LABEL[p.status]}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {parcelasFlat.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={8} className="text-center text-muted-foreground">
+                              Nenhuma parcela neste filtro.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {topView === "tracker" && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <SectionTitle dot="#F0A81E">Vendas no período</SectionTitle>
+            <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Kpi
+              label="Total vendido"
+              value={money(totalVendido)}
+              sub={`${dealsNoPeriodo.length} deals fechados`}
+              tone="dark"
+              icon={TrendingUp}
+            />
+            <Kpi
+              label="Total parceiro"
+              value={money(totalParceiro)}
+              sub="fica com o parceiro"
+              icon={Users}
+            />
+            <Kpi
+              label="Total Ruche"
+              value={money(totalRuche)}
+              sub="margem da Ruche no período"
+              icon={Building2}
+            />
+          </div>
+          <ChartFaturamento deals={dealsNoPeriodo} />
+        </div>
+      )}
+
+      {parcelaEdit && (
+        <ParcelaDialog
+          open={true}
+          parcela={parcelaEdit.parcela}
+          proposalId={parcelaEdit.deal.id}
+          cliente={nomeDe(parcelaEdit.deal)}
+          proximoNumero={(parcelasDe[parcelaEdit.deal.id]?.at(-1)?.numero ?? 0) + 1}
+          onOpenChange={(o) => !o && setParcelaEdit(null)}
+          onSaved={() => {
+            setParcelaEdit(null);
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }
