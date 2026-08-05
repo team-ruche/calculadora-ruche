@@ -14,6 +14,18 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
+// Sync GHL — chama a Edge Function ghl-sync (que repassa pro n8n, ver
+// supabase/functions/ghl-sync). O client já anexa o JWT da sessão atual.
+export async function callGhlSync(
+  action: "cancel_appointment" | "push_quote_ready",
+  proposalId: string,
+) {
+  const { error } = await supabase.functions.invoke("ghl-sync", {
+    body: { action, proposal_id: proposalId },
+  });
+  if (error) throw error;
+}
+
 export type AppRole = "ruche" | "parceiro";
 export type UserStatus = "pendente" | "aprovado" | "reprovado";
 
@@ -55,6 +67,7 @@ export interface Lead {
   etapa_funil: string;
   // Qualificação do setter (grupos A–F). Vem pré-preenchida da integração GHL.
   qualificacao: LeadQualificacao | null;
+  ghl_contact_id: string | null;
   created_at: string;
 }
 
@@ -164,6 +177,10 @@ export interface Proposal {
   margem_ruche: number | null;
   // Snapshot do layout do orçamento (congelado ao gerar).
   orcamento_layout: OrcamentoLayout | null;
+  // Sync GHL — ver supabase-migration-etapa10-ghl-sync.sql
+  ghl_opportunity_id: string | null;
+  location_id: string | null;
+  last_ghl_sync_at: string | null;
   created_at: string;
   updated_at: string;
 }

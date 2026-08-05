@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import {
   supabase,
+  callGhlSync,
   type Proposal,
   type ProposalStage,
   type LeadQualificacao,
@@ -44,6 +45,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+
+// Fallback pra quando a proposal ainda não tem location_id gravado (leads
+// criados antes da etapa10). Hoje só existe 1 cliente rodando o sync.
+const GHL_DEFAULT_LOCATION_ID = "jl5iFelWb5hiWu9FIeiD";
 
 type ViewMode = "kanban" | "calendar";
 type SortBy = "visita" | "alpha" | "created";
@@ -193,6 +198,17 @@ function Overview() {
     const { error } = await supabase.from("proposals").update({ stage: next }).eq("id", row.id);
     if (error) return toast.error(error.message);
     load();
+
+    // Cancelamento feito no site precisa espelhar pro GHL — Confirmed/Canceled
+    // é estágio que o GHL também é dono, então ele tem que saber. Deal/No Deal
+    // ficam só como destino do sync que vem do GHL (o closer decide lá).
+    if (next === "appointment_canceled" && row.ghl_opportunity_id) {
+      try {
+        await callGhlSync("cancel_appointment", row.id);
+      } catch (e) {
+        toast.error("Cancelado no site, mas falhou ao avisar o GHL — verifique manualmente.");
+      }
+    }
   };
 
   const onOrcSaved = async () => {
@@ -202,6 +218,15 @@ function Overview() {
     if (current?.advance && current.row.stage === "appointment_confirmed") {
       await supabase.from("proposals").update({ stage: "negotiation" }).eq("id", current.row.id);
       await load();
+      // Medição + orçamento prontos → manda link do orçamento e resumo do
+      // escopo pro GHL (não muda stage lá, só anexa dado pro closer ver).
+      if (current.row.ghl_opportunity_id) {
+        try {
+          await callGhlSync("push_quote_ready", current.row.id);
+        } catch (e) {
+          toast.error("Orçamento salvo, mas falhou ao enviar pro GHL — verifique manualmente.");
+        }
+      }
     }
   };
 
@@ -581,7 +606,15 @@ function KanbanCard({
       </div>
 
       <div className="mt-2.5 flex items-center gap-1.5 border-t pt-2.5">
-        <IconLink icon={<ExternalLink className="h-3.5 w-3.5" />} label="GHL" />
+        <IconLink
+          icon={<ExternalLink className="h-3.5 w-3.5" />}
+          label="GHL"
+          href={
+            row.ghl_opportunity_id
+              ? `https://app.gohighlevel.com/v2/location/${row.location_id ?? GHL_DEFAULT_LOCATION_ID}/opportunities/list/${row.ghl_opportunity_id}?tab=OpportunityDetails`
+              : undefined
+          }
+        />
         <IconLink icon={<CalendarIcon className="h-3.5 w-3.5" />} label="Google Calendar" />
         <IconLink
           icon={<Phone className="h-3.5 w-3.5" />}

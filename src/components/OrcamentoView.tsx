@@ -19,13 +19,13 @@ import {
 import { OrcamentoDocPreview, type DocData, type DocGrupo } from "@/components/OrcamentoDocPreview";
 import { toast } from "sonner";
 
-const GRUPO_LABEL: Record<MotorGrupo, string> = {
+export const GRUPO_LABEL: Record<MotorGrupo, string> = {
   instalacao: "Instalação",
   demolicao: "Remoção",
   prep: "Preparação",
   extra: "Extras",
 };
-const GRUPO_ORDER: MotorGrupo[] = ["instalacao", "demolicao", "prep", "extra"];
+export const GRUPO_ORDER: MotorGrupo[] = ["instalacao", "demolicao", "prep", "extra"];
 
 const money = (n: number | null) =>
   (n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
