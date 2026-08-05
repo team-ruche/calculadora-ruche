@@ -1,15 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  Plus,
-  FileText,
-  Search,
-  ChevronRight,
-  ChevronDown,
-  Clock,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Plus, FileText, Search, ChevronRight, ChevronDown, Clock } from "lucide-react";
 import {
   supabase,
   type Proposal,
@@ -328,23 +319,12 @@ function VisaoInternaPage() {
                 </button>
               ))}
             </div>
-            {vencRange ? (
-              <div className="flex items-center gap-1">
-                <DateRangePicker value={vencRange} onChange={setVencRange} />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setVencRange(null)}
-                  title="Limpar filtro de vencimento"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <Button variant="outline" size="sm" onClick={() => setVencRange(presetRange("mes"))}>
-                <Clock className="mr-1 h-4 w-4" /> Filtrar vencimento
-              </Button>
-            )}
+            <DateRangePicker
+              value={vencRange}
+              onChange={setVencRange}
+              clearable
+              placeholder="Vencimento: todas as datas"
+            />
           </div>
           {loading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
@@ -521,7 +501,7 @@ function VisaoInternaPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Vendas no período
         </h2>
-        <DateRangePicker value={range} onChange={setRange} />
+        <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-xl bg-[#2C2C2A] p-4">

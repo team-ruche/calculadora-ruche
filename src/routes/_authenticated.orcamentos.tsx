@@ -303,7 +303,7 @@ function OrcamentosPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <DateRangePicker value={range} onChange={setRange} />
+          <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
           <Button variant="outline" onClick={abrirConfig}>
             <Settings className="mr-1 h-4 w-4" /> Configuração
           </Button>

@@ -50,19 +50,28 @@ export function presetRange(p: Preset): { from: Date; to: Date } {
 const fmt = (d: Date) => format(d, "d MMM yyyy");
 
 interface Props {
-  value: { from: Date; to: Date };
-  onChange: (range: { from: Date; to: Date }) => void;
+  value: { from: Date; to: Date } | null;
+  onChange: (range: { from: Date; to: Date } | null) => void;
+  // Permite limpar o filtro ("Todas as datas") — usado na cobrança.
+  clearable?: boolean;
+  placeholder?: string;
 }
 
 // Filtro global de período — presets + calendário duplo (formato do anexo).
-export function DateRangePicker({ value, onChange }: Props) {
+export function DateRangePicker({ value, onChange, clearable, placeholder }: Props) {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<DateRange | undefined>(value);
+  const [draft, setDraft] = useState<DateRange | undefined>(value ?? undefined);
 
   const applyPreset = (p: Preset) => {
     const r = presetRange(p);
     setDraft(r);
     onChange(r);
+    setOpen(false);
+  };
+
+  const limpar = () => {
+    setDraft(undefined);
+    onChange(null);
     setOpen(false);
   };
 
@@ -86,13 +95,27 @@ export function DateRangePicker({ value, onChange }: Props) {
         >
           <CalendarIcon className="h-[18px] w-[18px] shrink-0 text-primary" />
           <span className="whitespace-nowrap">
-            {fmt(value.from)} – {fmt(value.to)}
+            {value
+              ? `${fmt(value.from)} – ${fmt(value.to)}`
+              : (placeholder ?? "Selecionar período")}
           </span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="end">
         <div className="flex">
           <div className="flex w-40 flex-col gap-0.5 border-r p-2">
+            {clearable && (
+              <button
+                type="button"
+                onClick={limpar}
+                className={cn(
+                  "rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent",
+                  value ? "text-foreground" : "bg-accent text-foreground",
+                )}
+              >
+                Todas as datas
+              </button>
+            )}
             {PRESETS.map((p) => (
               <button
                 key={p.key}
@@ -111,7 +134,7 @@ export function DateRangePicker({ value, onChange }: Props) {
             <Calendar
               mode="range"
               numberOfMonths={2}
-              defaultMonth={value.from}
+              defaultMonth={value?.from ?? new Date()}
               selected={draft}
               onSelect={onSelect}
               locale={ptBR}

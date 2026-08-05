@@ -246,7 +246,7 @@ function Overview() {
             {isRuche ? "Você tem acesso total." : "Você é parceiro."}
           </p>
         </div>
-        <DateRangePicker value={range} onChange={setRange} />
+        <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
