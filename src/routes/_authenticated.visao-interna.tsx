@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus, FileText, Search } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Plus, FileText, Search, ChevronRight, ChevronDown } from "lucide-react";
 import {
   supabase,
   type Proposal,
@@ -113,6 +113,14 @@ function VisaoInternaPage() {
   const [selected, setSelected] = useState<Deal | null>(null);
   const [vencFiltro, setVencFiltro] = useState<"todas" | VencBucket>("todas");
   const [busca, setBusca] = useState("");
+  const [expandido, setExpandido] = useState<Set<string>>(new Set());
+  const toggle = (id: string) =>
+    setExpandido((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
   // Filtro por data de fechamento do deal.
   const [range, setRange] = useState<Range>(() => presetRange("mes"));
 
@@ -155,22 +163,22 @@ function VisaoInternaPage() {
 
   if (!isRuche) return <Navigate to="/overview" />;
 
-  // Deals dentro do período (por data de fechamento) + KPIs
+  // ---- COBRANÇA (independente do filtro de data) --------------------------
+  // Recebíveis são dirigidos pelo VENCIMENTO da parcela, não pela data de venda.
+  // Assim parcelas atrasadas de deals antigos e as que vão vencer sempre aparecem.
+  const todasParcelas = deals.flatMap((d) => parcelasDe[d.id] ?? []);
+  const recebidoCliente = todasParcelas.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
+  const aReceberTotal = abertoDe(todasParcelas);
+  const vencidoTotal = vencidoDe(todasParcelas);
+  const venceProx7 = todasParcelas
+    .filter((p) => isAberta(p) && bucketVenc(p) === "prox7")
+    .reduce((a, p) => a + (p.valor ?? 0), 0);
+
+  // ---- VENDAS NO PERÍODO (filtrado por data de fechamento) ----------------
   const dealsNoPeriodo = deals.filter((d) => inRange(d.fechado_at, range));
-  const parcelasNoPeriodo = dealsNoPeriodo.flatMap((d) => parcelasDe[d.id] ?? []);
   const totalVendido = dealsNoPeriodo.reduce((a, d) => a + (d.total_cliente ?? 0), 0);
   const totalParceiro = dealsNoPeriodo.reduce((a, d) => a + (d.total_repasse ?? 0), 0);
   const totalRuche = dealsNoPeriodo.reduce((a, d) => a + (d.margem_ruche ?? 0), 0);
-  const totalRecebido = recebidoDe(parcelasNoPeriodo);
-  const pctRecebido = totalRuche > 0 ? Math.round((totalRecebido / totalRuche) * 100) : 0;
-
-  // Recebíveis (parcelas): a receber, vencido e recebido do cliente
-  const aReceberTotal = abertoDe(parcelasNoPeriodo);
-  const vencidoTotal = vencidoDe(parcelasNoPeriodo);
-  const recebidoCliente = parcelasNoPeriodo.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
-  const venceProx7 = parcelasNoPeriodo
-    .filter((p) => isAberta(p) && bucketVenc(p) === "prox7")
-    .reduce((a, p) => a + (p.valor ?? 0), 0);
 
   const setContrato = async (id: string, cs: ContractStatus) => {
     const { error } = await supabase.from("proposals").update({ contract_status: cs }).eq("id", id);
@@ -192,81 +200,59 @@ function VisaoInternaPage() {
     );
   }
 
-  const filtrados = dealsNoPeriodo.filter((d) =>
-    (d.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()),
-  );
+  // Tabela de cobrança: TODOS os deals (não filtra por data), só por busca e vencimento.
+  const linhas = deals
+    .filter((d) => (d.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()))
+    .map((d) => {
+      const ps = parcelasDe[d.id] ?? [];
+      const abertas = ps.filter(isAberta);
+      const noFiltro =
+        vencFiltro === "todas" ? abertas : abertas.filter((p) => bucketVenc(p) === vencFiltro);
+      return { d, ps, noFiltro };
+    })
+    .filter(({ ps, noFiltro }) => (vencFiltro === "todas" ? ps.length > 0 : noFiltro.length > 0));
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Controle Financeiro</h1>
-          <p className="text-sm text-muted-foreground">
-            Deals vendidos: vendido, parceiro, Ruche e o que já foi recebido (repasse do parceiro).
-          </p>
-        </div>
-        <DateRangePicker value={range} onChange={setRange} />
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Controle Financeiro</h1>
+        <p className="text-sm text-muted-foreground">
+          Cobrança por vencimento (sempre visível) e vendas fechadas no período selecionado.
+        </p>
       </div>
 
-      {/* KPIs */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl bg-[#2C2C2A] p-4">
-          <p className="text-xs uppercase tracking-wide text-[#D3D1C7]">Total vendido</p>
-          <p className="mt-1.5 text-2xl font-bold text-white">{money(totalVendido)}</p>
-          <p className="mt-1 text-xs text-[#B4B2A9]">{dealsNoPeriodo.length} deals fechados</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total parceiro</p>
-          <p className="mt-1.5 text-2xl font-bold">{money(totalParceiro)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">fica com o parceiro</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Ruche</p>
-          <p className="mt-1.5 text-2xl font-bold">{money(totalRuche)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">a receber do parceiro</p>
-        </div>
-        <div className="rounded-xl p-4" style={{ background: "#F0A81E" }}>
-          <p className="text-xs uppercase tracking-wide" style={{ color: "#633806" }}>
-            Recebido pela Ruche
-          </p>
-          <p className="mt-1.5 text-2xl font-bold" style={{ color: "#412402" }}>
-            {money(totalRecebido)}
-          </p>
-          <p className="mt-1 text-xs" style={{ color: "#7A4E05" }}>
-            {pctRecebido}% do total Ruche
-          </p>
-        </div>
-      </div>
-
-      {/* Recebíveis */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Recebido do cliente
-          </p>
-          <p className="mt-1.5 text-2xl font-bold text-emerald-600">{money(recebidoCliente)}</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            A receber (aberto)
-          </p>
-          <p className="mt-1.5 text-2xl font-bold">{money(aReceberTotal)}</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Vence em 7 dias</p>
-          <p className="mt-1.5 text-2xl font-bold" style={{ color: "#7A4E05" }}>
-            {money(venceProx7)}
-          </p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Vencido (atrasado)
-          </p>
-          <p className="mt-1.5 text-2xl font-bold text-destructive">{money(vencidoTotal)}</p>
+      {/* ===== COBRANÇA / RECEBÍVEIS (não depende de data) ===== */}
+      <div>
+        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Cobrança · todos os contratos
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Recebido do cliente
+            </p>
+            <p className="mt-1.5 text-2xl font-bold text-emerald-600">{money(recebidoCliente)}</p>
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              A receber (aberto)
+            </p>
+            <p className="mt-1.5 text-2xl font-bold">{money(aReceberTotal)}</p>
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Vence em 7 dias</p>
+            <p className="mt-1.5 text-2xl font-bold" style={{ color: "#7A4E05" }}>
+              {money(venceProx7)}
+            </p>
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Vencido (atrasado)
+            </p>
+            <p className="mt-1.5 text-2xl font-bold text-destructive">{money(vencidoTotal)}</p>
+          </div>
         </div>
       </div>
-
-      <ChartFaturamento deals={dealsNoPeriodo} />
 
       <Card>
         <CardContent className="pt-6">
@@ -303,41 +289,37 @@ function VisaoInternaPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8" />
                   <TableHead>Cliente</TableHead>
                   <TableHead>Contrato</TableHead>
                   <TableHead className="text-center">Parcelas</TableHead>
                   <TableHead className="text-right">Faturado</TableHead>
-                  <TableHead className="text-right">Pago</TableHead>
-                  <TableHead className="text-right">Aberto</TableHead>
+                  <TableHead className="text-right">Recebido</TableHead>
+                  <TableHead className="text-right">
+                    {vencFiltro === "todas" ? "Aberto" : VENC_LABEL[vencFiltro]}
+                  </TableHead>
                   <TableHead className="text-right">Vencido</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtrados
-                  .map((d) => {
-                    const ps = parcelasDe[d.id] ?? [];
-                    const abertas = ps.filter(isAberta);
-                    // Aplica o filtro de vencimento nas parcelas abertas.
-                    const noFiltro =
-                      vencFiltro === "todas"
-                        ? abertas
-                        : abertas.filter((p) => bucketVenc(p) === vencFiltro);
-                    return { d, ps, noFiltro };
-                  })
-                  .filter(({ noFiltro }) => vencFiltro === "todas" || noFiltro.length > 0)
-                  .map(({ d, ps, noFiltro }) => {
-                    const pagas = ps.filter((p) => p.status === "pago").length;
-                    const pago = ps.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
-                    const aberto = noFiltro.reduce((a, p) => a + (p.valor ?? 0), 0);
-                    const venc = vencidoDe(ps);
-                    const cc = CONTRACT_STATUS_COLOR[d.contract_status];
-                    return (
-                      <TableRow
-                        key={d.id}
-                        className="cursor-pointer"
-                        onClick={() => setSelected(d)}
-                      >
-                        <TableCell className="font-medium text-primary underline-offset-2 hover:underline">
+                {linhas.map(({ d, ps, noFiltro }) => {
+                  const pagas = ps.filter((p) => p.status === "pago").length;
+                  const pago = ps.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
+                  const aberto = noFiltro.reduce((a, p) => a + (p.valor ?? 0), 0);
+                  const venc = vencidoDe(ps);
+                  const cc = CONTRACT_STATUS_COLOR[d.contract_status];
+                  const aberto0 = expandido.has(d.id);
+                  return (
+                    <Fragment key={d.id}>
+                      <TableRow className="cursor-pointer" onClick={() => toggle(d.id)}>
+                        <TableCell className="text-muted-foreground">
+                          {aberto0 ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">
                           {d.leads?.nome_cliente || "—"}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
@@ -372,12 +354,85 @@ function VisaoInternaPage() {
                           {money(venc)}
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
-                {filtrados.length === 0 && (
+                      {aberto0 && (
+                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                          <TableCell />
+                          <TableCell colSpan={7} className="py-3">
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Parcelas de {d.leads?.nome_cliente || "—"}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelected(d);
+                                }}
+                              >
+                                Abrir e editar
+                              </Button>
+                            </div>
+                            {ps.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">Sem parcelas.</p>
+                            ) : (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="w-8">#</TableHead>
+                                    <TableHead>Vencimento</TableHead>
+                                    <TableHead>Forma</TableHead>
+                                    <TableHead className="text-right">Valor</TableHead>
+                                    <TableHead className="text-right">Parte Ruche</TableHead>
+                                    <TableHead className="text-right">Pago</TableHead>
+                                    <TableHead>Status</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {ps.map((p) => (
+                                    <TableRow key={p.id}>
+                                      <TableCell>{p.numero}</TableCell>
+                                      <TableCell>
+                                        {p.vencimento
+                                          ? new Date(p.vencimento).toLocaleDateString("pt-BR")
+                                          : "—"}
+                                      </TableCell>
+                                      <TableCell>{p.payment_method || "—"}</TableCell>
+                                      <TableCell className="text-right">{money(p.valor)}</TableCell>
+                                      <TableCell className="text-right text-muted-foreground">
+                                        {money(p.valor_ruche)}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {p.valor_pago != null ? money(p.valor_pago) : "—"}
+                                      </TableCell>
+                                      <TableCell>
+                                        <span
+                                          className="rounded-full px-2.5 py-1 text-xs font-medium"
+                                          style={{
+                                            background: PARCELA_BADGE[p.status].bg,
+                                            color: PARCELA_BADGE[p.status].fg,
+                                          }}
+                                        >
+                                          {PARCELA_STATUS_LABEL[p.status]}
+                                        </span>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  );
+                })}
+                {linhas.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      Nenhum deal vendido ainda.
+                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                      {vencFiltro === "todas"
+                        ? "Nenhum deal com parcelas."
+                        : `Nenhuma parcela ${VENC_LABEL[vencFiltro].toLowerCase()}.`}
                     </TableCell>
                   </TableRow>
                 )}
@@ -386,6 +441,33 @@ function VisaoInternaPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ===== VENDAS NO PERÍODO (filtrado por data de fechamento) ===== */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Vendas no período
+        </h2>
+        <DateRangePicker value={range} onChange={setRange} />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-xl bg-[#2C2C2A] p-4">
+          <p className="text-xs uppercase tracking-wide text-[#D3D1C7]">Total vendido</p>
+          <p className="mt-1.5 text-2xl font-bold text-white">{money(totalVendido)}</p>
+          <p className="mt-1 text-xs text-[#B4B2A9]">{dealsNoPeriodo.length} deals fechados</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total parceiro</p>
+          <p className="mt-1.5 text-2xl font-bold">{money(totalParceiro)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">fica com o parceiro</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Ruche</p>
+          <p className="mt-1.5 text-2xl font-bold">{money(totalRuche)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">margem da Ruche no período</p>
+        </div>
+      </div>
+
+      <ChartFaturamento deals={dealsNoPeriodo} />
     </div>
   );
 }
