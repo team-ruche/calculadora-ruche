@@ -1,6 +1,22 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { Fragment, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus, FileText, Search, ChevronRight, ChevronDown, Clock } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  ArrowLeft,
+  Plus,
+  FileText,
+  Search,
+  ChevronRight,
+  ChevronDown,
+  Clock,
+  Wallet,
+  AlertTriangle,
+  CalendarClock,
+  CheckCircle2,
+  TrendingUp,
+  Users,
+  Building2,
+  type LucideIcon,
+} from "lucide-react";
 import {
   supabase,
   type Proposal,
@@ -124,7 +140,7 @@ function DiasBadge({ dias }: { dias: number | null }) {
   const atrasoOuHoje = dias >= 0;
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium"
+      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums"
       style={{
         background: atrasoOuHoje ? "#F7C1C1" : "#FBE7BF",
         color: atrasoOuHoje ? "#791F1F" : "#7A4E05",
@@ -133,6 +149,76 @@ function DiasBadge({ dias }: { dias: number | null }) {
       <Clock className="h-3 w-3" />
       {dias}d
     </span>
+  );
+}
+
+// ---- KPI unificado ----------------------------------------------------------
+type Tone = "neutral" | "primary" | "danger" | "warn" | "success" | "dark";
+const KPI_TONE: Record<Tone, { value: string; iconBg: string; iconFg: string }> = {
+  neutral: { value: "", iconBg: "#F1F0EB", iconFg: "#45443D" },
+  primary: { value: "#0C447C", iconBg: "#E6F1FB", iconFg: "#0C447C" },
+  danger: { value: "#B42318", iconBg: "#FDECEC", iconFg: "#B42318" },
+  warn: { value: "#7A4E05", iconBg: "#FBEFD6", iconFg: "#7A4E05" },
+  success: { value: "#2C7A3F", iconBg: "#E7F4E4", iconFg: "#2C5212" },
+  dark: { value: "#FFFFFF", iconBg: "rgba(240,168,30,0.18)", iconFg: "#F0A81E" },
+};
+
+function Kpi({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  icon: LucideIcon;
+  tone?: Tone;
+}) {
+  const t = KPI_TONE[tone];
+  const isDark = tone === "dark";
+  return (
+    <div
+      className={`rounded-xl border p-4 shadow-sm ${isDark ? "border-transparent" : "bg-card"}`}
+      style={isDark ? { background: "#2C2C2A" } : undefined}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p
+            className={`text-xs font-medium uppercase tracking-wide ${isDark ? "text-[#D3D1C7]" : "text-muted-foreground"}`}
+          >
+            {label}
+          </p>
+          <p
+            className="mt-1.5 text-2xl font-bold tabular-nums"
+            style={t.value ? { color: t.value } : undefined}
+          >
+            {value}
+          </p>
+          {sub && (
+            <p className={`mt-1 text-xs ${isDark ? "text-[#B4B2A9]" : "text-muted-foreground"}`}>
+              {sub}
+            </p>
+          )}
+        </div>
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+          style={{ background: t.iconBg, color: t.iconFg }}
+        >
+          <Icon className="h-[18px] w-[18px]" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function SectionTitle({ dot, children }: { dot: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="h-2 w-2 rounded-full" style={{ background: dot }} />
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground">{children}</h2>
+    </div>
   );
 }
 
@@ -259,35 +345,24 @@ function VisaoInternaPage() {
       </div>
 
       {/* ===== COBRANÇA / RECEBÍVEIS (não depende de data) ===== */}
-      <div>
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Cobrança · todos os contratos
-        </h2>
+      <div className="space-y-3">
+        <SectionTitle dot="#0C447C">Cobrança · todos os contratos</SectionTitle>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl border bg-card p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              A receber (aberto)
-            </p>
-            <p className="mt-1.5 text-2xl font-bold">{money(aReceberTotal)}</p>
-          </div>
-          <div className="rounded-xl border bg-card p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Vencido (atrasado)
-            </p>
-            <p className="mt-1.5 text-2xl font-bold text-destructive">{money(vencidoTotal)}</p>
-          </div>
-          <div className="rounded-xl border bg-card p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Vence em 7 dias</p>
-            <p className="mt-1.5 text-2xl font-bold" style={{ color: "#7A4E05" }}>
-              {money(venceProx7)}
-            </p>
-          </div>
-          <div className="rounded-xl border bg-card p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Coletado (recebido do cliente)
-            </p>
-            <p className="mt-1.5 text-2xl font-bold text-emerald-600">{money(recebidoCliente)}</p>
-          </div>
+          <Kpi label="A receber" value={money(aReceberTotal)} tone="primary" icon={Wallet} />
+          <Kpi
+            label="Vencido (atrasado)"
+            value={money(vencidoTotal)}
+            tone="danger"
+            icon={AlertTriangle}
+          />
+          <Kpi label="Vence em 7 dias" value={money(venceProx7)} tone="warn" icon={CalendarClock} />
+          <Kpi
+            label="Coletado"
+            value={money(recebidoCliente)}
+            sub="recebido do cliente"
+            tone="success"
+            icon={CheckCircle2}
+          />
         </div>
       </div>
 
@@ -357,7 +432,10 @@ function VisaoInternaPage() {
                   const aberto0 = expandido.has(d.id);
                   return (
                     <Fragment key={d.id}>
-                      <TableRow className="cursor-pointer" onClick={() => toggle(d.id)}>
+                      <TableRow
+                        className="cursor-pointer transition-colors hover:bg-muted/40"
+                        onClick={() => toggle(d.id)}
+                      >
                         <TableCell className="text-muted-foreground">
                           {aberto0 ? (
                             <ChevronDown className="h-4 w-4" />
@@ -374,7 +452,7 @@ function VisaoInternaPage() {
                             onValueChange={(v) => setContrato(d.id, v as ContractStatus)}
                           >
                             <SelectTrigger
-                              className="h-8 w-[160px] border-none font-medium"
+                              className="h-7 w-[150px] rounded-full border-none text-xs font-semibold"
                               style={{ background: cc.bg, color: cc.fg }}
                             >
                               <SelectValue />
@@ -388,11 +466,17 @@ function VisaoInternaPage() {
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        <TableCell className="text-right">{money(d.total_cliente)}</TableCell>
-                        <TableCell className="text-right text-emerald-600">{money(pago)}</TableCell>
-                        <TableCell className="text-right font-medium">{money(aberto)}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {money(d.total_cliente)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-emerald-600">
+                          {money(pago)}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold tabular-nums">
+                          {money(aberto)}
+                        </TableCell>
                         <TableCell
-                          className={`text-right ${venc > 0 ? "font-medium text-destructive" : "text-muted-foreground"}`}
+                          className={`text-right tabular-nums ${venc > 0 ? "font-semibold text-destructive" : "text-muted-foreground"}`}
                         >
                           {money(venc)}
                         </TableCell>
@@ -409,72 +493,76 @@ function VisaoInternaPage() {
                         </TableCell>
                       </TableRow>
                       {aberto0 && (
-                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableRow className="bg-muted/20 hover:bg-muted/20">
                           <TableCell />
                           <TableCell colSpan={9} className="py-3">
-                            <div className="mb-2 flex items-center justify-between">
-                              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                                Parcelas de {d.leads?.nome_cliente || "—"}
-                              </span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelected(d);
-                                }}
-                              >
-                                Abrir e editar
-                              </Button>
-                            </div>
-                            {ps.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">Sem parcelas.</p>
-                            ) : (
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead className="w-8">#</TableHead>
-                                    <TableHead>Vencimento</TableHead>
-                                    <TableHead>Forma</TableHead>
-                                    <TableHead className="text-right">Valor</TableHead>
-                                    <TableHead className="text-right">Parte Ruche</TableHead>
-                                    <TableHead className="text-right">Pago</TableHead>
-                                    <TableHead>Status</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {ps.map((p) => (
-                                    <TableRow key={p.id}>
-                                      <TableCell>{p.numero}</TableCell>
-                                      <TableCell>
-                                        {p.vencimento
-                                          ? new Date(p.vencimento).toLocaleDateString("pt-BR")
-                                          : "—"}
-                                      </TableCell>
-                                      <TableCell>{p.payment_method || "—"}</TableCell>
-                                      <TableCell className="text-right">{money(p.valor)}</TableCell>
-                                      <TableCell className="text-right text-muted-foreground">
-                                        {money(p.valor_ruche)}
-                                      </TableCell>
-                                      <TableCell className="text-right">
-                                        {p.valor_pago != null ? money(p.valor_pago) : "—"}
-                                      </TableCell>
-                                      <TableCell>
-                                        <span
-                                          className="rounded-full px-2.5 py-1 text-xs font-medium"
-                                          style={{
-                                            background: PARCELA_BADGE[p.status].bg,
-                                            color: PARCELA_BADGE[p.status].fg,
-                                          }}
-                                        >
-                                          {PARCELA_STATUS_LABEL[p.status]}
-                                        </span>
-                                      </TableCell>
+                            <div className="rounded-lg border bg-card p-3">
+                              <div className="mb-2 flex items-center justify-between">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Parcelas de {d.leads?.nome_cliente || "—"}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelected(d);
+                                  }}
+                                >
+                                  Abrir e editar
+                                </Button>
+                              </div>
+                              {ps.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">Sem parcelas.</p>
+                              ) : (
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="w-8">#</TableHead>
+                                      <TableHead>Vencimento</TableHead>
+                                      <TableHead>Forma</TableHead>
+                                      <TableHead className="text-right">Valor</TableHead>
+                                      <TableHead className="text-right">Parte Ruche</TableHead>
+                                      <TableHead className="text-right">Pago</TableHead>
+                                      <TableHead>Status</TableHead>
                                     </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            )}
+                                  </TableHeader>
+                                  <TableBody>
+                                    {ps.map((p) => (
+                                      <TableRow key={p.id}>
+                                        <TableCell>{p.numero}</TableCell>
+                                        <TableCell>
+                                          {p.vencimento
+                                            ? new Date(p.vencimento).toLocaleDateString("pt-BR")
+                                            : "—"}
+                                        </TableCell>
+                                        <TableCell>{p.payment_method || "—"}</TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                          {money(p.valor)}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                                          {money(p.valor_ruche)}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                          {p.valor_pago != null ? money(p.valor_pago) : "—"}
+                                        </TableCell>
+                                        <TableCell>
+                                          <span
+                                            className="rounded-full px-2.5 py-1 text-xs font-medium"
+                                            style={{
+                                              background: PARCELA_BADGE[p.status].bg,
+                                              color: PARCELA_BADGE[p.status].fg,
+                                            }}
+                                          >
+                                            {PARCELA_STATUS_LABEL[p.status]}
+                                          </span>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       )}
@@ -498,27 +586,29 @@ function VisaoInternaPage() {
 
       {/* ===== VENDAS NO PERÍODO (filtrado por data de fechamento) ===== */}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Vendas no período
-        </h2>
+        <SectionTitle dot="#F0A81E">Vendas no período</SectionTitle>
         <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-xl bg-[#2C2C2A] p-4">
-          <p className="text-xs uppercase tracking-wide text-[#D3D1C7]">Total vendido</p>
-          <p className="mt-1.5 text-2xl font-bold text-white">{money(totalVendido)}</p>
-          <p className="mt-1 text-xs text-[#B4B2A9]">{dealsNoPeriodo.length} deals fechados</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total parceiro</p>
-          <p className="mt-1.5 text-2xl font-bold">{money(totalParceiro)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">fica com o parceiro</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Total Ruche</p>
-          <p className="mt-1.5 text-2xl font-bold">{money(totalRuche)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">margem da Ruche no período</p>
-        </div>
+        <Kpi
+          label="Total vendido"
+          value={money(totalVendido)}
+          sub={`${dealsNoPeriodo.length} deals fechados`}
+          tone="dark"
+          icon={TrendingUp}
+        />
+        <Kpi
+          label="Total parceiro"
+          value={money(totalParceiro)}
+          sub="fica com o parceiro"
+          icon={Users}
+        />
+        <Kpi
+          label="Total Ruche"
+          value={money(totalRuche)}
+          sub="margem da Ruche no período"
+          icon={Building2}
+        />
       </div>
 
       <ChartFaturamento deals={dealsNoPeriodo} />
