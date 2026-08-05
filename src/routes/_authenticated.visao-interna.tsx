@@ -52,6 +52,16 @@ import {
 import { ParcelaDialog } from "@/components/ParcelaDialog";
 import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
 import { ChartFaturamento } from "@/components/ChartFaturamento";
+import {
+  ColumnFilter,
+  colFilterActive,
+  matchText,
+  matchSel,
+  matchNum,
+  matchDate,
+  type ColFilters,
+  type FVal,
+} from "@/components/ColumnFilter";
 import { toast } from "sonner";
 
 type Range = { from: Date; to: Date };
@@ -269,6 +279,11 @@ function VisaoInternaPage() {
   const [parcelaEdit, setParcelaEdit] = useState<{ parcela: Parcela | null; deal: Deal } | null>(
     null,
   );
+  // Filtros por coluna (Por cliente e Parcelas).
+  const [fcli, setFcli] = useState<ColFilters>({});
+  const [fparc, setFparc] = useState<ColFilters>({});
+  const setColFcli = (k: string, v: FVal | undefined) => setFcli((s) => ({ ...s, [k]: v ?? {} }));
+  const setColFparc = (k: string, v: FVal | undefined) => setFparc((s) => ({ ...s, [k]: v ?? {} }));
 
   const load = async () => {
     setLoading(true);
@@ -361,9 +376,19 @@ function VisaoInternaPage() {
         !((p.status === "pago" || (p.valor_pago ?? 0) > 0) && !p.data_pagamento)
       )
         return false;
-      if (statusFiltro === "abertas") return isAberta(p);
-      if (statusFiltro === "pagas") return p.status === "pago";
-      if (statusFiltro === "vencidas") return isAberta(p) && bucketVenc(p) === "vencida";
+      if (statusFiltro === "abertas" && !isAberta(p)) return false;
+      if (statusFiltro === "pagas" && p.status !== "pago") return false;
+      if (statusFiltro === "vencidas" && !(isAberta(p) && bucketVenc(p) === "vencida"))
+        return false;
+      // Filtros por coluna.
+      if (!matchText(nomeDe(d), fparc.cliente)) return false;
+      if (!matchSel(p.payment_method || "—", fparc.metodo)) return false;
+      if (!matchNum(p.valor ?? 0, fparc.valor)) return false;
+      if (!matchSel(p.conta || "—", fparc.conta)) return false;
+      if (!matchDate(p.vencimento, fparc.vencimento)) return false;
+      if (!matchDate(p.data_pagamento, fparc.pagoEm)) return false;
+      if (!matchText(p.periodo || "", fparc.periodo)) return false;
+      if (!matchSel(p.status, fparc.status)) return false;
       return true;
     })
     .sort((a, b) => (b.p.vencimento ?? "").localeCompare(a.p.vencimento ?? ""));
@@ -409,7 +434,23 @@ function VisaoInternaPage() {
     })
     .filter(({ ps, noFiltro }) =>
       vencFiltro === "todas" && !vencRange ? ps.length > 0 : noFiltro.length > 0,
-    );
+    )
+    .filter(({ d, ps, noFiltro, prox }) => {
+      const pago = ps.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
+      const aberto = noFiltro.reduce((a, p) => a + (p.valor ?? 0), 0);
+      const venc = vencidoDe(ps);
+      const dias = prox ? diasParaVenc(prox) : null;
+      if (!matchText(nomeDe(d), fcli.cliente)) return false;
+      if (!matchSel(d.contract_status, fcli.contrato)) return false;
+      if (!matchNum(d.total_cliente ?? 0, fcli.faturado)) return false;
+      if (!matchNum(pago, fcli.recebido)) return false;
+      if (!matchNum(aberto, fcli.aReceber)) return false;
+      if (!matchNum(venc, fcli.vencido)) return false;
+      if (dias == null ? colFilterActive(fcli.dias) : !matchNum(dias, fcli.dias)) return false;
+      if (!matchNum(ps.length, fcli.parcelas)) return false;
+      if (!matchDate(prox?.vencimento ?? null, fcli.proxVenc)) return false;
+      return true;
+    });
 
   return (
     <div className="space-y-6">
@@ -672,17 +713,80 @@ function VisaoInternaPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-8" />
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Contrato</TableHead>
-                        <TableHead className="text-right">Faturado</TableHead>
-                        <TableHead className="text-right">Recebido</TableHead>
+                        <TableHead>
+                          Cliente
+                          <ColumnFilter
+                            type="text"
+                            value={fcli.cliente}
+                            onChange={(v) => setColFcli("cliente", v)}
+                          />
+                        </TableHead>
+                        <TableHead>
+                          Contrato
+                          <ColumnFilter
+                            type="select"
+                            options={Object.keys(CONTRACT_STATUS_LABEL)}
+                            labelFor={(o) => CONTRACT_STATUS_LABEL[o as ContractStatus]}
+                            value={fcli.contrato}
+                            onChange={(v) => setColFcli("contrato", v)}
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          Faturado
+                          <ColumnFilter
+                            type="num"
+                            value={fcli.faturado}
+                            onChange={(v) => setColFcli("faturado", v)}
+                          />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          Recebido
+                          <ColumnFilter
+                            type="num"
+                            value={fcli.recebido}
+                            onChange={(v) => setColFcli("recebido", v)}
+                          />
+                        </TableHead>
                         <TableHead className="text-right">
                           {vencFiltro === "todas" ? "A receber" : VENC_LABEL[vencFiltro]}
+                          <ColumnFilter
+                            type="num"
+                            value={fcli.aReceber}
+                            onChange={(v) => setColFcli("aReceber", v)}
+                          />
                         </TableHead>
-                        <TableHead className="text-right">Vencido</TableHead>
-                        <TableHead className="text-center">Dias</TableHead>
-                        <TableHead className="text-center">Parcelas</TableHead>
-                        <TableHead>Próx. vencimento</TableHead>
+                        <TableHead className="text-right">
+                          Vencido
+                          <ColumnFilter
+                            type="num"
+                            value={fcli.vencido}
+                            onChange={(v) => setColFcli("vencido", v)}
+                          />
+                        </TableHead>
+                        <TableHead className="text-center">
+                          Dias
+                          <ColumnFilter
+                            type="num"
+                            value={fcli.dias}
+                            onChange={(v) => setColFcli("dias", v)}
+                          />
+                        </TableHead>
+                        <TableHead className="text-center">
+                          Parcelas
+                          <ColumnFilter
+                            type="num"
+                            value={fcli.parcelas}
+                            onChange={(v) => setColFcli("parcelas", v)}
+                          />
+                        </TableHead>
+                        <TableHead>
+                          Próx. vencimento
+                          <ColumnFilter
+                            type="date"
+                            value={fcli.proxVenc}
+                            onChange={(v) => setColFcli("proxVenc", v)}
+                          />
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -959,14 +1063,74 @@ function VisaoInternaPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Cliente</TableHead>
-                          <TableHead>Método</TableHead>
-                          <TableHead className="text-right">Valor</TableHead>
-                          <TableHead>Conta</TableHead>
-                          <TableHead>Vencimento</TableHead>
-                          <TableHead>Pago em</TableHead>
-                          <TableHead>Período</TableHead>
-                          <TableHead>Status</TableHead>
+                          <TableHead>
+                            Cliente
+                            <ColumnFilter
+                              type="text"
+                              value={fparc.cliente}
+                              onChange={(v) => setColFparc("cliente", v)}
+                            />
+                          </TableHead>
+                          <TableHead>
+                            Método
+                            <ColumnFilter
+                              type="select"
+                              options={[...PAYMENT_METHODS, "—"]}
+                              value={fparc.metodo}
+                              onChange={(v) => setColFparc("metodo", v)}
+                            />
+                          </TableHead>
+                          <TableHead className="text-right">
+                            Valor
+                            <ColumnFilter
+                              type="num"
+                              value={fparc.valor}
+                              onChange={(v) => setColFparc("valor", v)}
+                            />
+                          </TableHead>
+                          <TableHead>
+                            Conta
+                            <ColumnFilter
+                              type="select"
+                              options={[...CONTAS, "—"]}
+                              value={fparc.conta}
+                              onChange={(v) => setColFparc("conta", v)}
+                            />
+                          </TableHead>
+                          <TableHead>
+                            Vencimento
+                            <ColumnFilter
+                              type="date"
+                              value={fparc.vencimento}
+                              onChange={(v) => setColFparc("vencimento", v)}
+                            />
+                          </TableHead>
+                          <TableHead>
+                            Pago em
+                            <ColumnFilter
+                              type="date"
+                              value={fparc.pagoEm}
+                              onChange={(v) => setColFparc("pagoEm", v)}
+                            />
+                          </TableHead>
+                          <TableHead>
+                            Período
+                            <ColumnFilter
+                              type="text"
+                              value={fparc.periodo}
+                              onChange={(v) => setColFparc("periodo", v)}
+                            />
+                          </TableHead>
+                          <TableHead>
+                            Status
+                            <ColumnFilter
+                              type="select"
+                              options={Object.keys(PARCELA_STATUS_LABEL)}
+                              labelFor={(o) => PARCELA_STATUS_LABEL[o as ParcelaStatus]}
+                              value={fparc.status}
+                              onChange={(v) => setColFparc("status", v)}
+                            />
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
