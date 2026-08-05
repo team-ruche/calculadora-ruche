@@ -1,6 +1,15 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Plus, FileText, Search, ChevronRight, ChevronDown } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  FileText,
+  Search,
+  ChevronRight,
+  ChevronDown,
+  Clock,
+  X,
+} from "lucide-react";
 import {
   supabase,
   type Proposal,
@@ -105,6 +114,37 @@ const VENC_LABEL: Record<"todas" | VencBucket, string> = {
   depois: "Após 7 dias",
 };
 
+// Dias em relação ao vencimento: negativo = falta vencer, 0 = vence hoje, positivo = atraso.
+const diasParaVenc = (p: Parcela): number | null => {
+  if (!p.vencimento) return null;
+  const venc = new Date(p.vencimento);
+  venc.setHours(0, 0, 0, 0);
+  return Math.round((startOfToday().getTime() - venc.getTime()) / 86400000);
+};
+
+// Parcela aberta mais urgente (menor vencimento) de um conjunto.
+const maisUrgente = (ps: Parcela[]): Parcela | null =>
+  ps
+    .filter((p) => p.vencimento)
+    .sort((a, b) => (a.vencimento ?? "").localeCompare(b.vencimento ?? ""))[0] ?? null;
+
+function DiasBadge({ dias }: { dias: number | null }) {
+  if (dias === null) return <span className="text-muted-foreground">—</span>;
+  const atrasoOuHoje = dias >= 0;
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium"
+      style={{
+        background: atrasoOuHoje ? "#F7C1C1" : "#FBE7BF",
+        color: atrasoOuHoje ? "#791F1F" : "#7A4E05",
+      }}
+    >
+      <Clock className="h-3 w-3" />
+      {dias}d
+    </span>
+  );
+}
+
 function VisaoInternaPage() {
   const { isRuche } = useAuth();
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -121,8 +161,10 @@ function VisaoInternaPage() {
       else n.add(id);
       return n;
     });
-  // Filtro por data de fechamento do deal.
+  // Filtro por data de fechamento do deal (bloco "Vendas no período").
   const [range, setRange] = useState<Range>(() => presetRange("mes"));
+  // Filtro por data de VENCIMENTO na tabela de cobrança (null = todas as datas).
+  const [vencRange, setVencRange] = useState<Range | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -200,17 +242,21 @@ function VisaoInternaPage() {
     );
   }
 
-  // Tabela de cobrança: TODOS os deals (não filtra por data), só por busca e vencimento.
+  // Tabela de cobrança: TODOS os deals. Filtra por busca, bucket e data de vencimento.
+  const noVencRange = (p: Parcela) => !vencRange || inRange(p.vencimento, vencRange);
   const linhas = deals
     .filter((d) => (d.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()))
     .map((d) => {
       const ps = parcelasDe[d.id] ?? [];
       const abertas = ps.filter(isAberta);
-      const noFiltro =
+      let noFiltro =
         vencFiltro === "todas" ? abertas : abertas.filter((p) => bucketVenc(p) === vencFiltro);
-      return { d, ps, noFiltro };
+      noFiltro = noFiltro.filter(noVencRange);
+      return { d, ps, noFiltro, prox: maisUrgente(noFiltro) };
     })
-    .filter(({ ps, noFiltro }) => (vencFiltro === "todas" ? ps.length > 0 : noFiltro.length > 0));
+    .filter(({ ps, noFiltro }) =>
+      vencFiltro === "todas" && !vencRange ? ps.length > 0 : noFiltro.length > 0,
+    );
 
   return (
     <div className="space-y-6">
@@ -282,6 +328,23 @@ function VisaoInternaPage() {
                 </button>
               ))}
             </div>
+            {vencRange ? (
+              <div className="flex items-center gap-1">
+                <DateRangePicker value={vencRange} onChange={setVencRange} />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setVencRange(null)}
+                  title="Limpar filtro de vencimento"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setVencRange(presetRange("mes"))}>
+                <Clock className="mr-1 h-4 w-4" /> Filtrar vencimento
+              </Button>
+            )}
           </div>
           {loading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
@@ -293,6 +356,8 @@ function VisaoInternaPage() {
                   <TableHead>Cliente</TableHead>
                   <TableHead>Contrato</TableHead>
                   <TableHead className="text-center">Parcelas</TableHead>
+                  <TableHead>Próx. vencimento</TableHead>
+                  <TableHead className="text-center">Dias</TableHead>
                   <TableHead className="text-right">Faturado</TableHead>
                   <TableHead className="text-right">Recebido</TableHead>
                   <TableHead className="text-right">
@@ -302,11 +367,12 @@ function VisaoInternaPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {linhas.map(({ d, ps, noFiltro }) => {
+                {linhas.map(({ d, ps, noFiltro, prox }) => {
                   const pagas = ps.filter((p) => p.status === "pago").length;
                   const pago = ps.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
                   const aberto = noFiltro.reduce((a, p) => a + (p.valor ?? 0), 0);
                   const venc = vencidoDe(ps);
+                  const dias = prox ? diasParaVenc(prox) : null;
                   const cc = CONTRACT_STATUS_COLOR[d.contract_status];
                   const aberto0 = expandido.has(d.id);
                   return (
@@ -345,6 +411,14 @@ function VisaoInternaPage() {
                         <TableCell className="text-center text-sm">
                           {pagas}/{ps.length}
                         </TableCell>
+                        <TableCell className="text-sm">
+                          {prox?.vencimento
+                            ? new Date(prox.vencimento).toLocaleDateString("pt-BR")
+                            : "—"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <DiasBadge dias={dias} />
+                        </TableCell>
                         <TableCell className="text-right">{money(d.total_cliente)}</TableCell>
                         <TableCell className="text-right text-emerald-600">{money(pago)}</TableCell>
                         <TableCell className="text-right font-medium">{money(aberto)}</TableCell>
@@ -357,7 +431,7 @@ function VisaoInternaPage() {
                       {aberto0 && (
                         <TableRow className="bg-muted/30 hover:bg-muted/30">
                           <TableCell />
-                          <TableCell colSpan={7} className="py-3">
+                          <TableCell colSpan={9} className="py-3">
                             <div className="mb-2 flex items-center justify-between">
                               <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                                 Parcelas de {d.leads?.nome_cliente || "—"}
@@ -429,7 +503,7 @@ function VisaoInternaPage() {
                 })}
                 {linhas.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center text-muted-foreground">
                       {vencFiltro === "todas"
                         ? "Nenhum deal com parcelas."
                         : `Nenhuma parcela ${VENC_LABEL[vencFiltro].toLowerCase()}.`}
