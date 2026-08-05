@@ -355,15 +355,15 @@ function VisaoInternaPage() {
                   <TableHead className="w-8" />
                   <TableHead>Cliente</TableHead>
                   <TableHead>Contrato</TableHead>
-                  <TableHead className="text-center">Parcelas</TableHead>
-                  <TableHead>Próx. vencimento</TableHead>
-                  <TableHead className="text-center">Dias</TableHead>
                   <TableHead className="text-right">Faturado</TableHead>
                   <TableHead className="text-right">Recebido</TableHead>
                   <TableHead className="text-right">
-                    {vencFiltro === "todas" ? "Aberto" : VENC_LABEL[vencFiltro]}
+                    {vencFiltro === "todas" ? "A receber" : VENC_LABEL[vencFiltro]}
                   </TableHead>
                   <TableHead className="text-right">Vencido</TableHead>
+                  <TableHead className="text-center">Dias</TableHead>
+                  <TableHead className="text-center">Parcelas</TableHead>
+                  <TableHead>Próx. vencimento</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -408,17 +408,6 @@ function VisaoInternaPage() {
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        <TableCell className="text-center text-sm">
-                          {pagas}/{ps.length}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {prox?.vencimento
-                            ? new Date(prox.vencimento).toLocaleDateString("pt-BR")
-                            : "—"}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <DiasBadge dias={dias} />
-                        </TableCell>
                         <TableCell className="text-right">{money(d.total_cliente)}</TableCell>
                         <TableCell className="text-right text-emerald-600">{money(pago)}</TableCell>
                         <TableCell className="text-right font-medium">{money(aberto)}</TableCell>
@@ -426,6 +415,17 @@ function VisaoInternaPage() {
                           className={`text-right ${venc > 0 ? "font-medium text-destructive" : "text-muted-foreground"}`}
                         >
                           {money(venc)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <DiasBadge dias={dias} />
+                        </TableCell>
+                        <TableCell className="text-center text-sm">
+                          {pagas}/{ps.length}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {prox?.vencimento
+                            ? new Date(prox.vencimento).toLocaleDateString("pt-BR")
+                            : "—"}
                         </TableCell>
                       </TableRow>
                       {aberto0 && (
