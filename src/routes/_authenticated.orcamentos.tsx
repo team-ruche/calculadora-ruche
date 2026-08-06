@@ -13,6 +13,8 @@ import {
 } from "@/integrations/supabase/models";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ListFilter, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
@@ -311,18 +313,26 @@ function OrcamentosPage() {
         </p>
       </div>
 
-      {/* Barra de filtros fixa no scroll */}
+      {/* Barra de filtros fixa no scroll — compacta */}
       <div className="sticky top-14 z-30 space-y-2 border-b bg-background/95 py-2.5 backdrop-blur">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={() => setDialog({ mode: "create" })}>
-            <Plus className="mr-1 h-4 w-4" /> Novo Orçamento
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setDialog({ mode: "create" })} className="shrink-0">
+            <Plus className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Novo Orçamento</span>
           </Button>
           <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
-          <Button variant="outline" onClick={abrirConfig}>
-            <Settings className="h-4 w-4 sm:mr-1" />
-            <span className="hidden sm:inline">Configuração</span>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={abrirConfig}
+            className="shrink-0"
+            aria-label="Configuração"
+          >
+            <Settings className="h-4 w-4" />
           </Button>
-          <div className="flex min-w-[160px] flex-1 items-center gap-2 rounded-lg border bg-card px-3 py-2">
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex flex-1 items-center gap-2 rounded-lg border bg-card px-3 py-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
               value={busca}
@@ -331,34 +341,55 @@ function OrcamentosPage() {
               className="w-full bg-transparent text-sm outline-none"
             />
           </div>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {STAGE_ORDER.map((s) => {
-            const on = statusFiltro.has(s);
-            const c = STAGE_BADGE[s];
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => toggleStatus(s)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  on ? "border-transparent" : "text-muted-foreground hover:text-foreground"
-                }`}
-                style={on ? { background: c.bg, color: c.fg } : undefined}
-              >
-                {STAGE_LABEL[s]}
-              </button>
-            );
-          })}
-          {statusFiltro.size > 0 && (
-            <button
-              type="button"
-              onClick={() => setStatusFiltro(new Set())}
-              className="rounded-full px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              Limpar
-            </button>
-          )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="shrink-0 gap-1.5">
+                <ListFilter className="h-4 w-4" />
+                Status
+                {statusFiltro.size > 0 && (
+                  <span className="ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold text-primary-foreground">
+                    {statusFiltro.size}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-2">
+              <div className="space-y-0.5">
+                {STAGE_ORDER.map((s) => {
+                  const on = statusFiltro.has(s);
+                  const c = STAGE_BADGE[s];
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => toggleStatus(s)}
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                    >
+                      <span
+                        className="flex h-4 w-4 items-center justify-center rounded"
+                        style={{
+                          background: on ? c.bg : "transparent",
+                          border: `1px solid ${on ? c.fg : "var(--border)"}`,
+                        }}
+                      >
+                        {on && <Check className="h-3 w-3" style={{ color: c.fg }} />}
+                      </span>
+                      {STAGE_LABEL[s]}
+                    </button>
+                  );
+                })}
+              </div>
+              {statusFiltro.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFiltro(new Set())}
+                  className="mt-1 w-full rounded-md px-2 py-1.5 text-left text-xs font-medium text-muted-foreground hover:bg-accent"
+                >
+                  Limpar filtros
+                </button>
+              )}
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 

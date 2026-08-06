@@ -47,7 +47,7 @@ export function presetRange(p: Preset): { from: Date; to: Date } {
   }
 }
 
-const fmt = (d: Date) => format(d, "d MMM yyyy");
+const fmt = (d: Date) => format(d, "d MMM yy");
 
 interface Props {
   value: { from: Date; to: Date } | null;
@@ -91,9 +91,9 @@ export function DateRangePicker({ value, onChange, clearable, placeholder }: Pro
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="m-1 h-12 gap-2.5 rounded-full border border-border bg-card px-7 text-[15px] font-bold text-foreground shadow-sm hover:bg-accent"
+          className="h-10 gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-sm hover:bg-accent"
         >
-          <CalendarIcon className="h-[18px] w-[18px] shrink-0 text-primary" />
+          <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
           <span className="whitespace-nowrap">
             {value
               ? `${fmt(value.from)} – ${fmt(value.to)}`
