@@ -131,7 +131,6 @@ function Overview() {
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [busca, setBusca] = useState("");
   const isMobile = useIsMobile();
-  const [mobileStage, setMobileStage] = useState<ProposalStage>("appointment_confirmed");
 
   const load = async () => {
     setLoading(true);
@@ -336,57 +335,45 @@ function Overview() {
           }}
         />
       ) : isMobile ? (
-        // Mobile: abas de estágio (sem scroll lateral de cards) + coluna única.
-        <div>
-          <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
-            {STAGE_ORDER.map((s) => {
-              const active = mobileStage === s;
-              const c = STAGE_COLOR[s];
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setMobileStage(s)}
-                  className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold"
-                  style={
-                    active
-                      ? { background: c.bar, color: "#fff" }
-                      : { background: c.head, color: c.headText }
-                  }
-                >
-                  {STAGE_LABEL[s]} · {count(s)}
-                </button>
-              );
-            })}
-          </div>
-          <div className="rounded-xl border border-border/60 bg-muted/30 p-2">
+        // Mobile: carrossel — deslize pro lado pra trocar de estágio (uma tela por estágio).
+        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {STAGE_ORDER.map((stage) => (
             <div
-              className="mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
-              style={{
-                background: STAGE_COLOR[mobileStage].head,
-                color: STAGE_COLOR[mobileStage].headText,
-              }}
+              key={stage}
+              className="flex w-[88%] shrink-0 snap-center flex-col rounded-xl border border-border/60 bg-muted/30 p-2"
             >
-              <span>{STAGE_LABEL[mobileStage]}</span>
-              <span>Total: {money(sumStage(mobileStage))}</span>
+              <div
+                className="mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
+                style={{ background: STAGE_COLOR[stage].head, color: STAGE_COLOR[stage].headText }}
+              >
+                <span>{STAGE_LABEL[stage]}</span>
+                <span className="rounded-full bg-background/70 px-1.5">{count(stage)}</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {loading && <p className="p-2 text-xs text-muted-foreground">Carregando…</p>}
+                {!loading && byStage[stage].length === 0 && (
+                  <p className="p-2 text-xs text-muted-foreground">Nenhum card neste estágio.</p>
+                )}
+                {byStage[stage].map((row) => (
+                  <KanbanCard
+                    key={row.id}
+                    row={row}
+                    onDragStart={() => setDragId(row.id)}
+                    onOrcamento={() => abrirOrcamento(row)}
+                    onDetail={() => setDetail(row)}
+                    onStageChange={(next) => changeStage(row, next)}
+                  />
+                ))}
+              </div>
+              <div
+                className="mt-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
+                style={{ background: STAGE_COLOR[stage].head, color: STAGE_COLOR[stage].headText }}
+              >
+                <span>Total</span>
+                <span>{money(sumStage(stage))}</span>
+              </div>
             </div>
-            <div className="flex flex-col gap-2">
-              {loading && <p className="p-2 text-xs text-muted-foreground">Carregando…</p>}
-              {!loading && byStage[mobileStage].length === 0 && (
-                <p className="p-2 text-xs text-muted-foreground">Nenhum card neste estágio.</p>
-              )}
-              {byStage[mobileStage].map((row) => (
-                <KanbanCard
-                  key={row.id}
-                  row={row}
-                  onDragStart={() => setDragId(row.id)}
-                  onOrcamento={() => abrirOrcamento(row)}
-                  onDetail={() => setDetail(row)}
-                  onStageChange={(next) => changeStage(row, next)}
-                />
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">

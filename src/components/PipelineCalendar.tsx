@@ -120,6 +120,21 @@ export function PipelineCalendar({
     onWeekStart(startOfWeek(new Date()));
   };
 
+  // Deslizar pro lado troca o dia (mobile). Só age em swipe horizontal claro.
+  const touch = useRef<{ x: number; y: number } | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!isMobile || !touch.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touch.current.x;
+    const dy = t.clientY - touch.current.y;
+    touch.current = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1);
+  };
+
   const eventsFor = (day: Date) =>
     rows.filter((r) => r.visita_at && isSameDay(new Date(r.visita_at), day));
 
@@ -162,7 +177,7 @@ export function PipelineCalendar({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div className={isMobile ? "w-full" : "min-w-[840px]"}>
           {/* Cabeçalho dos dias */}
           <div className="grid border-b bg-muted/20" style={{ gridTemplateColumns: gridCols }}>
