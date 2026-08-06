@@ -100,7 +100,7 @@ export function MobileBottomNav() {
   const visible = items.filter((i) => !i.rucheOnly || isRuche);
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-background/95 backdrop-blur md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-sidebar-border bg-sidebar md:hidden">
       {visible.map((item) => {
         const active = path === item.url || path.startsWith(item.url + "/");
         return (
@@ -108,7 +108,7 @@ export function MobileBottomNav() {
             key={item.url}
             to={item.url}
             className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
-              active ? "text-primary" : "text-muted-foreground"
+              active ? "text-sidebar-primary" : "text-sidebar-foreground/60"
             }`}
           >
             <item.icon className="h-5 w-5" />

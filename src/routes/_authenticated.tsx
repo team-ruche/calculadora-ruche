@@ -58,7 +58,7 @@ function AuthenticatedLayout() {
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex h-14 items-center gap-3 border-b bg-background/60 px-4 backdrop-blur">
             <SidebarTrigger />
-            <div className="text-sm text-muted-foreground">Calculadora de Orçamento</div>
+            <div className="text-sm text-muted-foreground">Ruche Partner</div>
           </header>
           <main className="min-w-0 flex-1 overflow-x-clip p-4 pb-24 sm:p-6 sm:pb-24 md:pb-6">
             <Outlet />
