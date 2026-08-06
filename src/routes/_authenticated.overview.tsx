@@ -250,15 +250,12 @@ function Overview() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Overview</h1>
-          <p className="text-sm text-muted-foreground">
-            Bem-vindo, {user?.nome || user?.email}.{" "}
-            {isRuche ? "Você tem acesso total." : "Você é parceiro."}
-          </p>
-        </div>
-        <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Overview</h1>
+        <p className="text-sm text-muted-foreground">
+          Bem-vindo, {user?.nome || user?.email}.{" "}
+          {isRuche ? "Você tem acesso total." : "Você é parceiro."}
+        </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -295,6 +292,7 @@ function Overview() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
           <div className="flex w-full items-center gap-2 rounded-lg border bg-card px-3 py-1.5 sm:w-auto">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
