@@ -26,6 +26,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { OrcamentoForm } from "@/components/OrcamentoForm";
 import { OrcamentoView } from "@/components/OrcamentoView";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
 import { PipelineCalendar, startOfWeek } from "@/components/PipelineCalendar";
 import { LeadDetalhe } from "@/components/LeadDetalhe";
@@ -129,6 +130,8 @@ function Overview() {
   const [sortBy, setSortBy] = useState<SortBy>("visita");
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [busca, setBusca] = useState("");
+  const isMobile = useIsMobile();
+  const [mobileStage, setMobileStage] = useState<ProposalStage>("appointment_confirmed");
 
   const load = async () => {
     setLoading(true);
@@ -332,8 +335,61 @@ function Overview() {
             if (r) abrirOrcamento(r);
           }}
         />
+      ) : isMobile ? (
+        // Mobile: abas de estágio (sem scroll lateral de cards) + coluna única.
+        <div>
+          <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
+            {STAGE_ORDER.map((s) => {
+              const active = mobileStage === s;
+              const c = STAGE_COLOR[s];
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setMobileStage(s)}
+                  className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold"
+                  style={
+                    active
+                      ? { background: c.bar, color: "#fff" }
+                      : { background: c.head, color: c.headText }
+                  }
+                >
+                  {STAGE_LABEL[s]} · {count(s)}
+                </button>
+              );
+            })}
+          </div>
+          <div className="rounded-xl border border-border/60 bg-muted/30 p-2">
+            <div
+              className="mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
+              style={{
+                background: STAGE_COLOR[mobileStage].head,
+                color: STAGE_COLOR[mobileStage].headText,
+              }}
+            >
+              <span>{STAGE_LABEL[mobileStage]}</span>
+              <span>Total: {money(sumStage(mobileStage))}</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              {loading && <p className="p-2 text-xs text-muted-foreground">Carregando…</p>}
+              {!loading && byStage[mobileStage].length === 0 && (
+                <p className="p-2 text-xs text-muted-foreground">Nenhum card neste estágio.</p>
+              )}
+              {byStage[mobileStage].map((row) => (
+                <KanbanCard
+                  key={row.id}
+                  row={row}
+                  onDragStart={() => setDragId(row.id)}
+                  onOrcamento={() => abrirOrcamento(row)}
+                  onDetail={() => setDetail(row)}
+                  onStageChange={(next) => changeStage(row, next)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
       ) : (
-        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:overflow-visible xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
           {STAGE_ORDER.map((stage) => (
             <div
               key={stage}
@@ -343,7 +399,7 @@ function Overview() {
                 setDragId(null);
                 if (row) changeStage(row, stage);
               }}
-              className="flex w-[82%] shrink-0 snap-center flex-col rounded-xl border border-border/60 bg-muted/30 p-2 md:w-auto md:shrink"
+              className="flex flex-col rounded-xl border border-border/60 bg-muted/30 p-2"
             >
               <div
                 className="mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
@@ -645,15 +701,33 @@ function KanbanCard({
       </div>
 
       {/* Trocar de estágio no mobile (arrastar não funciona bem no toque) */}
-      <div className="mt-2 md:hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="mt-2.5 md:hidden" onClick={(e) => e.stopPropagation()}>
         <Select value={row.stage} onValueChange={(v) => onStageChange(v as ProposalStage)}>
-          <SelectTrigger className="h-8 w-full text-xs">
-            <SelectValue />
+          <SelectTrigger
+            className="h-9 w-full rounded-lg border-none text-xs font-semibold"
+            style={{
+              background: STAGE_COLOR[row.stage].head,
+              color: STAGE_COLOR[row.stage].headText,
+            }}
+          >
+            <span className="flex items-center gap-1.5">
+              <span
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ background: STAGE_COLOR[row.stage].bar }}
+              />
+              {STAGE_LABEL[row.stage]}
+            </span>
           </SelectTrigger>
           <SelectContent>
             {STAGE_ORDER.map((s) => (
               <SelectItem key={s} value={s}>
-                Mover para: {STAGE_LABEL[s]}
+                <span className="flex items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ background: STAGE_COLOR[s].bar }}
+                  />
+                  {STAGE_LABEL[s]}
+                </span>
               </SelectItem>
             ))}
           </SelectContent>

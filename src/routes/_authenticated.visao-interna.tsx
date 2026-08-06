@@ -453,7 +453,7 @@ function VisaoInternaPage() {
     });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-clip">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Controle Financeiro</h1>

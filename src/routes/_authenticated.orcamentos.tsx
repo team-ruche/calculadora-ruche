@@ -278,7 +278,7 @@ function OrcamentosPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-clip">
       {formDialog}
       <LeadDetalhe
         lead={leadDetail}
