@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   ChevronLeft,
   ChevronRight,
@@ -34,7 +35,7 @@ export type CalRow = {
 const STAGE_BG: Record<ProposalStage, { bg: string; fg: string; border: string; dot: string }> = {
   appointment_confirmed: { bg: "#FCEED2", fg: "#5C3B04", border: "#F0A81E", dot: "#F0A81E" },
   appointment_canceled: { bg: "#F9E1D7", fg: "#5C2410", border: "#E07A52", dot: "#E07A52" },
-  negotiation: { bg: "#F9E7C6", fg: "#5C3304", border: "#D98416", dot: "#D98416" },
+  negotiation: { bg: "#E6F1FB", fg: "#0C447C", border: "#185FA5", dot: "#185FA5" },
   no_deal: { bg: "#E6E4DB", fg: "#3A3934", border: "#9C9A90", dot: "#9C9A90" },
   deal: { bg: "#DFEECB", fg: "#204009", border: "#5FA13B", dot: "#5FA13B" },
 };
@@ -77,11 +78,21 @@ export function PipelineCalendar({
   onChangeStage,
   onOrcamento,
 }: Props) {
+  const isMobile = useIsMobile();
+  // No mobile a visão é de 1 dia (começando hoje); no desktop, a semana toda.
+  const [mobileDay, setMobileDay] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
     return d;
   });
+  const visibleDays = isMobile ? [mobileDay] : days;
+  const gridCols = `60px repeat(${visibleDays.length}, minmax(0, 1fr))`;
   const hours = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
   const now = new Date();
   const isSameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
@@ -92,9 +103,21 @@ export function PipelineCalendar({
   }, []);
 
   const move = (delta: number) => {
+    if (isMobile) {
+      const d = new Date(mobileDay);
+      d.setDate(d.getDate() + delta);
+      setMobileDay(d);
+      return;
+    }
     const d = new Date(weekStart);
     d.setDate(d.getDate() + delta * 7);
     onWeekStart(d);
+  };
+  const irHoje = () => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    setMobileDay(t);
+    onWeekStart(startOfWeek(new Date()));
   };
 
   const eventsFor = (day: Date) =>
@@ -109,7 +132,7 @@ export function PipelineCalendar({
     <div className="overflow-hidden rounded-xl border bg-card">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
-        <Button variant="outline" size="sm" onClick={() => onWeekStart(startOfWeek(new Date()))}>
+        <Button variant="outline" size="sm" onClick={irHoje}>
           Hoje
         </Button>
         <div className="flex items-center gap-1.5">
@@ -117,8 +140,9 @@ export function PipelineCalendar({
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="min-w-44 text-center text-sm font-semibold">
-            {format(days[0], "d MMM", { locale: ptBR })} –{" "}
-            {format(days[6], "d MMM yyyy", { locale: ptBR })}
+            {isMobile
+              ? format(mobileDay, "EEE, d MMM yyyy", { locale: ptBR })
+              : `${format(days[0], "d MMM", { locale: ptBR })} – ${format(days[6], "d MMM yyyy", { locale: ptBR })}`}
           </span>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => move(1)}>
             <ChevronRight className="h-4 w-4" />
@@ -139,11 +163,11 @@ export function PipelineCalendar({
       </div>
 
       <div className="overflow-x-auto">
-        <div className="min-w-[840px]">
+        <div className={isMobile ? "w-full" : "min-w-[840px]"}>
           {/* Cabeçalho dos dias */}
-          <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b bg-muted/20">
+          <div className="grid border-b bg-muted/20" style={{ gridTemplateColumns: gridCols }}>
             <div />
-            {days.map((d) => {
+            {visibleDays.map((d) => {
               const hoje = isSameDay(d, now);
               return (
                 <div
@@ -171,7 +195,7 @@ export function PipelineCalendar({
 
           {/* Grade (rolagem vertical: meia-noite a meia-noite) */}
           <div ref={scrollRef} className="max-h-[560px] overflow-y-auto">
-            <div className="grid grid-cols-[60px_repeat(7,1fr)]">
+            <div className="grid" style={{ gridTemplateColumns: gridCols }}>
               {/* Gutter de horas */}
               <div>
                 {hours.map((h) => (
@@ -188,7 +212,7 @@ export function PipelineCalendar({
               </div>
 
               {/* Colunas dos dias */}
-              {days.map((day) => {
+              {visibleDays.map((day) => {
                 const hoje = isSameDay(day, now);
                 return (
                   <div

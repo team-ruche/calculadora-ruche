@@ -4,6 +4,7 @@ import { supabase, type MotorPrice } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -104,6 +105,7 @@ export function OrcamentoForm({
   const [telefone, setTelefone] = useState("");
   const [endereco, setEndereco] = useState("");
   const [email, setEmail] = useState("");
+  const [notas, setNotas] = useState("");
   const [rooms, setRooms] = useState<RoomDraft[]>([emptyRoom()]);
   const [extras, setExtras] = useState<ExtrasDraft>(emptyExtras());
   const [segundoAndar, setSegundoAndar] = useState(false);
@@ -148,25 +150,26 @@ export function OrcamentoForm({
   const loadExisting = async (pid: string, defNovo: string, defAtual: string) => {
     const { data: prop } = await supabase
       .from("proposals")
-      .select("lead_id, leads(nome_cliente, telefone, endereco, email)")
+      .select("lead_id, notas, leads(nome_cliente, telefone, endereco, email)")
       .eq("id", pid)
       .maybeSingle();
-    const lead = (
-      prop as {
-        leads: {
-          nome_cliente: string;
-          telefone: string | null;
-          endereco: string | null;
-          email: string | null;
-        } | null;
-      } | null
-    )?.leads;
+    const propRow = prop as {
+      notas: string | null;
+      leads: {
+        nome_cliente: string;
+        telefone: string | null;
+        endereco: string | null;
+        email: string | null;
+      } | null;
+    } | null;
+    const lead = propRow?.leads;
     if (lead) {
       setNomeCliente(lead.nome_cliente ?? "");
       setTelefone(lead.telefone ?? "");
       setEndereco(lead.endereco ?? "");
       setEmail(lead.email ?? "");
     }
+    setNotas(propRow?.notas ?? "");
 
     const { data: rms } = await supabase.from("proposal_rooms").select("*").eq("proposal_id", pid);
     const { data: media } = await supabase
@@ -350,6 +353,12 @@ export function OrcamentoForm({
       if (removedPaths.length) await supabase.storage.from("proposal-media").remove(removedPaths);
     }
 
+    // Notas gerais da medição (vale para create e edit).
+    await supabase
+      .from("proposals")
+      .update({ notas: notas.trim() || null })
+      .eq("id", pid);
+
     // (re)cria ambientes um a um para vincular a mídia ao room_id
     for (const r of rooms) {
       const { data: room, error: roomErr } = await supabase
@@ -469,19 +478,19 @@ export function OrcamentoForm({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Piso novo</Label>
-                  <RoomSelect
-                    value={room.pisoNovo}
-                    opts={pisoNovoOpts}
-                    onChange={(v) => updateRoom(room.localId, { pisoNovo: v })}
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label>Piso atual</Label>
                   <RoomSelect
                     value={room.pisoAtual}
                     opts={pisoAtualOpts}
                     onChange={(v) => updateRoom(room.localId, { pisoAtual: v })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Piso novo</Label>
+                  <RoomSelect
+                    value={room.pisoNovo}
+                    opts={pisoNovoOpts}
+                    onChange={(v) => updateRoom(room.localId, { pisoNovo: v })}
                   />
                 </div>
               </div>
@@ -584,6 +593,21 @@ export function OrcamentoForm({
               2º andar sem elevador
             </Label>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Notas</CardTitle>
+          <CardDescription>Observações gerais da medição (opcional)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            rows={4}
+            placeholder="Ex.: cliente pediu rodapé branco; medir de novo a suíte; acesso pela garagem…"
+            value={notas}
+            onChange={(e) => setNotas(e.target.value)}
+          />
         </CardContent>
       </Card>
 

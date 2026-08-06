@@ -105,7 +105,7 @@ const STAGE_COLOR: Record<
 > = {
   appointment_confirmed: { bar: "#F0A81E", text: "#3D2600", head: "#FBE7BF", headText: "#7A4E05" },
   appointment_canceled: { bar: "#E07A52", text: "#3D1405", head: "#F6D6C7", headText: "#7A2E12" },
-  negotiation: { bar: "#D98416", text: "#3D2200", head: "#F5DDB4", headText: "#7A4405" },
+  negotiation: { bar: "#185FA5", text: "#042C53", head: "#E6F1FB", headText: "#0C447C" },
   no_deal: { bar: "#9C9A90", text: "#26251F", head: "#DEDCD2", headText: "#45443D" },
   deal: { bar: "#5FA13B", text: "#173404", head: "#D3E8BC", headText: "#2C5212" },
 };
@@ -333,7 +333,7 @@ function Overview() {
           }}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:overflow-visible xl:grid-cols-5">
           {STAGE_ORDER.map((stage) => (
             <div
               key={stage}
@@ -343,7 +343,7 @@ function Overview() {
                 setDragId(null);
                 if (row) changeStage(row, stage);
               }}
-              className="flex flex-col rounded-xl border border-border/60 bg-muted/30 p-2"
+              className="flex w-[82%] shrink-0 snap-center flex-col rounded-xl border border-border/60 bg-muted/30 p-2 md:w-auto md:shrink"
             >
               <div
                 className="mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
@@ -364,6 +364,7 @@ function Overview() {
                     onDragStart={() => setDragId(row.id)}
                     onOrcamento={() => abrirOrcamento(row)}
                     onDetail={() => setDetail(row)}
+                    onStageChange={(next) => changeStage(row, next)}
                   />
                 ))}
               </div>
@@ -517,11 +518,13 @@ function KanbanCard({
   onDragStart,
   onOrcamento,
   onDetail,
+  onStageChange,
 }: {
   row: Row;
   onDragStart: () => void;
   onOrcamento: () => void;
   onDetail: () => void;
+  onStageChange: (next: ProposalStage) => void;
 }) {
   const lead = row.leads;
   const nome = lead?.nome_cliente ?? "Sem nome";
@@ -639,6 +642,22 @@ function KanbanCard({
         >
           <Eye className="h-3.5 w-3.5" /> Detalhes
         </button>
+      </div>
+
+      {/* Trocar de estágio no mobile (arrastar não funciona bem no toque) */}
+      <div className="mt-2 md:hidden" onClick={(e) => e.stopPropagation()}>
+        <Select value={row.stage} onValueChange={(v) => onStageChange(v as ProposalStage)}>
+          <SelectTrigger className="h-8 w-full text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STAGE_ORDER.map((s) => (
+              <SelectItem key={s} value={s}>
+                Mover para: {STAGE_LABEL[s]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );

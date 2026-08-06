@@ -58,7 +58,7 @@ type ProposalRow = Proposal & {
 const STAGE_BADGE: Record<ProposalStage, { bg: string; fg: string }> = {
   appointment_confirmed: { bg: "#FBE7BF", fg: "#7A4E05" },
   appointment_canceled: { bg: "#F6D6C7", fg: "#7A2E12" },
-  negotiation: { bg: "#F5DDB4", fg: "#7A4405" },
+  negotiation: { bg: "#E6F1FB", fg: "#0C447C" },
   no_deal: { bg: "#DEDCD2", fg: "#45443D" },
   deal: { bg: "#D3E8BC", fg: "#2C5212" },
 };
@@ -333,7 +333,7 @@ function OrcamentosPage() {
               <Table className="min-w-[720px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Cliente</TableHead>
+                    <TableHead className="sticky left-0 z-20 bg-card">Cliente</TableHead>
                     <TableHead>Autor</TableHead>
                     <TableHead>Criado em</TableHead>
                     <TableHead>Última edição</TableHead>
@@ -350,7 +350,7 @@ function OrcamentosPage() {
                     )
                     .map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell>
+                        <TableCell className="sticky left-0 z-10 bg-card">
                           <button
                             type="button"
                             onClick={() => setLeadDetail(row.leads)}

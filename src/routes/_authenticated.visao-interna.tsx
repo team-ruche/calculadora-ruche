@@ -683,13 +683,13 @@ function VisaoInternaPage() {
                       className="w-full bg-transparent text-sm outline-none"
                     />
                   </div>
-                  <div className="inline-flex rounded-lg border bg-background p-0.5">
+                  <div className="inline-flex max-w-full shrink overflow-x-auto rounded-lg border bg-background p-0.5">
                     {(["todas", "vencida", "prox7", "depois"] as const).map((v) => (
                       <button
                         key={v}
                         type="button"
                         onClick={() => setVencFiltro(v)}
-                        className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                        className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium ${
                           vencFiltro === v
                             ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground"
@@ -713,8 +713,8 @@ function VisaoInternaPage() {
                     <Table className="min-w-[820px]">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-8" />
-                          <TableHead>
+                          <TableHead className="sticky left-0 z-20 w-8 bg-card" />
+                          <TableHead className="sticky left-8 z-20 bg-card">
                             Cliente
                             <ColumnFilter
                               type="text"
@@ -810,14 +810,14 @@ function VisaoInternaPage() {
                                 className="cursor-pointer transition-colors hover:bg-muted/40"
                                 onClick={() => toggle(d.id)}
                               >
-                                <TableCell className="text-muted-foreground">
+                                <TableCell className="sticky left-0 z-10 w-8 bg-card text-muted-foreground">
                                   {aberto0 ? (
                                     <ChevronDown className="h-4 w-4" />
                                   ) : (
                                     <ChevronRight className="h-4 w-4" />
                                   )}
                                 </TableCell>
-                                <TableCell className="font-medium">
+                                <TableCell className="sticky left-8 z-10 bg-card font-medium">
                                   {d.leads?.nome_cliente || "—"}
                                 </TableCell>
                                 <TableCell onClick={(e) => e.stopPropagation()}>
@@ -982,7 +982,7 @@ function VisaoInternaPage() {
                       className="w-full bg-transparent text-sm outline-none"
                     />
                   </div>
-                  <div className="inline-flex rounded-lg border bg-background p-0.5">
+                  <div className="inline-flex max-w-full shrink overflow-x-auto rounded-lg border bg-background p-0.5">
                     {(
                       [
                         ["abertas", "Abertas"],
@@ -998,7 +998,7 @@ function VisaoInternaPage() {
                           setStatusFiltro(v);
                           setIncFiltro(null);
                         }}
-                        className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                        className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium ${
                           statusFiltro === v
                             ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground"
@@ -1069,10 +1069,10 @@ function VisaoInternaPage() {
                   <p className="text-sm text-muted-foreground">Carregando…</p>
                 ) : (
                   <div className="overflow-x-auto">
-                    <Table>
+                    <Table className="min-w-[760px]">
                       <TableHeader>
                         <TableRow>
-                          <TableHead>
+                          <TableHead className="sticky left-0 z-20 bg-card">
                             Cliente
                             <ColumnFilter
                               type="text"
@@ -1153,7 +1153,9 @@ function VisaoInternaPage() {
                             className="cursor-pointer transition-colors hover:bg-muted/40"
                             onClick={() => setParcelaEdit({ parcela: p, deal: d })}
                           >
-                            <TableCell className="font-medium">{nomeDe(d)}</TableCell>
+                            <TableCell className="sticky left-0 z-10 bg-card font-medium">
+                              {nomeDe(d)}
+                            </TableCell>
                             <TableCell className="text-muted-foreground">
                               {p.payment_method || "—"}
                             </TableCell>

@@ -175,6 +175,8 @@ export interface Proposal {
   total_cliente: number | null;
   total_repasse: number | null;
   margem_ruche: number | null;
+  // Notas gerais da medição (texto livre).
+  notas: string | null;
   // Snapshot do layout do orçamento (congelado ao gerar).
   orcamento_layout: OrcamentoLayout | null;
   // Sync GHL — ver supabase-migration-etapa10-ghl-sync.sql

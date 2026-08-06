@@ -186,7 +186,7 @@ function MotorPage() {
                   <Table className="min-w-[760px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Componente</TableHead>
+                        <TableHead className="sticky left-0 z-20 bg-card">Componente</TableHead>
                         <TableHead>Unidade</TableHead>
                         <TableHead className="w-32">Preço cliente</TableHead>
                         <TableHead className="w-32">Repasse partida</TableHead>
@@ -198,7 +198,9 @@ function MotorPage() {
                     <TableBody>
                       {rows.map((row) => (
                         <TableRow key={row.id}>
-                          <TableCell className="font-medium">{row.componente}</TableCell>
+                          <TableCell className="sticky left-0 z-10 bg-card font-medium">
+                            {row.componente}
+                          </TableCell>
                           <TableCell className="text-muted-foreground">{row.unidade}</TableCell>
                           <TableCell>
                             <NumCell
