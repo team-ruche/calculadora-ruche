@@ -32,8 +32,8 @@ export function LeadDetalhe({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[88dvh] max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
           <DialogTitle>{lead?.nome_cliente ?? "Detalhes do lead"}</DialogTitle>
           <DialogDescription>
             Discovery do setter — grupos A a F (formulário GHL).
@@ -41,7 +41,7 @@ export function LeadDetalhe({
         </DialogHeader>
 
         {lead && (
-          <div className="space-y-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <Section title="A · Contato">
               <Field label="Nome completo" value={q?.a_nome ?? lead.nome_cliente} />
               <Field label="Telefone validado" value={q?.a_telefone ?? lead.telefone} />

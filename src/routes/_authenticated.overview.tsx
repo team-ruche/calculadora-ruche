@@ -433,20 +433,22 @@ function Overview() {
 
       {/* Formulário de orçamento (mesmo de "Novo orçamento") */}
       <Dialog open={!!orc} onOpenChange={(o) => !o && setOrc(null)}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[88dvh] max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
+          <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
             <DialogTitle>Orçamento · medição</DialogTitle>
             <DialogDescription>
               Mesmo formulário de "Novo orçamento". Preenchê-lo libera a etapa de Negociação.
             </DialogDescription>
           </DialogHeader>
           {orc && (
-            <OrcamentoForm
-              mode="edit"
-              proposalId={orc.row.id}
-              onSaved={onOrcSaved}
-              onCancel={() => setOrc(null)}
-            />
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+              <OrcamentoForm
+                mode="edit"
+                proposalId={orc.row.id}
+                onSaved={onOrcSaved}
+                onCancel={() => setOrc(null)}
+              />
+            </div>
           )}
         </DialogContent>
       </Dialog>

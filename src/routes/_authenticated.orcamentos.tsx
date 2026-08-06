@@ -221,21 +221,23 @@ function OrcamentosPage() {
 
   const formDialog = (
     <Dialog open={dialog !== null} onOpenChange={(o) => !o && setDialog(null)}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[88dvh] max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
           <DialogTitle>
             {dialog?.mode === "edit" ? "Editar orçamento" : "Novo orçamento"}
           </DialogTitle>
         </DialogHeader>
         {dialog && (
-          <OrcamentoForm
-            mode={dialog.mode}
-            proposalId={dialog.mode === "edit" ? dialog.proposalId : undefined}
-            onSaved={() =>
-              onSaved(dialog.mode === "edit" ? dialog.proposalId : (selected?.id ?? ""))
-            }
-            onCancel={() => setDialog(null)}
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            <OrcamentoForm
+              mode={dialog.mode}
+              proposalId={dialog.mode === "edit" ? dialog.proposalId : undefined}
+              onSaved={() =>
+                onSaved(dialog.mode === "edit" ? dialog.proposalId : (selected?.id ?? ""))
+              }
+              onCancel={() => setDialog(null)}
+            />
+          </div>
         )}
       </DialogContent>
     </Dialog>
