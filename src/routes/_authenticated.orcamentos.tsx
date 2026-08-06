@@ -99,6 +99,15 @@ function OrcamentosPage() {
   const [range, setRange] = useState<Range>(() => presetRange("90d"));
   // Busca por nome do cliente + documento do orçamento (layout do parceiro).
   const [busca, setBusca] = useState("");
+  // Filtro de status (stage) — múltiplo; vazio = todos.
+  const [statusFiltro, setStatusFiltro] = useState<Set<ProposalStage>>(new Set());
+  const toggleStatus = (s: ProposalStage) =>
+    setStatusFiltro((prev) => {
+      const n = new Set(prev);
+      if (n.has(s)) n.delete(s);
+      else n.add(s);
+      return n;
+    });
   const [viewId, setViewId] = useState<string | null>(null);
   // Configuração do layout do orçamento (por parceiro).
   const { user, isRuche } = useAuth();
@@ -303,12 +312,13 @@ function OrcamentosPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
-          <Button variant="outline" onClick={abrirConfig}>
-            <Settings className="mr-1 h-4 w-4" /> Configuração
-          </Button>
           <Button onClick={() => setDialog({ mode: "create" })}>
             <Plus className="mr-1 h-4 w-4" /> Novo Orçamento
+          </Button>
+          <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
+          <Button variant="outline" onClick={abrirConfig}>
+            <Settings className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Configuração</span>
           </Button>
         </div>
       </div>
@@ -317,14 +327,44 @@ function OrcamentosPage() {
           <CardTitle>Propostas</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-3 flex items-center gap-2 rounded-lg border px-3 py-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar cliente…"
-              className="w-full bg-transparent text-sm outline-none"
-            />
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <div className="flex min-w-[180px] flex-1 items-center gap-2 rounded-lg border px-3 py-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar cliente…"
+                className="w-full bg-transparent text-sm outline-none"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {STAGE_ORDER.map((s) => {
+                const on = statusFiltro.has(s);
+                const c = STAGE_BADGE[s];
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => toggleStatus(s)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      on ? "border-transparent" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    style={on ? { background: c.bg, color: c.fg } : undefined}
+                  >
+                    {STAGE_LABEL[s]}
+                  </button>
+                );
+              })}
+              {statusFiltro.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFiltro(new Set())}
+                  className="rounded-full px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
           </div>
           {loading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
@@ -348,6 +388,7 @@ function OrcamentosPage() {
                     .filter((row) =>
                       (row.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()),
                     )
+                    .filter((row) => statusFiltro.size === 0 || statusFiltro.has(row.stage))
                     .map((row) => (
                       <TableRow key={row.id}>
                         <TableCell className="sticky left-0 z-10 bg-card">
