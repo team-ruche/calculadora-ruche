@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { supabase, type MotorPrice, type MotorGrupo } from "@/integrations/supabase/client";
+import { supabase, type MotorPrice, type MotorGrupo } from "@/integrations/supabase/models";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

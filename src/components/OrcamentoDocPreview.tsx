@@ -1,4 +1,4 @@
-import type { OrcamentoLayout } from "@/integrations/supabase/client";
+import type { OrcamentoLayout } from "@/integrations/supabase/models";
 
 // Dados que variam por orçamento (no editor usamos exemplo; no documento real vêm do lead/proposta).
 export type DocItem = { item: string; qtd: string; unit: string; subtotal: string };

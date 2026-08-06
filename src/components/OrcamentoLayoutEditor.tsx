@@ -14,7 +14,7 @@ import {
   type OrcamentoLayout,
   type OrcSecao,
   defaultLayout,
-} from "@/integrations/supabase/client";
+} from "@/integrations/supabase/models";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

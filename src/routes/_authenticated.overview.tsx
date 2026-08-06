@@ -22,7 +22,7 @@ import {
   type LeadQualificacao,
   STAGE_LABEL,
   STAGE_ORDER,
-} from "@/integrations/supabase/client";
+} from "@/integrations/supabase/models";
 import { useAuth } from "@/hooks/use-auth";
 import { OrcamentoForm } from "@/components/OrcamentoForm";
 import { OrcamentoView } from "@/components/OrcamentoView";

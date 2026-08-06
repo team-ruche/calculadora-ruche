@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, X, Loader2 } from "lucide-react";
-import { supabase, type MotorPrice } from "@/integrations/supabase/client";
+import { supabase, type MotorPrice } from "@/integrations/supabase/models";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

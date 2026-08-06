@@ -15,8 +15,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { ProposalStage } from "@/integrations/supabase/client";
-import { STAGE_LABEL, STAGE_ORDER } from "@/integrations/supabase/client";
+import type { ProposalStage } from "@/integrations/supabase/models";
+import { STAGE_LABEL, STAGE_ORDER } from "@/integrations/supabase/models";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 

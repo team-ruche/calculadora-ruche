@@ -1,7 +1,12 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus, Loader2, Copy } from "lucide-react";
-import { supabase, callGhlSyncPartner, type AppUser, type AppRole } from "@/integrations/supabase/client";
+import {
+  supabase,
+  callGhlSyncPartner,
+  type AppUser,
+  type AppRole,
+} from "@/integrations/supabase/models";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,7 +82,9 @@ function UsuariosPage() {
     const role = patch.role ?? target?.role;
     if (patch.status === "aprovado" && role === "parceiro") {
       callGhlSyncPartner(id).catch(() =>
-        toast.error("Parceiro aprovado, mas falhou ao criar no dropdown do GHL — avise pra checar manualmente."),
+        toast.error(
+          "Parceiro aprovado, mas falhou ao criar no dropdown do GHL — avise pra checar manualmente.",
+        ),
       );
     }
 

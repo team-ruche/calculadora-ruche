@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase, type OrcamentoLayout, defaultLayout } from "@/integrations/supabase/client";
+import { supabase, type OrcamentoLayout, defaultLayout } from "@/integrations/supabase/models";
 import { OrcamentoDocPreview, type DocData, type DocGrupo } from "@/components/OrcamentoDocPreview";
 import { GRUPO_LABEL, GRUPO_ORDER } from "@/components/OrcamentoView";
 

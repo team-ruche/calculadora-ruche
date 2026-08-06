@@ -1,4 +1,4 @@
-import type { LeadQualificacao } from "@/integrations/supabase/client";
+import type { LeadQualificacao } from "@/integrations/supabase/models";
 import {
   Dialog,
   DialogContent,

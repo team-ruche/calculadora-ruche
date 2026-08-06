@@ -7,7 +7,7 @@ import {
   type MotorGrupo,
   type OrcamentoLayout,
   defaultLayout,
-} from "@/integrations/supabase/client";
+} from "@/integrations/supabase/models";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

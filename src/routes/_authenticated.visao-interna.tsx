@@ -29,7 +29,7 @@ import {
   CONTRACT_STATUS_LABEL,
   PAYMENT_METHODS,
   CONTAS,
-} from "@/integrations/supabase/client";
+} from "@/integrations/supabase/models";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

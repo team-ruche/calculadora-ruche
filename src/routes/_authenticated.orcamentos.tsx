@@ -10,7 +10,7 @@ import {
   type LeadQualificacao,
   STAGE_LABEL,
   STAGE_ORDER,
-} from "@/integrations/supabase/client";
+} from "@/integrations/supabase/models";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
