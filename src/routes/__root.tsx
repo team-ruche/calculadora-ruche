@@ -79,23 +79,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Ruche · Calculadora de Orçamento" },
+      { title: "Ruche · Orçamentos para Flooring e Home Improvement" },
       {
         name: "description",
-        content: "Calculadora de orçamento para flooring e home improvement — Ruche Digital.",
+        content: "Crie orçamentos profissionais para flooring e home improvement com a Ruche Digital. Calculadora de preços, propostas e controle de margem em um só lugar.",
       },
       { name: "author", content: "Ruche Digital" },
-      { property: "og:title", content: "Ruche · Calculadora de Orçamento" },
+      { property: "og:title", content: "Ruche · Orçamentos para Flooring e Home Improvement" },
       {
         property: "og:description",
-        content: "Calculadora de orçamento para flooring e home improvement — Ruche Digital.",
+        content: "Crie orçamentos profissionais para flooring e home improvement com a Ruche Digital. Calculadora de preços, propostas e controle de margem em um só lugar.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Ruche · Calculadora de Orçamento" },
+      { name: "twitter:title", content: "Ruche · Orçamentos para Flooring e Home Improvement" },
       {
         name: "twitter:description",
-        content: "Calculadora de orçamento para flooring e home improvement — Ruche Digital.",
+        content: "Crie orçamentos profissionais para flooring e home improvement com a Ruche Digital. Calculadora de preços, propostas e controle de margem em um só lugar.",
       },
       {
         property: "og:image",
