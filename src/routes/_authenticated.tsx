@@ -60,7 +60,7 @@ function AuthenticatedLayout() {
             <SidebarTrigger />
             <div className="text-sm text-muted-foreground">Ruche Partner</div>
           </header>
-          <main className="min-w-0 flex-1 overflow-x-clip p-4 pb-24 sm:p-6 sm:pb-24 md:pb-6">
+          <main className="min-w-0 flex-1 p-4 pb-24 sm:p-6 sm:pb-24 md:pb-6">
             <Outlet />
           </main>
         </div>
