@@ -462,7 +462,7 @@ function VisaoInternaPage() {
       </div>
 
       {/* Toggle fixo no scroll */}
-      <div className="sticky top-14 z-30 border-b bg-background/95 py-2 backdrop-blur">
+      <div className="sticky top-14 z-30 border-b bg-background py-2">
         <div className="inline-flex rounded-full bg-muted p-1">
           {(
             [
@@ -675,7 +675,7 @@ function VisaoInternaPage() {
           {cobrView === "cli" && (
             <Card>
               <CardContent className="pt-6">
-                <div className="sticky top-28 z-20 mb-3 flex flex-wrap items-center gap-2 bg-card py-2">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
                   <div className="flex flex-1 items-center gap-2 rounded-lg border px-3 py-2">
                     <Search className="h-4 w-4 text-muted-foreground" />
                     <input
@@ -974,7 +974,7 @@ function VisaoInternaPage() {
           {cobrView === "parc" && (
             <Card>
               <CardContent className="pt-6">
-                <div className="sticky top-28 z-20 mb-3 flex flex-wrap items-center gap-2 bg-card py-2">
+                <div className="mb-3 flex flex-wrap items-center gap-2">
                   <div className="flex flex-1 items-center gap-2 rounded-lg border px-3 py-2">
                     <Search className="h-4 w-4 text-muted-foreground" />
                     <input

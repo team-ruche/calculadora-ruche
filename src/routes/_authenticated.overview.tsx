@@ -258,18 +258,8 @@ function Overview() {
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Funnel counts={{ count }} totais={totais} className="lg:col-span-2" />
-        <div className="space-y-3">
-          <MetricBox label="Visitas realizadas" value={pct(realizadas, totais)} />
-          <MetricBox label="Deal / Negociação" value={pct(deals, realizadas)} />
-          <MetricBox label="Pipeline em negociação" value={money(pipeline)} />
-          <MetricBox label="Venda fechada" value={money(vendaFechada)} success />
-        </div>
-      </div>
-
-      {/* Toolbar: alternador de visão + ordenação — fixa no scroll */}
-      <div className="sticky top-14 z-30 flex flex-wrap items-center justify-between gap-3 border-b bg-background/95 py-2.5 backdrop-blur">
+      {/* Barra de filtros — fixa no topo */}
+      <div className="sticky top-14 z-30 flex flex-wrap items-center justify-between gap-3 border-b bg-background py-2.5">
         <div className="inline-flex rounded-lg border bg-card p-0.5">
           <button
             type="button"
@@ -319,6 +309,16 @@ function Overview() {
               </Select>
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Funnel counts={{ count }} totais={totais} className="lg:col-span-2" />
+        <div className="space-y-3">
+          <MetricBox label="Visitas realizadas" value={pct(realizadas, totais)} />
+          <MetricBox label="Deal / Negociação" value={pct(deals, realizadas)} />
+          <MetricBox label="Pipeline em negociação" value={money(pipeline)} />
+          <MetricBox label="Venda fechada" value={money(vendaFechada)} success />
         </div>
       </div>
 
