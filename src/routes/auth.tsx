@@ -1,18 +1,35 @@
 import { createFileRoute, useNavigate, Navigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { Mail, Lock, User, Phone, ArrowRight, Hexagon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Entrar · Ruche Digital" }] }),
   component: AuthPage,
 });
+
+// Padrão de colmeia (hexagons) — heropatterns, em âmbar de baixa opacidade.
+const HEX_BG =
+  "url(\"data:image/svg+xml,%3Csvg width='28' height='49' viewBox='0 0 28 49' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z' fill='%23E9B93E' fill-opacity='0.14' fill-rule='evenodd'/%3E%3C/svg%3E\")";
+
+function Logo({ dark }: { dark?: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Hexagon className="h-6 w-6 text-[#E9B93E]" strokeWidth={2.5} />
+      <span className="flex items-baseline">
+        <span
+          className={`text-2xl font-bold tracking-tight ${dark ? "text-white" : "text-foreground"}`}
+        >
+          ruche
+        </span>
+        <span className="text-2xl font-bold text-[#E9B93E]">.</span>
+      </span>
+    </div>
+  );
+}
 
 function AuthPage() {
   const { session, loading } = useAuth();
@@ -65,110 +82,162 @@ function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mb-2 flex items-baseline justify-center gap-1">
-            <span className="text-3xl font-bold tracking-tight">ruche</span>
-            <span className="text-3xl font-bold text-primary">.</span>
+    <div className="flex min-h-screen">
+      {/* ===== Painel da marca (colmeia) — só no desktop ===== */}
+      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden p-10 lg:flex">
+        <div
+          className="absolute inset-0"
+          style={{ backgroundColor: "#17140c", backgroundImage: HEX_BG }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(55% 45% at 55% 40%, rgba(233,185,62,0.22), transparent 70%)",
+          }}
+        />
+        <div className="relative">
+          <Logo dark />
+        </div>
+        <div className="relative">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-[#E9B93E]">
+            Internal OS
+          </p>
+          <h2 className="text-4xl font-bold leading-tight text-white">
+            Toda a operação em
+            <br />
+            uma colmeia.
+          </h2>
+        </div>
+      </div>
+
+      {/* ===== Formulário ===== */}
+      <div className="flex flex-1 items-center justify-center bg-[#F7F3E9] p-6">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 lg:hidden">
+            <Logo />
           </div>
-          <CardTitle>Calculadora de Orçamento</CardTitle>
-          <CardDescription>Acesse com seu e-mail e senha</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "signup")}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Cadastrar</TabsTrigger>
-            </TabsList>
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="l-email">E-mail</Label>
-                  <Input
-                    id="l-email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="l-pass">Senha</Label>
-                    <button
-                      type="button"
-                      onClick={handleForgot}
-                      disabled={submitting}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Esqueci minha senha
-                    </button>
-                  </div>
-                  <Input
-                    id="l-pass"
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? "Entrando…" : "Entrar"}
-                </Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="s-nome">Nome completo</Label>
-                  <Input
-                    id="s-nome"
-                    required
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="s-tel">Telefone</Label>
-                  <Input
-                    id="s-tel"
-                    value={telefone}
-                    onChange={(e) => setTelefone(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="s-email">E-mail</Label>
-                  <Input
-                    id="s-email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="s-pass">Senha</Label>
-                  <Input
-                    id="s-pass"
-                    type="password"
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? "Criando…" : "Criar conta"}
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Novos cadastros ficam pendentes até um admin Ruche aprovar.
-                </p>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {tab === "login" ? "Bem-vindo de volta" : "Criar conta"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {tab === "login"
+              ? "Entre para acessar o painel"
+              : "Cadastre-se — a aprovação é feita por um admin Ruche"}
+          </p>
+
+          {tab === "login" ? (
+            <form onSubmit={handleLogin} className="mt-7 space-y-3">
+              <IconField icon={Mail}>
+                <Input
+                  type="email"
+                  required
+                  placeholder="E-mail"
+                  className="h-12 border-none bg-white pl-10 shadow-sm"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </IconField>
+              <IconField icon={Lock}>
+                <Input
+                  type="password"
+                  required
+                  placeholder="Senha"
+                  className="h-12 border-none bg-white pl-10 shadow-sm"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </IconField>
+              <SubmitButton submitting={submitting} label="Entrar" />
+            </form>
+          ) : (
+            <form onSubmit={handleSignup} className="mt-7 space-y-3">
+              <IconField icon={User}>
+                <Input
+                  required
+                  placeholder="Nome completo"
+                  className="h-12 border-none bg-white pl-10 shadow-sm"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                />
+              </IconField>
+              <IconField icon={Phone}>
+                <Input
+                  placeholder="Telefone"
+                  className="h-12 border-none bg-white pl-10 shadow-sm"
+                  value={telefone}
+                  onChange={(e) => setTelefone(e.target.value)}
+                />
+              </IconField>
+              <IconField icon={Mail}>
+                <Input
+                  type="email"
+                  required
+                  placeholder="E-mail"
+                  className="h-12 border-none bg-white pl-10 shadow-sm"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </IconField>
+              <IconField icon={Lock}>
+                <Input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="Senha"
+                  className="h-12 border-none bg-white pl-10 shadow-sm"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </IconField>
+              <SubmitButton submitting={submitting} label="Criar conta" />
+            </form>
+          )}
+
+          <div className="mt-5 space-y-2 text-center text-sm">
+            {tab === "login" && (
+              <button
+                type="button"
+                onClick={handleForgot}
+                disabled={submitting}
+                className="block w-full font-medium text-[#9A7B12] hover:underline"
+              >
+                Esqueci minha senha
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setTab(tab === "login" ? "signup" : "login")}
+              className="block w-full font-medium text-[#9A7B12] hover:underline"
+            >
+              {tab === "login" ? "Não tem uma conta? Criar conta" : "Já tem conta? Entrar"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
+  );
+}
+
+function IconField({ icon: Icon, children }: { icon: typeof Mail; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      {children}
+    </div>
+  );
+}
+
+function SubmitButton({ submitting, label }: { submitting: boolean; label: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={submitting}
+      className="mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[#E9B93E] font-semibold text-[#3D2600] shadow-sm transition-colors hover:bg-[#e0ad2a] disabled:opacity-60"
+    >
+      {submitting ? "Aguarde…" : label}
+      {!submitting && <ArrowRight className="h-4 w-4" />}
+    </button>
   );
 }
