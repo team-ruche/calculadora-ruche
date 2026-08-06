@@ -148,8 +148,8 @@ export function OrcamentoView({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90dvh] max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <DialogTitle>Orçamento — {cliente}</DialogTitle>
@@ -180,17 +180,19 @@ export function OrcamentoView({
           </div>
         </DialogHeader>
 
-        {loading || !layout ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">Carregando…</p>
-        ) : items.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            Sem itens precificados neste orçamento.
-          </p>
-        ) : (
-          <div id="orc-doc" className="overflow-hidden rounded-lg border">
-            <OrcamentoDocPreview layout={layout} data={buildDocData(row as PropRow, items)} />
-          </div>
-        )}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          {loading || !layout ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Carregando…</p>
+          ) : items.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Sem itens precificados neste orçamento.
+            </p>
+          ) : (
+            <div id="orc-doc" className="overflow-hidden rounded-lg border">
+              <OrcamentoDocPreview layout={layout} data={buildDocData(row as PropRow, items)} />
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

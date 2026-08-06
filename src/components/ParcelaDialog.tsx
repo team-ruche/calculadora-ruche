@@ -153,170 +153,172 @@ export function ParcelaDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90dvh] max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
           <DialogTitle>{parcela ? `Editar parcela ${parcela.numero}` : "Nova parcela"}</DialogTitle>
           <DialogDescription className="flex items-center gap-1 text-primary">
             <FileText className="h-3.5 w-3.5" /> {cliente} · orçamento do sistema
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 py-2 sm:grid-cols-3">
-          <Campo label="Cliente">
-            <Input value={cliente} disabled />
-          </Campo>
-          <Campo label="Forma de pagamento">
-            <Select
-              value={d.payment_method || NONE}
-              onValueChange={(v) => set("payment_method", v === NONE ? "" : v)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>—</SelectItem>
-                {PAYMENT_METHODS.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Campo>
-          <Campo label="Conta">
-            <Select
-              value={d.conta || NONE}
-              onValueChange={(v) => set("conta", v === NONE ? "" : v)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>—</SelectItem>
-                {CONTAS.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Campo>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Campo label="Cliente">
+              <Input value={cliente} disabled />
+            </Campo>
+            <Campo label="Forma de pagamento">
+              <Select
+                value={d.payment_method || NONE}
+                onValueChange={(v) => set("payment_method", v === NONE ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>—</SelectItem>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Campo>
+            <Campo label="Conta">
+              <Select
+                value={d.conta || NONE}
+                onValueChange={(v) => set("conta", v === NONE ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>—</SelectItem>
+                  {CONTAS.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Campo>
 
-          <Campo label="Direção">
-            <Select value={d.direcao} onValueChange={(v) => set("direcao", v as Direcao)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="inflow">Inflow (Ruche recebe)</SelectItem>
-                <SelectItem value="outflow">Outflow (saída)</SelectItem>
-              </SelectContent>
-            </Select>
-          </Campo>
-          <Campo label="Período (MM/AAAA)">
-            <Input
-              value={d.periodo}
-              onChange={(e) => set("periodo", e.target.value)}
-              placeholder="08/2026"
-            />
-          </Campo>
-          <Campo label="Status">
-            <Select value={d.status} onValueChange={(v) => set("status", v as ParcelaStatus)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(PARCELA_STATUS_LABEL) as ParcelaStatus[]).map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {PARCELA_STATUS_LABEL[s]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Campo>
+            <Campo label="Direção">
+              <Select value={d.direcao} onValueChange={(v) => set("direcao", v as Direcao)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inflow">Inflow (Ruche recebe)</SelectItem>
+                  <SelectItem value="outflow">Outflow (saída)</SelectItem>
+                </SelectContent>
+              </Select>
+            </Campo>
+            <Campo label="Período (MM/AAAA)">
+              <Input
+                value={d.periodo}
+                onChange={(e) => set("periodo", e.target.value)}
+                placeholder="08/2026"
+              />
+            </Campo>
+            <Campo label="Status">
+              <Select value={d.status} onValueChange={(v) => set("status", v as ParcelaStatus)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(PARCELA_STATUS_LABEL) as ParcelaStatus[]).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {PARCELA_STATUS_LABEL[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Campo>
 
-          <Campo label="Valor da parcela (USD)">
-            <Input type="number" value={d.valor} onChange={(e) => set("valor", e.target.value)} />
-          </Campo>
-          <Campo label="Parte parceiro">
-            <Input
-              type="number"
-              value={d.valor_parceiro}
-              onChange={(e) => set("valor_parceiro", e.target.value)}
-            />
-          </Campo>
-          <Campo label="Parte Ruche">
-            <Input
-              type="number"
-              value={d.valor_ruche}
-              onChange={(e) => set("valor_ruche", e.target.value)}
-            />
-          </Campo>
+            <Campo label="Valor da parcela (USD)">
+              <Input type="number" value={d.valor} onChange={(e) => set("valor", e.target.value)} />
+            </Campo>
+            <Campo label="Parte parceiro">
+              <Input
+                type="number"
+                value={d.valor_parceiro}
+                onChange={(e) => set("valor_parceiro", e.target.value)}
+              />
+            </Campo>
+            <Campo label="Parte Ruche">
+              <Input
+                type="number"
+                value={d.valor_ruche}
+                onChange={(e) => set("valor_ruche", e.target.value)}
+              />
+            </Campo>
 
-          <Campo label="Vencimento">
-            <Input
-              type="date"
-              value={d.vencimento}
-              onChange={(e) => set("vencimento", e.target.value)}
-            />
-          </Campo>
-          <Campo label="Data do pagamento">
-            <Input
-              type="date"
-              value={d.data_pagamento}
-              onChange={(e) => set("data_pagamento", e.target.value)}
-            />
-          </Campo>
-          <Campo label="Valor pago (USD)">
-            <Input
-              type="number"
-              value={d.valor_pago}
-              onChange={(e) => set("valor_pago", e.target.value)}
-            />
-          </Campo>
+            <Campo label="Vencimento">
+              <Input
+                type="date"
+                value={d.vencimento}
+                onChange={(e) => set("vencimento", e.target.value)}
+              />
+            </Campo>
+            <Campo label="Data do pagamento">
+              <Input
+                type="date"
+                value={d.data_pagamento}
+                onChange={(e) => set("data_pagamento", e.target.value)}
+              />
+            </Campo>
+            <Campo label="Valor pago (USD)">
+              <Input
+                type="number"
+                value={d.valor_pago}
+                onChange={(e) => set("valor_pago", e.target.value)}
+              />
+            </Campo>
 
-          <Campo label="Conciliado">
-            <Select
-              value={d.conciliado ? "sim" : "nao"}
-              onValueChange={(v) => set("conciliado", v === "sim")}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="nao">Não</SelectItem>
-                <SelectItem value="sim">Sim</SelectItem>
-              </SelectContent>
-            </Select>
-          </Campo>
-          <Campo label="Valor nativo (extrato)">
-            <Input
-              type="number"
-              value={d.valor_nativo}
-              onChange={(e) => set("valor_nativo", e.target.value)}
-            />
-          </Campo>
-          <Campo label="Moeda nativa">
-            <Input
-              value={d.moeda_nativa}
-              onChange={(e) => set("moeda_nativa", e.target.value)}
-              placeholder="USD, BRL…"
-            />
-          </Campo>
+            <Campo label="Conciliado">
+              <Select
+                value={d.conciliado ? "sim" : "nao"}
+                onValueChange={(v) => set("conciliado", v === "sim")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nao">Não</SelectItem>
+                  <SelectItem value="sim">Sim</SelectItem>
+                </SelectContent>
+              </Select>
+            </Campo>
+            <Campo label="Valor nativo (extrato)">
+              <Input
+                type="number"
+                value={d.valor_nativo}
+                onChange={(e) => set("valor_nativo", e.target.value)}
+              />
+            </Campo>
+            <Campo label="Moeda nativa">
+              <Input
+                value={d.moeda_nativa}
+                onChange={(e) => set("moeda_nativa", e.target.value)}
+                placeholder="USD, BRL…"
+              />
+            </Campo>
 
-          <div className="sm:col-span-3">
-            <Label className="text-xs text-muted-foreground">Notas</Label>
-            <Textarea
-              rows={3}
-              value={d.notas}
-              onChange={(e) => set("notas", e.target.value)}
-              placeholder="Cole um print (Ctrl+V) ou escreva…"
-              className="mt-1"
-            />
+            <div className="sm:col-span-3">
+              <Label className="text-xs text-muted-foreground">Notas</Label>
+              <Textarea
+                rows={3}
+                value={d.notas}
+                onChange={(e) => set("notas", e.target.value)}
+                placeholder="Cole um print (Ctrl+V) ou escreva…"
+                className="mt-1"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-6 py-3">
           {parcela ? (
             <Button
               variant="outline"
