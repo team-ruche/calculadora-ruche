@@ -10,7 +10,6 @@ import {
   ClipboardList,
   MapPin,
   DollarSign,
-  Eye,
   ArrowDownAZ,
   Search,
 } from "lucide-react";
@@ -125,6 +124,7 @@ function Overview() {
   // Formulário de orçamento (= formulário de medição). advance move p/ negociação ao salvar.
   const [orc, setOrc] = useState<{ row: Row; advance: boolean } | null>(null);
   const [orcView, setOrcView] = useState<Row | null>(null);
+  const [askNeg, setAskNeg] = useState<Row | null>(null);
   const [detail, setDetail] = useState<Row | null>(null);
   const [view, setView] = useState<ViewMode>("kanban");
   const [sortBy, setSortBy] = useState<SortBy>("visita");
@@ -217,17 +217,27 @@ function Overview() {
     const current = orc;
     setOrc(null);
     await load();
-    if (current?.advance && current.row.stage === "appointment_confirmed") {
-      await supabase.from("proposals").update({ stage: "negotiation" }).eq("id", current.row.id);
-      await load();
-      // Medição + orçamento prontos → manda link do orçamento e resumo do
-      // escopo pro GHL (não muda stage lá, só anexa dado pro closer ver).
-      if (current.row.ghl_opportunity_id) {
-        try {
-          await callGhlSync("push_quote_ready", current.row.id);
-        } catch (e) {
-          toast.error("Orçamento salvo, mas falhou ao enviar pro GHL — verifique manualmente.");
-        }
+    // Ao aprovar/salvar a medição, pergunta se quer mover para Negotiation.
+    if (current && current.row.stage === "appointment_confirmed") {
+      setAskNeg(current.row);
+    }
+  };
+
+  const moverParaNeg = async (row: Row) => {
+    setAskNeg(null);
+    const { error } = await supabase
+      .from("proposals")
+      .update({ stage: "negotiation" })
+      .eq("id", row.id);
+    if (error) return toast.error(error.message);
+    await load();
+    toast.success("Movido para Negotiation");
+    // Medição + orçamento prontos → manda link do orçamento pro GHL (não muda stage lá).
+    if (row.ghl_opportunity_id) {
+      try {
+        await callGhlSync("push_quote_ready", row.id);
+      } catch (e) {
+        toast.error("Movido, mas falhou ao enviar pro GHL — verifique manualmente.");
       }
     }
   };
@@ -443,6 +453,25 @@ function Overview() {
         </DialogContent>
       </Dialog>
 
+      {/* Pergunta se quer mover para Negotiation após aprovar a medição */}
+      <Dialog open={!!askNeg} onOpenChange={(o) => !o && setAskNeg(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Mover para Negotiation?</DialogTitle>
+            <DialogDescription>
+              A medição de {askNeg?.leads?.nome_cliente ?? "este cliente"} foi salva. Deseja mover o
+              card para o estágio Negotiation agora?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-2 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setAskNeg(null)}>
+              Agora não
+            </Button>
+            <Button onClick={() => askNeg && moverParaNeg(askNeg)}>Mover para Negotiation</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Documento do orçamento (após criado) */}
       <OrcamentoView
         open={!!orcView}
@@ -629,7 +658,9 @@ function KanbanCard({
     <div
       draggable
       onDragStart={onDragStart}
-      className="cursor-grab rounded-xl border bg-card p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing"
+      onClick={onDetail}
+      role="button"
+      className="cursor-pointer rounded-xl border bg-card p-3 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm font-semibold leading-tight text-foreground">{nome}</p>
@@ -653,16 +684,6 @@ function KanbanCard({
 
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
         <IconLink
-          icon={<ExternalLink className="h-3.5 w-3.5" />}
-          label="GHL"
-          href={
-            row.ghl_opportunity_id
-              ? `https://app.gohighlevel.com/v2/location/${row.location_id ?? GHL_DEFAULT_LOCATION_ID}/opportunities/list/${row.ghl_opportunity_id}?tab=OpportunityDetails`
-              : undefined
-          }
-        />
-        <IconLink icon={<CalendarIcon className="h-3.5 w-3.5" />} label="Google Calendar" />
-        <IconLink
           icon={<Phone className="h-3.5 w-3.5" />}
           label="Ligar"
           href={tel ? `tel:${tel}` : undefined}
@@ -673,17 +694,28 @@ function KanbanCard({
           href={tel ? `sms:${tel}` : undefined}
         />
         <IconLink
-          icon={<ClipboardList className="h-3.5 w-3.5" />}
-          label="Orçamento / medição"
-          onClick={onOrcamento}
-          accent={!feito}
+          icon={<ExternalLink className="h-3.5 w-3.5" />}
+          label="GHL"
+          href={
+            row.ghl_opportunity_id
+              ? `https://app.gohighlevel.com/v2/location/${row.location_id ?? GHL_DEFAULT_LOCATION_ID}/opportunities/list/${row.ghl_opportunity_id}?tab=OpportunityDetails`
+              : undefined
+          }
         />
         <button
           type="button"
-          onClick={onDetail}
-          className="ml-auto flex h-7 items-center gap-1 rounded-md border border-border bg-background px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOrcamento();
+          }}
+          className="ml-auto flex h-7 items-center gap-1 rounded-md px-2.5 text-[11px] font-semibold"
+          style={
+            feito
+              ? { background: "#E7F4E4", color: "#2C7A3F" }
+              : { background: "#FDECEC", color: "#B42318" }
+          }
         >
-          <Eye className="h-3.5 w-3.5" /> Detalhes
+          <ClipboardList className="h-3.5 w-3.5" /> {feito ? "Medido" : "Medir"}
         </button>
       </div>
 
