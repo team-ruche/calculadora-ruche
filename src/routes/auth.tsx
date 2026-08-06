@@ -82,7 +82,19 @@ function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="relative flex min-h-screen">
+      {/* Textura de colmeia no fundo — só no mobile */}
+      <div
+        className="absolute inset-0 lg:hidden"
+        style={{ backgroundColor: "#17140c", backgroundImage: HEX_BG }}
+      />
+      <div
+        className="absolute inset-0 lg:hidden"
+        style={{
+          background: "radial-gradient(60% 40% at 50% 30%, rgba(233,185,62,0.22), transparent 70%)",
+        }}
+      />
+
       {/* ===== Painel da marca (colmeia) — só no desktop ===== */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden p-10 lg:flex">
         <div
@@ -112,8 +124,8 @@ function AuthPage() {
       </div>
 
       {/* ===== Formulário ===== */}
-      <div className="flex flex-1 items-center justify-center bg-[#F7F3E9] p-6">
-        <div className="w-full max-w-sm">
+      <div className="relative z-10 flex flex-1 items-center justify-center p-6 lg:bg-[#F7F3E9]">
+        <div className="w-full max-w-sm rounded-2xl bg-[#F7F3E9] p-6 shadow-2xl lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none">
           <div className="mb-8 lg:hidden">
             <Logo />
           </div>
