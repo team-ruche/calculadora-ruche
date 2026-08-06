@@ -349,7 +349,7 @@ function Overview() {
                 <span>{STAGE_LABEL[stage]}</span>
                 <span className="rounded-full bg-background/70 px-1.5">{count(stage)}</span>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex h-[500px] flex-col gap-2 overflow-y-auto pr-1">
                 {loading && <p className="p-2 text-xs text-muted-foreground">Carregando…</p>}
                 {!loading && byStage[stage].length === 0 && (
                   <p className="p-2 text-xs text-muted-foreground">Nenhum card neste estágio.</p>
@@ -395,7 +395,7 @@ function Overview() {
                 <span>{STAGE_LABEL[stage]}</span>
                 <span className="rounded-full bg-background/70 px-1.5">{count(stage)}</span>
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex h-[500px] flex-col gap-2 overflow-y-auto pr-1">
                 {loading && <p className="p-2 text-xs text-muted-foreground">Carregando…</p>}
                 {!loading && byStage[stage].length === 0 && (
                   <p className="p-2 text-xs text-muted-foreground">—</p>
