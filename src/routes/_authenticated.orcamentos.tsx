@@ -316,7 +316,7 @@ function OrcamentosPage() {
       </div>
 
       {/* Barra de filtros fixa no scroll — compacta */}
-      <div className="sticky top-14 z-30 space-y-2 border-b bg-background py-2.5">
+      <div className="sticky top-14 z-30 -mx-4 space-y-2 border-b bg-background px-4 py-2.5 sm:-mx-6 sm:px-6">
         <div className="flex items-center gap-2">
           <Button onClick={() => setDialog({ mode: "create" })} className="shrink-0">
             <Plus className="h-4 w-4 sm:mr-1" />

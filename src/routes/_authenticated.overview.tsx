@@ -258,8 +258,8 @@ function Overview() {
         </p>
       </div>
 
-      {/* Barra de filtros — fixa no topo */}
-      <div className="sticky top-14 z-30 flex flex-wrap items-center justify-between gap-3 border-b bg-background py-2.5">
+      {/* Barra de filtros — fixa no topo, sangrando até a borda */}
+      <div className="sticky top-14 z-30 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b bg-background px-4 py-2.5 sm:-mx-6 sm:px-6">
         <div className="inline-flex rounded-lg border bg-card p-0.5">
           <button
             type="button"
