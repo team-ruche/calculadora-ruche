@@ -56,7 +56,7 @@ function AuthenticatedLayout() {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-14 items-center gap-3 border-b bg-background/60 px-4 backdrop-blur">
+          <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur">
             <SidebarTrigger />
             <div className="text-sm text-muted-foreground">Ruche Partner</div>
           </header>

@@ -304,14 +304,16 @@ function OrcamentosPage() {
           if (id) setDialog({ mode: "edit", proposalId: id });
         }}
       />
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Orçamentos</h1>
-          <p className="text-sm text-muted-foreground">
-            Propostas geradas. Abra para ver o orçamento do cliente e exportar.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Orçamentos</h1>
+        <p className="text-sm text-muted-foreground">
+          Propostas geradas. Abra para ver o orçamento do cliente e exportar.
+        </p>
+      </div>
+
+      {/* Barra de filtros fixa no scroll */}
+      <div className="sticky top-14 z-30 space-y-2 border-b bg-background/95 py-2.5 backdrop-blur">
+        <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => setDialog({ mode: "create" })}>
             <Plus className="mr-1 h-4 w-4" /> Novo Orçamento
           </Button>
@@ -320,52 +322,51 @@ function OrcamentosPage() {
             <Settings className="h-4 w-4 sm:mr-1" />
             <span className="hidden sm:inline">Configuração</span>
           </Button>
+          <div className="flex min-w-[160px] flex-1 items-center gap-2 rounded-lg border bg-card px-3 py-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar cliente…"
+              className="w-full bg-transparent text-sm outline-none"
+            />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {STAGE_ORDER.map((s) => {
+            const on = statusFiltro.has(s);
+            const c = STAGE_BADGE[s];
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => toggleStatus(s)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  on ? "border-transparent" : "text-muted-foreground hover:text-foreground"
+                }`}
+                style={on ? { background: c.bg, color: c.fg } : undefined}
+              >
+                {STAGE_LABEL[s]}
+              </button>
+            );
+          })}
+          {statusFiltro.size > 0 && (
+            <button
+              type="button"
+              onClick={() => setStatusFiltro(new Set())}
+              className="rounded-full px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              Limpar
+            </button>
+          )}
         </div>
       </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Propostas</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <div className="flex min-w-[180px] flex-1 items-center gap-2 rounded-lg border px-3 py-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <input
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar cliente…"
-                className="w-full bg-transparent text-sm outline-none"
-              />
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {STAGE_ORDER.map((s) => {
-                const on = statusFiltro.has(s);
-                const c = STAGE_BADGE[s];
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => toggleStatus(s)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                      on ? "border-transparent" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    style={on ? { background: c.bg, color: c.fg } : undefined}
-                  >
-                    {STAGE_LABEL[s]}
-                  </button>
-                );
-              })}
-              {statusFiltro.size > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setStatusFiltro(new Set())}
-                  className="rounded-full px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-                >
-                  Limpar
-                </button>
-              )}
-            </div>
-          </div>
           {loading ? (
             <p className="text-sm text-muted-foreground">Carregando…</p>
           ) : (

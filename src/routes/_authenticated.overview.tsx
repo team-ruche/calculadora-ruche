@@ -271,8 +271,8 @@ function Overview() {
         </div>
       </div>
 
-      {/* Toolbar: alternador de visão + ordenação */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Toolbar: alternador de visão + ordenação — fixa no scroll */}
+      <div className="sticky top-14 z-30 flex flex-wrap items-center justify-between gap-3 border-b bg-background/95 py-2.5 backdrop-blur">
         <div className="inline-flex rounded-lg border bg-card p-0.5">
           <button
             type="button"
