@@ -26,12 +26,15 @@ const items: Item[] = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const path = useRouterState({ select: (r) => r.location.pathname });
   const { user, isRuche, signOut } = useAuth();
 
   const visible = items.filter((i) => !i.rucheOnly || isRuche);
+  const closeOnMobile = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -56,7 +59,11 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild isActive={active}>
-                      <Link to={item.url} className="flex items-center gap-2">
+                      <Link
+                        to={item.url}
+                        onClick={closeOnMobile}
+                        className="flex items-center gap-2"
+                      >
                         <item.icon className="h-4 w-4" />
                         {!collapsed && <span>{item.title}</span>}
                       </Link>
@@ -83,5 +90,32 @@ export function AppSidebar() {
         </SidebarMenuButton>
       </SidebarFooter>
     </Sidebar>
+  );
+}
+
+// Barra de navegação inferior — só no mobile, pra alcance com o polegar.
+export function MobileBottomNav() {
+  const path = useRouterState({ select: (r) => r.location.pathname });
+  const { isRuche } = useAuth();
+  const visible = items.filter((i) => !i.rucheOnly || isRuche);
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t bg-background/95 backdrop-blur md:hidden">
+      {visible.map((item) => {
+        const active = path === item.url || path.startsWith(item.url + "/");
+        return (
+          <Link
+            key={item.url}
+            to={item.url}
+            className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium ${
+              active ? "text-primary" : "text-muted-foreground"
+            }`}
+          >
+            <item.icon className="h-5 w-5" />
+            <span className="max-w-full truncate px-0.5">{item.title}</span>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
+import { AppSidebar, MobileBottomNav } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { DefinirSenha } from "@/components/DefinirSenha";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,10 +60,11 @@ function AuthenticatedLayout() {
             <SidebarTrigger />
             <div className="text-sm text-muted-foreground">Calculadora de Orçamento</div>
           </header>
-          <main className="min-w-0 flex-1 overflow-x-clip p-4 sm:p-6">
+          <main className="min-w-0 flex-1 overflow-x-clip p-4 pb-24 sm:p-6 sm:pb-24 md:pb-6">
             <Outlet />
           </main>
         </div>
+        <MobileBottomNav />
       </div>
     </SidebarProvider>
   );
