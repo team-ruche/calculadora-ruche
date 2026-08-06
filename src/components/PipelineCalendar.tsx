@@ -307,12 +307,6 @@ export function PipelineCalendar({
                             </div>
 
                             <div className="flex items-center gap-1.5 border-t px-1 py-2">
-                              <IconBtn label="GHL">
-                                <ExternalLink className="h-3.5 w-3.5" />
-                              </IconBtn>
-                              <IconBtn label="Google Calendar">
-                                <CalendarIcon className="h-3.5 w-3.5" />
-                              </IconBtn>
                               <IconBtn
                                 label="Ligar"
                                 href={r.leads?.telefone ? `tel:${r.leads.telefone}` : undefined}
@@ -325,13 +319,22 @@ export function PipelineCalendar({
                               >
                                 <MessageSquare className="h-3.5 w-3.5" />
                               </IconBtn>
-                              <IconBtn
-                                label="Orçamento / medição"
+                              <IconBtn label="GHL">
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </IconBtn>
+                              <button
+                                type="button"
                                 onClick={() => onOrcamento(r.id)}
-                                accent={!(r.total_cliente && r.total_cliente > 0)}
+                                className="ml-auto flex h-7 items-center gap-1 rounded-md px-2.5 text-[11px] font-semibold"
+                                style={
+                                  r.total_cliente && r.total_cliente > 0
+                                    ? { background: "#E7F4E4", color: "#2C7A3F" }
+                                    : { background: "#FDECEC", color: "#B42318" }
+                                }
                               >
                                 <ClipboardList className="h-3.5 w-3.5" />
-                              </IconBtn>
+                                {r.total_cliente && r.total_cliente > 0 ? "Medido" : "Medir"}
+                              </button>
                             </div>
 
                             <p className="px-1 pb-1 text-[11px] font-medium text-muted-foreground">
