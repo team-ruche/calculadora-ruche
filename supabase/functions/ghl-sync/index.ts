@@ -17,7 +17,7 @@ const json = (body: unknown, status = 200) =>
     headers: { ...cors, "Content-Type": "application/json" },
   });
 
-type Action = "cancel_appointment" | "push_quote_ready";
+type Action = "cancel_appointment" | "push_quote_ready" | "provision_partner";
 
 type MedicaoData = {
   sqft_real: number | null;
@@ -71,6 +71,55 @@ Deno.serve(async (req) => {
   }
 
   const action = body.action as Action;
+
+  if (action === "provision_partner") {
+    // Só ruche aprova/cria parceiro, então só ruche pode disparar isso.
+    const { data: callerRole } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", caller.user.id)
+      .eq("role", "ruche")
+      .maybeSingle();
+    if (!callerRole) return json({ error: "Apenas ruche pode provisionar parceiro" }, 403);
+
+    const partnerUserId = String(body.partner_user_id ?? "");
+    if (!partnerUserId) return json({ error: "partner_user_id é obrigatório" }, 400);
+
+    const { data: partnerUser, error: partnerErr } = await admin
+      .from("users")
+      .select("id, nome")
+      .eq("id", partnerUserId)
+      .maybeSingle();
+    if (partnerErr || !partnerUser) return json({ error: "Parceiro não encontrado" }, 404);
+
+    // Hoje só existe 1 location ativa — mesmo fallback usado no resto do arquivo.
+    const { data: pConfigs, error: pConfigErr } = await admin
+      .from("ghl_pipeline_config")
+      .select("location_id, assigned_partner_field_id")
+      .eq("ativo", true)
+      .limit(1);
+    const pConfig = pConfigs?.[0];
+    if (pConfigErr || !pConfig?.assigned_partner_field_id) {
+      return json({ error: "Nenhuma location com assigned_partner_field_id configurado" }, 400);
+    }
+
+    const n8nRes = await fetch(n8nWebhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Webhook-Secret": n8nSecret },
+      body: JSON.stringify({
+        action,
+        location_id: pConfig.location_id,
+        config: { assigned_partner_field_id: pConfig.assigned_partner_field_id },
+        payload: { partner_label: partnerUser.nome, partner_id: partnerUser.id },
+      }),
+    });
+    if (!n8nRes.ok) {
+      const text = await n8nRes.text().catch(() => "");
+      return json({ error: `Falha ao chamar o n8n (${n8nRes.status})`, detail: text }, 502);
+    }
+    return json({ ok: true });
+  }
+
   const proposalId = String(body.proposal_id ?? "");
   if (!proposalId || !["cancel_appointment", "push_quote_ready"].includes(action)) {
     return json({ error: "proposal_id e action (cancel_appointment | push_quote_ready) são obrigatórios" }, 400);
@@ -135,6 +184,7 @@ Deno.serve(async (req) => {
         canceled_stage_id: config.canceled_stage_id,
         quote_link_field_id: config.quote_link_field_id,
         scope_summary_field_id: config.scope_summary_field_id,
+        measurements_done_stage_id: config.measurements_done_stage_id,
       },
       payload,
     }),

@@ -86,5 +86,43 @@ Deno.serve(async (req) => {
   await admin.from("user_roles").delete().eq("user_id", uid);
   await admin.from("user_roles").insert({ user_id: uid, role });
 
+  // Parceiro já nasce aprovado por aqui — cria a opção dele no dropdown
+  // "Assigned Partner" do GHL + ghl_partner_map, senão a visita marcada pelo
+  // call center nunca cai no kanban dele. Best-effort, não trava a criação.
+  if (role === "parceiro") {
+    provisionPartnerInGhl(admin, uid, nome).catch((e) =>
+      console.error("provisionPartnerInGhl falhou:", e),
+    );
+  }
+
   return json({ ok: true, id: uid, senha_temporaria: senha });
 });
+
+async function provisionPartnerInGhl(
+  admin: ReturnType<typeof createClient>,
+  partnerUserId: string,
+  partnerNome: string,
+) {
+  const n8nWebhookUrl =
+    Deno.env.get("N8N_GHL_SYNC_OUTBOUND_URL") ?? "https://workflows.ruchedigital.online/webhook/ghl-sync-outbound";
+  const n8nSecret = Deno.env.get("N8N_GHL_SYNC_SECRET") ?? "3OqEzmOOFjxcr1xaRwG2DXp-mcIvQZTkUKXSk9ReOrU";
+
+  const { data: pConfigs } = await admin
+    .from("ghl_pipeline_config")
+    .select("location_id, assigned_partner_field_id")
+    .eq("ativo", true)
+    .limit(1);
+  const pConfig = pConfigs?.[0];
+  if (!pConfig?.assigned_partner_field_id) return;
+
+  await fetch(n8nWebhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Webhook-Secret": n8nSecret },
+    body: JSON.stringify({
+      action: "provision_partner",
+      location_id: pConfig.location_id,
+      config: { assigned_partner_field_id: pConfig.assigned_partner_field_id },
+      payload: { partner_label: partnerNome, partner_id: partnerUserId },
+    }),
+  });
+}

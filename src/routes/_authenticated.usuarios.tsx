@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus, Loader2, Copy } from "lucide-react";
-import { supabase, type AppUser, type AppRole } from "@/integrations/supabase/client";
+import { supabase, callGhlSyncPartner, type AppUser, type AppRole } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,17 @@ function UsuariosPage() {
     if (patch.role) {
       await supabase.from("user_roles").delete().eq("user_id", id);
       await supabase.from("user_roles").insert({ user_id: id, role: patch.role });
+    }
+
+    // Aprovando um parceiro -> cria a opção dele no dropdown "Assigned
+    // Partner" do GHL + a linha em ghl_partner_map, pra visita marcada pelo
+    // call center já cair no kanban certo. Best-effort: não trava a aprovação.
+    const target = users.find((u) => u.id === id);
+    const role = patch.role ?? target?.role;
+    if (patch.status === "aprovado" && role === "parceiro") {
+      callGhlSyncPartner(id).catch(() =>
+        toast.error("Parceiro aprovado, mas falhou ao criar no dropdown do GHL — avise pra checar manualmente."),
+      );
     }
 
     toast.success("Usuário atualizado");
