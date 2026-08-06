@@ -1,7 +1,22 @@
-// Modelos de domínio da Ruche + re-export do client Supabase.
-// Fica separado do client.ts (que o Lovable regenera) para não perder os tipos.
-import { supabase } from "./client";
-export { supabase };
+// Client Supabase + modelos de domínio da Ruche.
+// IMPORTANTE: o client é criado AQUI, fixo no projeto original, de propósito.
+// O Lovable Cloud fica trocando o .env/client.ts para um projeto novo e vazio,
+// o que derruba o login. Este arquivo não é regenerado pelo Lovable, então
+// mantém o app sempre no projeto onde estão as contas e os dados.
+import { createClient } from "@supabase/supabase-js";
+
+const SUPABASE_URL = "https://qrdbqpsqohalitaaxhnx.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyZGJxcHNxb2hhbGl0YWF4aG54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NzE5MjUsImV4cCI6MjA5OTU0NzkyNX0.OU6GEU98LZtgn5ln6XpJeW1F4fLs4XpB5Mp_vjgeoLo";
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: typeof window !== "undefined" ? window.localStorage : undefined,
+  },
+});
 
 // Sync GHL — chama a Edge Function ghl-sync (que repassa pro n8n, ver
 // supabase/functions/ghl-sync). O client já anexa o JWT da sessão atual.
