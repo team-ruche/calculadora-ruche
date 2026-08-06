@@ -121,7 +121,7 @@ function Overview() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [range, setRange] = useState<Range>(() => presetRange("mes"));
+  const [range, setRange] = useState<Range>(() => presetRange("90d"));
   // Formulário de orçamento (= formulário de medição). advance move p/ negociação ao salvar.
   const [orc, setOrc] = useState<{ row: Row; advance: boolean } | null>(null);
   const [orcView, setOrcView] = useState<Row | null>(null);

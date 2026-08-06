@@ -96,7 +96,7 @@ function OrcamentosPage() {
   // Proposta que deve avançar p/ Negociação assim que o orçamento for salvo (gate).
   const [advanceNegId, setAdvanceNegId] = useState<string | null>(null);
   // Filtro de período por data de criação do orçamento.
-  const [range, setRange] = useState<Range>(() => presetRange("mes"));
+  const [range, setRange] = useState<Range>(() => presetRange("90d"));
   // Busca por nome do cliente + documento do orçamento (layout do parceiro).
   const [busca, setBusca] = useState("");
   const [viewId, setViewId] = useState<string | null>(null);
