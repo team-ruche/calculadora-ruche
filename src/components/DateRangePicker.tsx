@@ -105,15 +105,15 @@ export function DateRangePicker({ value, onChange, clearable, placeholder }: Pro
           <span className="max-w-[46vw] truncate sm:max-w-none">{label}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="end">
-        <div className="flex">
-          <div className="flex w-40 flex-col gap-0.5 border-r p-2">
+      <PopoverContent className="w-auto max-w-[94vw] p-0" align="end">
+        <div className="flex flex-col sm:flex-row">
+          <div className="flex flex-row flex-wrap gap-1 border-b p-2 sm:w-40 sm:flex-col sm:gap-0.5 sm:border-b-0 sm:border-r">
             {clearable && (
               <button
                 type="button"
                 onClick={limpar}
                 className={cn(
-                  "rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-accent",
+                  "rounded-md px-2.5 py-1.5 text-left text-xs font-medium hover:bg-accent sm:px-3 sm:py-2 sm:text-sm",
                   value ? "text-foreground" : "bg-accent text-foreground",
                 )}
               >
@@ -126,7 +126,7 @@ export function DateRangePicker({ value, onChange, clearable, placeholder }: Pro
                 type="button"
                 onClick={() => applyPreset(p.key)}
                 className={cn(
-                  "rounded-md px-3 py-2 text-left text-sm hover:bg-accent",
+                  "rounded-md px-2.5 py-1.5 text-left text-xs hover:bg-accent sm:px-3 sm:py-2 sm:text-sm",
                   "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -137,7 +137,7 @@ export function DateRangePicker({ value, onChange, clearable, placeholder }: Pro
           <div className="p-2">
             <Calendar
               mode="range"
-              numberOfMonths={2}
+              numberOfMonths={isMobile ? 1 : 2}
               defaultMonth={value?.from ?? new Date()}
               selected={draft}
               onSelect={onSelect}
