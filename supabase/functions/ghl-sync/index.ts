@@ -41,6 +41,41 @@ function summarizeMedicao(m: MedicaoData): string {
   return parts.join(" · ");
 }
 
+type Room = {
+  nome: string;
+  area_sqft: number;
+  piso_novo: string;
+  piso_atual: string;
+  preparo: string;
+};
+
+function summarizeRooms(rooms: Room[]): string {
+  return rooms
+    .map((r) => `${r.nome} — ${r.area_sqft} sqft · ${r.piso_atual} → ${r.piso_novo} · preparo: ${r.preparo}`)
+    .join("\n");
+}
+
+// Só os extras com valor, pra não mandar uma parede de zeros pro card do GHL.
+const EXTRA_LABEL: Record<string, string> = {
+  degraus_escada: "Degraus de escada",
+  baseboard_instalar_ft: "Baseboard a instalar (ft)",
+  baseboard_pintar_ft: "Baseboard a pintar (ft)",
+  quarter_round_ft: "Quarter round (ft)",
+  transicoes: "Transições",
+  ambientes_moveis: "Ambientes com móveis",
+  aparelhos_mover: "Aparelhos a mover",
+  portas_trim: "Portas/trim",
+  segundo_andar_sem_elevador: "2º andar sem elevador",
+};
+
+function summarizeExtras(e: Record<string, unknown> | null): string {
+  if (!e) return "";
+  return Object.entries(EXTRA_LABEL)
+    .filter(([k]) => e[k] !== 0 && e[k] !== false && e[k] != null)
+    .map(([k, label]) => `${label}: ${e[k] === true ? "sim" : e[k]}`)
+    .join(" · ");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -127,7 +162,13 @@ Deno.serve(async (req) => {
 
   const { data: prop, error: propErr } = await admin
     .from("proposals")
-    .select("id, partner_id, ghl_opportunity_id, location_id, total_cliente, medicao")
+    .select(
+      "id, lead_id, partner_id, ghl_opportunity_id, location_id, " +
+        "total_cliente, total_repasse, margem_ruche, medicao, medicao_at, " +
+        // O contrato do GHL lê merge field de contact, não de opportunity —
+        // por isso o contact_id vem junto, ver push do bloco `contact` abaixo.
+        "leads:lead_id ( ghl_contact_id )",
+    )
     .eq("id", proposalId)
     .maybeSingle();
   if (propErr || !prop) return json({ error: "Orçamento não encontrado" }, 404);
@@ -161,14 +202,58 @@ Deno.serve(async (req) => {
     return json({ error: "Nenhuma location do GHL configurada (ghl_pipeline_config)" }, 400);
   }
 
+  // Ambientes e extras só interessam no push do orçamento pronto.
+  let rooms: Room[] = [];
+  let extras: Record<string, unknown> | null = null;
+  if (action === "push_quote_ready") {
+    const [{ data: r }, { data: x }] = await Promise.all([
+      admin
+        .from("proposal_rooms")
+        .select("nome, area_sqft, piso_novo, piso_atual, preparo")
+        .eq("proposal_id", proposalId),
+      admin.from("proposal_extras").select("*").eq("proposal_id", proposalId).maybeSingle(),
+    ]);
+    rooms = (r ?? []) as Room[];
+    extras = x ?? null;
+  }
+
+  const med = (prop.medicao ?? {}) as Record<string, unknown>;
+  // Os campos RADIO do GHL esperam o rótulo, não booleano.
+  const simNao = (v: unknown) => (v === true ? "Sim" : v === false ? "Não" : null);
+  const escopo = summarizeRooms(rooms) || summarizeMedicao(prop.medicao as MedicaoData);
+
   const payload =
     action === "cancel_appointment"
       ? {}
       : {
           quote_link: `${publicAppUrl}/orcamento/${proposalId}`,
+          // Mantido: o resumo em texto continua indo pro Project Scope Summary.
           scope_summary: summarizeMedicao(prop.medicao as MedicaoData),
           total_cliente: prop.total_cliente,
+          // Medição campo a campo -> custom fields de opportunity.
+          measurements: {
+            sqft_real: med.sqft_real ?? null,
+            piso_atual: med.piso_atual ?? null,
+            subfloor: med.subfloor ?? null,
+            nivelamento_necessario: simNao(med.nivelamento_necessario),
+            umidade_ok: simNao(med.umidade_ok),
+            observacoes: med.observacoes ?? null,
+            medicao_at: prop.medicao_at ?? null,
+            total_cliente: prop.total_cliente ?? null,
+            total_repasse: prop.total_repasse ?? null,
+            margem_ruche: prop.margem_ruche ?? null,
+            ambientes: summarizeRooms(rooms),
+            extras: summarizeExtras(extras),
+          },
+          // O que o contrato precisa, gravado no CONTACT.
+          contact: {
+            scope: escopo,
+            sqft: med.sqft_real ?? null,
+            total: prop.total_cliente ?? null,
+          },
         };
+
+  const lead = (prop as { leads?: { ghl_contact_id: string | null } | null }).leads;
 
   const n8nRes = await fetch(n8nWebhookUrl, {
     method: "POST",
@@ -177,6 +262,7 @@ Deno.serve(async (req) => {
       action,
       proposal_id: proposalId,
       ghl_opportunity_id: prop.ghl_opportunity_id,
+      ghl_contact_id: lead?.ghl_contact_id ?? null,
       location_id: config.location_id,
       config: {
         pipeline_id: config.pipeline_id,
@@ -185,6 +271,10 @@ Deno.serve(async (req) => {
         quote_link_field_id: config.quote_link_field_id,
         scope_summary_field_id: config.scope_summary_field_id,
         measurements_done_stage_id: config.measurements_done_stage_id,
+        measurement_field_ids: config.measurement_field_ids,
+        contact_scope_field_id: config.contact_scope_field_id,
+        contact_sqft_field_id: config.contact_sqft_field_id,
+        contact_total_field_id: config.contact_total_field_id,
       },
       payload,
     }),
