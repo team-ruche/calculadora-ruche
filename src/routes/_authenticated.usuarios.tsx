@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Loader2, Copy } from "lucide-react";
+import { Plus, Loader2, Copy, Trash2 } from "lucide-react";
 import {
   supabase,
   callGhlSyncPartner,
@@ -89,6 +89,17 @@ function UsuariosPage() {
     }
 
     toast.success("Usuário atualizado");
+    load();
+  };
+
+  const excluirUser = async (u: AppUser) => {
+    if (u.id === current?.id) return toast.error("Você não pode excluir a si mesmo.");
+    if (!confirm(`Excluir ${u.nome || u.email}? Esta ação não pode ser desfeita.`)) return;
+    const { error } = await supabase.functions.invoke("admin-delete-user", {
+      body: { user_id: u.id },
+    });
+    if (error) return toast.error(error.message);
+    toast.success("Usuário excluído");
     load();
   };
 
@@ -183,6 +194,17 @@ function UsuariosPage() {
                               onClick={() => updateUser(u.id, { status: "reprovado" })}
                             >
                               Reprovar
+                            </Button>
+                          )}
+                          {!isSelf && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => excluirUser(u)}
+                              className="border-destructive/40 text-destructive hover:bg-destructive/5"
+                              aria-label="Excluir usuário"
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </TableCell>
