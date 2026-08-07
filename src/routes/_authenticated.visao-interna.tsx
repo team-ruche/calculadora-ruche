@@ -49,6 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ParcelaDialog } from "@/components/ParcelaDialog";
 import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
 import { ChartFaturamento } from "@/components/ChartFaturamento";
@@ -279,6 +280,9 @@ function VisaoInternaPage() {
   const [parcelaEdit, setParcelaEdit] = useState<{ parcela: Parcela | null; deal: Deal } | null>(
     null,
   );
+  // Popover de "Nova cobrança" (escolher o cliente).
+  const [novaOpen, setNovaOpen] = useState(false);
+  const [novaBusca, setNovaBusca] = useState("");
   // Filtros por coluna (Por cliente e Parcelas).
   const [fcli, setFcli] = useState<ColFilters>({});
   const [fparc, setFparc] = useState<ColFilters>({});
@@ -1016,26 +1020,60 @@ function VisaoInternaPage() {
                     clearable
                     placeholder="Vencimento: todas as datas"
                   />
-                  <Select
-                    value=""
-                    onValueChange={(id) => {
-                      const d = dealsById[id];
-                      if (d) setParcelaEdit({ parcela: null, deal: d });
+                  <Popover
+                    open={novaOpen}
+                    onOpenChange={(o) => {
+                      setNovaOpen(o);
+                      if (!o) setNovaBusca("");
                     }}
                   >
-                    <SelectTrigger className="h-9 w-[170px]">
-                      <span className="flex items-center gap-1 text-sm">
-                        <Plus className="h-4 w-4" /> Nova cobrança
-                      </span>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {deals.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {nomeDe(d)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <PopoverTrigger asChild>
+                      <Button className="shrink-0">
+                        <Plus className="mr-1 h-4 w-4" /> Nova cobrança
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-64 p-0">
+                      <div className="border-b p-2">
+                        <div className="flex items-center gap-2 rounded-md border px-2 py-1.5">
+                          <Search className="h-4 w-4 text-muted-foreground" />
+                          <input
+                            autoFocus
+                            value={novaBusca}
+                            onChange={(e) => setNovaBusca(e.target.value)}
+                            placeholder="Buscar cliente…"
+                            className="w-full bg-transparent text-sm outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-64 overflow-y-auto p-1">
+                        {deals
+                          .filter((d) =>
+                            nomeDe(d).toLowerCase().includes(novaBusca.trim().toLowerCase()),
+                          )
+                          .map((d) => (
+                            <button
+                              key={d.id}
+                              type="button"
+                              onClick={() => {
+                                setParcelaEdit({ parcela: null, deal: d });
+                                setNovaOpen(false);
+                                setNovaBusca("");
+                              }}
+                              className="w-full truncate rounded-md px-2.5 py-2 text-left text-sm hover:bg-accent"
+                            >
+                              {nomeDe(d)}
+                            </button>
+                          ))}
+                        {deals.filter((d) =>
+                          nomeDe(d).toLowerCase().includes(novaBusca.trim().toLowerCase()),
+                        ).length === 0 && (
+                          <p className="px-2.5 py-3 text-center text-sm text-muted-foreground">
+                            Nenhum cliente.
+                          </p>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 {incFiltro && (
