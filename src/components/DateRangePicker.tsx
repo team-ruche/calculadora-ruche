@@ -91,7 +91,7 @@ export function DateRangePicker({ value, onChange, clearable, placeholder }: Pro
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-10 gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-sm hover:bg-accent"
+          className="h-9 gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground shadow-sm hover:bg-accent sm:h-10 sm:gap-2 sm:px-4 sm:text-sm sm:font-semibold"
         >
           <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
           <span className="whitespace-nowrap">
