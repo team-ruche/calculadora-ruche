@@ -259,8 +259,8 @@ function Overview() {
       </div>
 
       {/* Barra de filtros — fixa no topo, sangrando até a borda */}
-      <div className="sticky top-14 z-30 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b bg-background px-4 py-2.5 sm:-mx-6 sm:px-6">
-        <div className="inline-flex rounded-lg border bg-card p-0.5">
+      <div className="sticky top-14 z-30 -mx-4 flex flex-wrap items-center gap-2 border-b bg-background px-4 py-2.5 sm:-mx-6 sm:px-6">
+        <div className="inline-flex shrink-0 rounded-lg border bg-card p-0.5">
           <button
             type="button"
             onClick={() => setView("kanban")}
@@ -281,35 +281,33 @@ function Overview() {
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
-          <div className="flex w-full items-center gap-2 rounded-lg border bg-card px-3 py-1.5 sm:w-auto">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <input
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar cliente…"
-              className="w-full bg-transparent text-sm outline-none sm:w-40"
-            />
-          </div>
-          {view === "kanban" && (
-            <div className="flex w-full items-center gap-2 sm:w-auto">
-              <ArrowDownAZ className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-                <SelectTrigger className="h-9 w-full sm:w-52">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  {(Object.keys(SORT_LABEL) as SortBy[]).map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {SORT_LABEL[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+        <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
+        <div className="flex min-w-[140px] flex-1 items-center gap-2 rounded-lg border bg-card px-3 py-1.5">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar cliente…"
+            className="w-full bg-transparent text-sm outline-none"
+          />
         </div>
+        {view === "kanban" && (
+          <div className="flex min-w-[150px] flex-1 items-center gap-2 sm:flex-none">
+            <ArrowDownAZ className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+              <SelectTrigger className="h-9 flex-1 sm:w-52">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="end">
+                {(Object.keys(SORT_LABEL) as SortBy[]).map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {SORT_LABEL[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

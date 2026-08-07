@@ -978,8 +978,8 @@ function VisaoInternaPage() {
           {cobrView === "parc" && (
             <Card>
               <CardContent className="pt-6">
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <div className="flex flex-1 items-center gap-2 rounded-lg border px-3 py-2">
+                <div className="mb-3 space-y-2">
+                  <div className="flex w-full items-center gap-2 rounded-lg border px-3 py-2">
                     <Search className="h-4 w-4 text-muted-foreground" />
                     <input
                       value={busca}
@@ -1014,66 +1014,68 @@ function VisaoInternaPage() {
                       </button>
                     ))}
                   </div>
-                  <DateRangePicker
-                    value={vencRange}
-                    onChange={setVencRange}
-                    clearable
-                    placeholder="Vencimento: todas as datas"
-                  />
-                  <Popover
-                    open={novaOpen}
-                    onOpenChange={(o) => {
-                      setNovaOpen(o);
-                      if (!o) setNovaBusca("");
-                    }}
-                  >
-                    <PopoverTrigger asChild>
-                      <Button className="shrink-0">
-                        <Plus className="mr-1 h-4 w-4" /> Nova cobrança
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-64 p-0">
-                      <div className="border-b p-2">
-                        <div className="flex items-center gap-2 rounded-md border px-2 py-1.5">
-                          <Search className="h-4 w-4 text-muted-foreground" />
-                          <input
-                            autoFocus
-                            value={novaBusca}
-                            onChange={(e) => setNovaBusca(e.target.value)}
-                            placeholder="Buscar cliente…"
-                            className="w-full bg-transparent text-sm outline-none"
-                          />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <DateRangePicker
+                      value={vencRange}
+                      onChange={setVencRange}
+                      clearable
+                      placeholder="Vencimento: todas as datas"
+                    />
+                    <Popover
+                      open={novaOpen}
+                      onOpenChange={(o) => {
+                        setNovaOpen(o);
+                        if (!o) setNovaBusca("");
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button className="shrink-0">
+                          <Plus className="mr-1 h-4 w-4" /> Nova cobrança
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-64 p-0">
+                        <div className="border-b p-2">
+                          <div className="flex items-center gap-2 rounded-md border px-2 py-1.5">
+                            <Search className="h-4 w-4 text-muted-foreground" />
+                            <input
+                              autoFocus
+                              value={novaBusca}
+                              onChange={(e) => setNovaBusca(e.target.value)}
+                              placeholder="Buscar cliente…"
+                              className="w-full bg-transparent text-sm outline-none"
+                            />
+                          </div>
                         </div>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto p-1">
-                        {deals
-                          .filter((d) =>
+                        <div className="max-h-64 overflow-y-auto p-1">
+                          {deals
+                            .filter((d) =>
+                              nomeDe(d).toLowerCase().includes(novaBusca.trim().toLowerCase()),
+                            )
+                            .map((d) => (
+                              <button
+                                key={d.id}
+                                type="button"
+                                onClick={() => {
+                                  setParcelaEdit({ parcela: null, deal: d });
+                                  setNovaOpen(false);
+                                  setNovaBusca("");
+                                }}
+                                className="w-full truncate rounded-md px-2.5 py-2 text-left text-sm hover:bg-accent"
+                              >
+                                {nomeDe(d)}
+                              </button>
+                            ))}
+                          {deals.filter((d) =>
                             nomeDe(d).toLowerCase().includes(novaBusca.trim().toLowerCase()),
-                          )
-                          .map((d) => (
-                            <button
-                              key={d.id}
-                              type="button"
-                              onClick={() => {
-                                setParcelaEdit({ parcela: null, deal: d });
-                                setNovaOpen(false);
-                                setNovaBusca("");
-                              }}
-                              className="w-full truncate rounded-md px-2.5 py-2 text-left text-sm hover:bg-accent"
-                            >
-                              {nomeDe(d)}
-                            </button>
-                          ))}
-                        {deals.filter((d) =>
-                          nomeDe(d).toLowerCase().includes(novaBusca.trim().toLowerCase()),
-                        ).length === 0 && (
-                          <p className="px-2.5 py-3 text-center text-sm text-muted-foreground">
-                            Nenhum cliente.
-                          </p>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                          ).length === 0 && (
+                            <p className="px-2.5 py-3 text-center text-sm text-muted-foreground">
+                              Nenhum cliente.
+                            </p>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
 
                 {incFiltro && (
@@ -1096,7 +1098,7 @@ function VisaoInternaPage() {
                 )}
 
                 {/* KPIs contextuais — só o que é específico desta visão */}
-                <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                <div className="mb-4 grid grid-cols-2 gap-3">
                   <Kpi
                     label="Parcelas no filtro"
                     value={String(parcelasFlat.length)}

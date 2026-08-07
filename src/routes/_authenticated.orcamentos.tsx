@@ -319,8 +319,7 @@ function OrcamentosPage() {
       <div className="sticky top-14 z-30 -mx-4 space-y-2 border-b bg-background px-4 py-2.5 sm:-mx-6 sm:px-6">
         <div className="flex items-center gap-2">
           <Button onClick={() => setDialog({ mode: "create" })} className="shrink-0">
-            <Plus className="h-4 w-4 sm:mr-1" />
-            <span className="hidden sm:inline">Novo Orçamento</span>
+            <Plus className="mr-1 h-4 w-4" /> Novo Orçamento
           </Button>
           <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
           <Button
