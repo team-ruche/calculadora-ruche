@@ -6,6 +6,7 @@ import type { DateRange } from "react-day-picker";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 export type Preset = "hoje" | "7d" | "30d" | "mes" | "mes_passado" | "90d";
@@ -61,6 +62,13 @@ interface Props {
 export function DateRangePicker({ value, onChange, clearable, placeholder }: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>(value ?? undefined);
+  const isMobile = useIsMobile();
+  // No mobile o rótulo é bem curto (9/5 – 6/8); no desktop, completo.
+  const label = value
+    ? isMobile
+      ? `${format(value.from, "d/M")} – ${format(value.to, "d/M")}`
+      : `${fmt(value.from)} – ${fmt(value.to)}`
+    : (placeholder ?? "Período");
 
   const applyPreset = (p: Preset) => {
     const r = presetRange(p);
@@ -94,11 +102,7 @@ export function DateRangePicker({ value, onChange, clearable, placeholder }: Pro
           className="h-9 gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground shadow-sm hover:bg-accent sm:h-10 sm:gap-2 sm:px-4 sm:text-sm sm:font-semibold"
         >
           <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
-          <span className="whitespace-nowrap">
-            {value
-              ? `${fmt(value.from)} – ${fmt(value.to)}`
-              : (placeholder ?? "Selecionar período")}
-          </span>
+          <span className="max-w-[46vw] truncate sm:max-w-none">{label}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="end">
