@@ -63,12 +63,8 @@ export function DateRangePicker({ value, onChange, clearable, placeholder }: Pro
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>(value ?? undefined);
   const isMobile = useIsMobile();
-  // No mobile o rótulo é bem curto (9/5 – 6/8); no desktop, completo.
-  const label = value
-    ? isMobile
-      ? `${format(value.from, "d/M")} – ${format(value.to, "d/M")}`
-      : `${fmt(value.from)} – ${fmt(value.to)}`
-    : (placeholder ?? "Período");
+  // Rótulo sempre no formato extenso (9 May 26 – 13 Jun 26).
+  const label = value ? `${fmt(value.from)} – ${fmt(value.to)}` : (placeholder ?? "Período");
 
   const applyPreset = (p: Preset) => {
     const r = presetRange(p);
@@ -102,10 +98,10 @@ export function DateRangePicker({ value, onChange, clearable, placeholder }: Pro
           className="h-9 gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground shadow-sm hover:bg-accent sm:h-10 sm:gap-2 sm:px-4 sm:text-sm sm:font-semibold"
         >
           <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
-          <span className="max-w-[46vw] truncate sm:max-w-none">{label}</span>
+          <span className="whitespace-nowrap">{label}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto max-w-[94vw] p-0" align="end">
+      <PopoverContent className="w-[min(92vw,21rem)] p-0 sm:w-auto sm:max-w-none" align="end">
         <div className="flex flex-col sm:flex-row">
           <div className="flex flex-row flex-wrap gap-1 border-b p-2 sm:w-40 sm:flex-col sm:gap-0.5 sm:border-b-0 sm:border-r">
             {clearable && (
@@ -134,7 +130,7 @@ export function DateRangePicker({ value, onChange, clearable, placeholder }: Pro
               </button>
             ))}
           </div>
-          <div className="p-2">
+          <div className="flex flex-col items-center p-2">
             <Calendar
               mode="range"
               numberOfMonths={isMobile ? 1 : 2}

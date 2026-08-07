@@ -1019,7 +1019,7 @@ function VisaoInternaPage() {
                       value={vencRange}
                       onChange={setVencRange}
                       clearable
-                      placeholder="Vencimento: todas as datas"
+                      placeholder="Vencimento"
                     />
                     <Popover
                       open={novaOpen}
