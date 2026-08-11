@@ -14,7 +14,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import type { ProposalStage } from "@/integrations/supabase/models";
 import { STAGE_LABEL, STAGE_ORDER } from "@/integrations/supabase/models";
 import { Button } from "@/components/ui/button";
@@ -40,10 +40,10 @@ const STAGE_BG: Record<ProposalStage, { bg: string; fg: string; border: string; 
   deal: { bg: "#DFEECB", fg: "#204009", border: "#5FA13B", dot: "#5FA13B" },
 };
 
-const START_HOUR = 0; // meia-noite
-const END_HOUR = 23; // 23h (rola até meia-noite embaixo)
+const START_HOUR = 0; // midnight
+const END_HOUR = 23; // 11 PM (scrolls to midnight at the bottom)
 const ROW_H = 60;
-const DEFAULT_SCROLL_HOUR = 9; // abre com 9h no topo
+const DEFAULT_SCROLL_HOUR = 9; // opens with 9 AM at the top
 
 const money = (n: number | null) =>
   (n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -79,7 +79,7 @@ export function PipelineCalendar({
   onOrcamento,
 }: Props) {
   const isMobile = useIsMobile();
-  // No mobile a visão é de 1 dia (começando hoje); no desktop, a semana toda.
+  // On mobile the view is 1 day (starting today); on desktop, the whole week.
   const [mobileDay, setMobileDay] = useState<Date>(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -120,7 +120,7 @@ export function PipelineCalendar({
     onWeekStart(startOfWeek(new Date()));
   };
 
-  // Deslizar pro lado troca o dia (mobile). Só age em swipe horizontal claro.
+  // Swiping sideways changes the day (mobile). Only acts on a clear horizontal swipe.
   const touch = useRef<{ x: number; y: number } | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -148,7 +148,7 @@ export function PipelineCalendar({
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
         <Button variant="outline" size="sm" onClick={irHoje}>
-          Hoje
+          Today
         </Button>
         <div className="flex items-center gap-1.5">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => move(-1)}>
@@ -156,8 +156,8 @@ export function PipelineCalendar({
           </Button>
           <span className="min-w-44 text-center text-sm font-semibold">
             {isMobile
-              ? format(mobileDay, "EEE, d MMM yyyy", { locale: ptBR })
-              : `${format(days[0], "d MMM", { locale: ptBR })} – ${format(days[6], "d MMM yyyy", { locale: ptBR })}`}
+              ? format(mobileDay, "EEE, d MMM yyyy", { locale: enUS })
+              : `${format(days[0], "d MMM", { locale: enUS })} – ${format(days[6], "d MMM yyyy", { locale: enUS })}`}
           </span>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => move(1)}>
             <ChevronRight className="h-4 w-4" />
@@ -179,7 +179,7 @@ export function PipelineCalendar({
 
       <div className="overflow-x-auto" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div className={isMobile ? "w-full" : "min-w-[840px]"}>
-          {/* Cabeçalho dos dias */}
+          {/* Days header */}
           <div className="grid border-b bg-muted/20" style={{ gridTemplateColumns: gridCols }}>
             <div />
             {visibleDays.map((d) => {
@@ -201,17 +201,17 @@ export function PipelineCalendar({
                       hoje ? "font-semibold text-primary" : "text-muted-foreground"
                     }`}
                   >
-                    {format(d, "EEE", { locale: ptBR })}
+                    {format(d, "EEE", { locale: enUS })}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Grade (rolagem vertical: meia-noite a meia-noite) */}
+          {/* Grid (vertical scroll: midnight to midnight) */}
           <div ref={scrollRef} className="max-h-[560px] overflow-y-auto">
             <div className="grid" style={{ gridTemplateColumns: gridCols }}>
-              {/* Gutter de horas */}
+              {/* Hours gutter */}
               <div>
                 {hours.map((h) => (
                   <div
@@ -226,7 +226,7 @@ export function PipelineCalendar({
                 ))}
               </div>
 
-              {/* Colunas dos dias */}
+              {/* Day columns */}
               {visibleDays.map((day) => {
                 const hoje = isSameDay(day, now);
                 return (
@@ -287,12 +287,12 @@ export function PipelineCalendar({
                             <div className="space-y-1 px-1 pb-2 pt-1 text-[11px] text-muted-foreground">
                               <p className="flex items-center gap-1.5">
                                 <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
-                                {format(dt, "EEE d MMM · HH:mm", { locale: ptBR })}
+                                {format(dt, "EEE d MMM · HH:mm", { locale: enUS })}
                               </p>
                               <p className="flex items-center gap-1.5">
                                 <MapPin className="h-3.5 w-3.5 shrink-0" />
                                 <span className="truncate">
-                                  {r.leads?.endereco ?? "Endereço a confirmar"}
+                                  {r.leads?.endereco ?? "Address to confirm"}
                                 </span>
                               </p>
                               <p className="flex items-center gap-1.5 font-medium text-foreground">
@@ -300,7 +300,7 @@ export function PipelineCalendar({
                                 {money(r.total_cliente)}
                                 {!r.total_cliente && (
                                   <span className="font-normal text-muted-foreground">
-                                    (após orçamento)
+                                    (after quote)
                                   </span>
                                 )}
                               </p>
@@ -308,7 +308,7 @@ export function PipelineCalendar({
 
                             <div className="flex items-center gap-1.5 border-t px-1 py-2">
                               <IconBtn
-                                label="Ligar"
+                                label="Call"
                                 href={r.leads?.telefone ? `tel:${r.leads.telefone}` : undefined}
                               >
                                 <Phone className="h-3.5 w-3.5" />
@@ -333,12 +333,12 @@ export function PipelineCalendar({
                                 }
                               >
                                 <ClipboardList className="h-3.5 w-3.5" />
-                                {r.total_cliente && r.total_cliente > 0 ? "Medido" : "Medir"}
+                                {r.total_cliente && r.total_cliente > 0 ? "Measured" : "Measure"}
                               </button>
                             </div>
 
                             <p className="px-1 pb-1 text-[11px] font-medium text-muted-foreground">
-                              Mover para
+                              Move to
                             </p>
                             <div className="flex flex-col">
                               {STAGE_ORDER.map((s) => {
@@ -369,7 +369,7 @@ export function PipelineCalendar({
                                 onClick={() => onSelect(r.id)}
                                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent"
                               >
-                                <Eye className="h-3.5 w-3.5" /> Ver detalhes
+                                <Eye className="h-3.5 w-3.5" /> View details
                               </button>
                             </div>
                           </PopoverContent>

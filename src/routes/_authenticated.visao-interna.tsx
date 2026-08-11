@@ -73,7 +73,7 @@ const inRange = (iso: string | null, r: Range) => {
 };
 
 export const Route = createFileRoute("/_authenticated/visao-interna")({
-  head: () => ({ meta: [{ title: "Controle Financeiro · Ruche" }] }),
+  head: () => ({ meta: [{ title: "Financial Control · Ruche" }] }),
   component: VisaoInternaPage,
 });
 
@@ -95,7 +95,7 @@ const PARCELA_BADGE: Record<ParcelaStatus, { bg: string; fg: string }> = {
 const recebidoDe = (ps: Parcela[]) =>
   ps.reduce((a, p) => a + (p.status === "pago" ? (p.valor_pago ?? p.valor) : 0), 0);
 
-// Escala de cor do status do contrato.
+// Color scale for the contract status.
 const CONTRACT_STATUS_COLOR: Record<ContractStatus, { bg: string; fg: string }> = {
   active: { bg: "#D3E8BC", fg: "#2C5212" },
   pending: { bg: "#FBE7BF", fg: "#7A4E05" },
@@ -104,7 +104,7 @@ const CONTRACT_STATUS_COLOR: Record<ContractStatus, { bg: string; fg: string }> 
   encerrado: { bg: "#DEDCD2", fg: "#45443D" },
 };
 
-// Bucket de vencimento de uma parcela aberta (não paga).
+// Due-date bucket for an open (unpaid) installment.
 type VencBucket = "vencida" | "prox7" | "depois";
 const startOfToday = () => {
   const d = new Date();
@@ -127,13 +127,13 @@ const vencidoDe = (ps: Parcela[]) =>
     .reduce((a, p) => a + (p.valor ?? 0), 0);
 
 const VENC_LABEL: Record<"todas" | VencBucket, string> = {
-  todas: "Todas",
-  vencida: "Vencidas",
-  prox7: "Próximos 7 dias",
-  depois: "Após 7 dias",
+  todas: "All",
+  vencida: "Overdue",
+  prox7: "Next 7 days",
+  depois: "After 7 days",
 };
 
-// Dias em relação ao vencimento: negativo = falta vencer, 0 = vence hoje, positivo = atraso.
+// Days relative to the due date: negative = not yet due, 0 = due today, positive = overdue.
 const diasParaVenc = (p: Parcela): number | null => {
   if (!p.vencimento) return null;
   const venc = new Date(p.vencimento);
@@ -141,7 +141,7 @@ const diasParaVenc = (p: Parcela): number | null => {
   return Math.round((startOfToday().getTime() - venc.getTime()) / 86400000);
 };
 
-// Parcela aberta mais urgente (menor vencimento) de um conjunto.
+// Most urgent open installment (earliest due date) of a set.
 const maisUrgente = (ps: Parcela[]): Parcela | null =>
   ps
     .filter((p) => p.vencimento)
@@ -164,7 +164,7 @@ function DiasBadge({ dias }: { dias: number | null }) {
   );
 }
 
-// ---- KPI unificado ----------------------------------------------------------
+// ---- Unified KPI ----------------------------------------------------------
 type Tone = "neutral" | "primary" | "danger" | "warn" | "success" | "dark";
 const KPI_TONE: Record<Tone, { value: string; iconBg: string; iconFg: string }> = {
   neutral: { value: "", iconBg: "#F1F0EB", iconFg: "#45443D" },
@@ -250,25 +250,25 @@ function VisaoInternaPage() {
       else n.add(id);
       return n;
     });
-  // Filtro por data de fechamento do deal (bloco "Vendas no período").
+  // Filter by the deal's closing date (the "Sales in period" block).
   const [range, setRange] = useState<Range>(() => presetRange("mes"));
-  // Filtro por data de VENCIMENTO na tabela de cobrança (null = todas as datas).
+  // Filter by DUE DATE in the collections table (null = all dates).
   const [vencRange, setVencRange] = useState<Range | null>(null);
-  // Navegação: nível topo (Cobrança/Tracker) e sub-visão da cobrança.
+  // Navigation: top level (Collections/Tracker) and the collections sub-view.
   const [topView, setTopView] = useState<"cobranca" | "tracker">("cobranca");
   const [cobrView, setCobrView] = useState<"prio" | "cli" | "parc">("prio");
-  // Filtro de status na visão Parcelas (todas).
+  // Status filter in the Installments (all) view.
   const [statusFiltro, setStatusFiltro] = useState<"abertas" | "vencidas" | "pagas" | "todas">(
     "todas",
   );
-  // Filtro por inconsistência (vindo dos cards da Prioridade). null = sem filtro.
+  // Filter by inconsistency (coming from the Priority cards). null = no filter.
   const [incFiltro, setIncFiltro] = useState<"semConta" | "naoRec" | "semData" | null>(null);
   const INC_LABEL: Record<"semConta" | "naoRec" | "semData", string> = {
-    semConta: "Aberto sem conta definida",
-    naoRec: "Recebido não reconciliado",
-    semData: "Pago sem data de pagamento",
+    semConta: "Open without account set",
+    naoRec: "Received not reconciled",
+    semData: "Paid without payment date",
   };
-  // Abre a visão Parcelas já filtrada por uma inconsistência.
+  // Opens the Installments view already filtered by an inconsistency.
   const abrirInconsistencia = (k: "semConta" | "naoRec" | "semData") => {
     setStatusFiltro("todas");
     setBusca("");
@@ -276,14 +276,14 @@ function VisaoInternaPage() {
     setIncFiltro(k);
     setCobrView("parc");
   };
-  // Parcela em edição (dialog) na visão Parcelas.
+  // Installment being edited (dialog) in the Installments view.
   const [parcelaEdit, setParcelaEdit] = useState<{ parcela: Parcela | null; deal: Deal } | null>(
     null,
   );
-  // Popover de "Nova cobrança" (escolher o cliente).
+  // "New charge" popover (choose the client).
   const [novaOpen, setNovaOpen] = useState(false);
   const [novaBusca, setNovaBusca] = useState("");
-  // Filtros por coluna (Por cliente e Parcelas).
+  // Column filters (By client and Installments).
   const [fcli, setFcli] = useState<ColFilters>({});
   const [fparc, setFparc] = useState<ColFilters>({});
   const setColFcli = (k: string, v: FVal | undefined) => setFcli((s) => ({ ...s, [k]: v ?? {} }));
@@ -328,9 +328,9 @@ function VisaoInternaPage() {
 
   if (!isRuche) return <Navigate to="/overview" />;
 
-  // ---- COBRANÇA (independente do filtro de data) --------------------------
-  // Recebíveis são dirigidos pelo VENCIMENTO da parcela, não pela data de venda.
-  // Assim parcelas atrasadas de deals antigos e as que vão vencer sempre aparecem.
+  // ---- COLLECTIONS (independent of the date filter) --------------------------
+  // Receivables are driven by the installment's DUE DATE, not by the sale date.
+  // This way, overdue installments from old deals and upcoming ones always show up.
   const todasParcelas = deals.flatMap((d) => parcelasDe[d.id] ?? []);
   const recebidoCliente = todasParcelas.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
   const aReceberTotal = abertoDe(todasParcelas);
@@ -343,7 +343,7 @@ function VisaoInternaPage() {
   for (const d of deals) dealsById[d.id] = d;
   const nomeDe = (d: Deal) => d.leads?.nome_cliente || "—";
 
-  // ---- INCONSISTÊNCIAS a revisar (qualidade de dado) ----------------------
+  // ---- INCONSISTENCIES to review (data quality) ----------------------
   const incAbertoSemConta = todasParcelas.filter((p) => isAberta(p) && !p.conta);
   const incRecebNaoRec = todasParcelas.filter((p) => (p.valor_pago ?? 0) > 0 && !p.conciliado);
   const incPagoSemData = todasParcelas.filter(
@@ -352,7 +352,7 @@ function VisaoInternaPage() {
   const somaValor = (ps: Parcela[]) => ps.reduce((a, p) => a + (p.valor ?? 0), 0);
   const somaPago = (ps: Parcela[]) => ps.reduce((a, p) => a + (p.valor_pago ?? 0), 0);
 
-  // ---- PRIORIDADE de cobrança: clientes com vencido, por valor × atraso ----
+  // ---- Collection PRIORITY: clients with overdue amounts, by amount × days overdue ----
   const prioridade = deals
     .map((d) => {
       const ps = parcelasDe[d.id] ?? [];
@@ -365,7 +365,7 @@ function VisaoInternaPage() {
     .sort((a, b) => b.score - a.score);
   const prioTotal = prioridade.reduce((a, r) => a + r.total, 0);
 
-  // ---- PARCELAS (todas): flat + filtros de status/busca/vencimento ---------
+  // ---- INSTALLMENTS (all): flat + status/search/due-date filters ---------
   const parcelasFlat = deals
     .flatMap((d) => (parcelasDe[d.id] ?? []).map((p) => ({ p, d })))
     .filter(({ p, d }) => {
@@ -398,7 +398,7 @@ function VisaoInternaPage() {
     .sort((a, b) => (b.p.vencimento ?? "").localeCompare(a.p.vencimento ?? ""));
   const parcFaturado = parcelasFlat.reduce((a, { p }) => a + (p.valor ?? 0), 0);
 
-  // ---- VENDAS NO PERÍODO (filtrado por data de fechamento) ----------------
+  // ---- SALES IN PERIOD (filtered by closing date) ----------------
   const dealsNoPeriodo = deals.filter((d) => inRange(d.fechado_at, range));
   const totalVendido = dealsNoPeriodo.reduce((a, d) => a + (d.total_cliente ?? 0), 0);
   const totalParceiro = dealsNoPeriodo.reduce((a, d) => a + (d.total_repasse ?? 0), 0);
@@ -424,7 +424,7 @@ function VisaoInternaPage() {
     );
   }
 
-  // Tabela de cobrança: TODOS os deals. Filtra por busca, bucket e data de vencimento.
+  // Collections table: ALL deals. Filters by search, bucket and due date.
   const noVencRange = (p: Parcela) => !vencRange || inRange(p.vencimento, vencRange);
   const linhas = deals
     .filter((d) => (d.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()))
@@ -459,18 +459,16 @@ function VisaoInternaPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Controle Financeiro</h1>
-        <p className="text-sm text-muted-foreground">
-          Cobrança dos contratos e acompanhamento das vendas.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Financial Control</h1>
+        <p className="text-sm text-muted-foreground">Contract collections and sales tracking.</p>
       </div>
 
-      {/* Toggle fixo no scroll */}
+      {/* Toggle fixed on scroll */}
       <div className="sticky top-14 z-30 -mx-4 border-b bg-background px-4 py-2 sm:-mx-6 sm:px-6">
         <div className="inline-flex rounded-full bg-muted p-1">
           {(
             [
-              ["cobranca", "Cobrança"],
+              ["cobranca", "Collections"],
               ["tracker", "Tracker"],
             ] as const
           ).map(([v, l]) => (
@@ -490,37 +488,27 @@ function VisaoInternaPage() {
 
       {topView === "cobranca" && (
         <div className="space-y-6">
-          {/* KPIs de recebíveis — sempre visíveis */}
+          {/* Receivables KPIs — always visible */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Kpi label="A receber" value={money(aReceberTotal)} tone="primary" icon={Wallet} />
+            <Kpi label="Receivable" value={money(aReceberTotal)} tone="primary" icon={Wallet} />
+            <Kpi label="Overdue" value={money(vencidoTotal)} tone="danger" icon={AlertTriangle} />
+            <Kpi label="Due in 7 days" value={money(venceProx7)} tone="warn" icon={CalendarClock} />
             <Kpi
-              label="Vencido (atrasado)"
-              value={money(vencidoTotal)}
-              tone="danger"
-              icon={AlertTriangle}
-            />
-            <Kpi
-              label="Vence em 7 dias"
-              value={money(venceProx7)}
-              tone="warn"
-              icon={CalendarClock}
-            />
-            <Kpi
-              label="Coletado"
+              label="Collected"
               value={money(recebidoCliente)}
-              sub="recebido do cliente"
+              sub="Collected from client"
               tone="success"
               icon={CheckCircle2}
             />
           </div>
 
-          {/* Sub-abas (underline, para distinguir do toggle de topo) */}
+          {/* Sub-tabs (underline, to distinguish from the top toggle) */}
           <div className="flex gap-5 border-b">
             {(
               [
-                ["prio", "Prioridade"],
-                ["cli", "Por cliente"],
-                ["parc", "Parcelas (todas)"],
+                ["prio", "Priority"],
+                ["cli", "By client"],
+                ["parc", "Installments (all)"],
               ] as const
             ).map(([v, l]) => (
               <button
@@ -538,12 +526,12 @@ function VisaoInternaPage() {
             ))}
           </div>
 
-          {/* ===== PRIORIDADE ===== */}
+          {/* ===== PRIORITY ===== */}
           {cobrView === "prio" && (
             <div className="space-y-4">
               <div className="rounded-xl bg-muted/40 p-4">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Inconsistências a revisar
+                  Inconsistencies to review
                 </p>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <button
@@ -560,7 +548,7 @@ function VisaoInternaPage() {
                       </span>
                     </p>
                     <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                      Aberto sem conta definida
+                      Open without account set
                       <ChevronRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
                     </p>
                   </button>
@@ -578,7 +566,7 @@ function VisaoInternaPage() {
                       </span>
                     </p>
                     <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                      Recebido não reconciliado
+                      Received not reconciled
                       <ChevronRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
                     </p>
                   </button>
@@ -593,7 +581,7 @@ function VisaoInternaPage() {
                       </span>
                     </p>
                     <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                      Pago sem data de pagamento
+                      Paid without payment date
                       <ChevronRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
                     </p>
                   </button>
@@ -605,10 +593,10 @@ function VisaoInternaPage() {
                   <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <p className="flex items-center gap-1.5 font-semibold text-destructive">
-                        <AlertTriangle className="h-4 w-4" /> Prioridade de cobrança
+                        <AlertTriangle className="h-4 w-4" /> Collection priority
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        Clientes com parcelas vencidas, ranqueados por valor × atraso.
+                        Clients with overdue installments, ranked by amount × days overdue.
                       </p>
                     </div>
                     <div className="text-right">
@@ -616,24 +604,24 @@ function VisaoInternaPage() {
                         {money(prioTotal)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {prioridade.length} clientes vencidos
+                        {prioridade.length} clients overdue
                       </p>
                     </div>
                   </div>
                   {prioridade.length === 0 ? (
                     <p className="py-6 text-center text-sm text-muted-foreground">
-                      Nenhum cliente com parcela vencida.
+                      No clients with overdue installments.
                     </p>
                   ) : (
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-8">#</TableHead>
-                          <TableHead>Cliente</TableHead>
-                          <TableHead>Contrato</TableHead>
-                          <TableHead className="text-center">Dias</TableHead>
-                          <TableHead className="text-center">Parcelas</TableHead>
-                          <TableHead className="text-right">Vencido</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Contract</TableHead>
+                          <TableHead className="text-center">Days</TableHead>
+                          <TableHead className="text-center">Installments</TableHead>
+                          <TableHead className="text-right">Overdue</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -675,7 +663,7 @@ function VisaoInternaPage() {
             </div>
           )}
 
-          {/* ===== POR CLIENTE ===== */}
+          {/* ===== BY CLIENT ===== */}
           {cobrView === "cli" && (
             <Card>
               <CardContent className="pt-6">
@@ -685,7 +673,7 @@ function VisaoInternaPage() {
                     <input
                       value={busca}
                       onChange={(e) => setBusca(e.target.value)}
-                      placeholder="Buscar cliente…"
+                      placeholder="Search client…"
                       className="w-full bg-transparent text-sm outline-none"
                     />
                   </div>
@@ -709,11 +697,11 @@ function VisaoInternaPage() {
                     value={vencRange}
                     onChange={setVencRange}
                     clearable
-                    placeholder="Vencimento: todas as datas"
+                    placeholder="Due date: all dates"
                   />
                 </div>
                 {loading ? (
-                  <p className="text-sm text-muted-foreground">Carregando…</p>
+                  <p className="text-sm text-muted-foreground">Loading…</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <Table className="min-w-[820px]">
@@ -721,7 +709,7 @@ function VisaoInternaPage() {
                         <TableRow>
                           <TableHead className="sticky left-0 z-20 w-8 bg-card" />
                           <TableHead className="sticky left-8 z-20 bg-card">
-                            Cliente
+                            Client
                             <ColumnFilter
                               type="text"
                               value={fcli.cliente}
@@ -729,7 +717,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead>
-                            Contrato
+                            Contract
                             <ColumnFilter
                               type="select"
                               options={Object.keys(CONTRACT_STATUS_LABEL)}
@@ -739,7 +727,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead className="text-right">
-                            Faturado
+                            Billed
                             <ColumnFilter
                               type="num"
                               value={fcli.faturado}
@@ -747,7 +735,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead className="text-right">
-                            Recebido
+                            Collected
                             <ColumnFilter
                               type="num"
                               value={fcli.recebido}
@@ -755,7 +743,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead className="text-right">
-                            {vencFiltro === "todas" ? "A receber" : VENC_LABEL[vencFiltro]}
+                            {vencFiltro === "todas" ? "Receivable" : VENC_LABEL[vencFiltro]}
                             <ColumnFilter
                               type="num"
                               align="end"
@@ -764,7 +752,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead className="text-right">
-                            Vencido
+                            Overdue
                             <ColumnFilter
                               type="num"
                               align="end"
@@ -773,7 +761,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead className="text-center">
-                            Dias
+                            Days
                             <ColumnFilter
                               type="num"
                               align="end"
@@ -782,7 +770,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead className="text-center">
-                            Parcelas
+                            Installments
                             <ColumnFilter
                               type="num"
                               align="end"
@@ -791,7 +779,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead>
-                            Próx. vencimento
+                            Next due
                             <ColumnFilter
                               type="date"
                               align="end"
@@ -870,7 +858,7 @@ function VisaoInternaPage() {
                                 </TableCell>
                                 <TableCell className="text-sm">
                                   {prox?.vencimento
-                                    ? new Date(prox.vencimento).toLocaleDateString("pt-BR")
+                                    ? new Date(prox.vencimento).toLocaleDateString("en-US")
                                     : "—"}
                                 </TableCell>
                               </TableRow>
@@ -881,7 +869,7 @@ function VisaoInternaPage() {
                                     <div className="rounded-lg border bg-card p-3">
                                       <div className="mb-2 flex items-center justify-between">
                                         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                          Parcelas de {d.leads?.nome_cliente || "—"}
+                                          Installments for {d.leads?.nome_cliente || "—"}
                                         </span>
                                         <Button
                                           variant="outline"
@@ -891,25 +879,25 @@ function VisaoInternaPage() {
                                             setSelected(d);
                                           }}
                                         >
-                                          Abrir e editar
+                                          Open and edit
                                         </Button>
                                       </div>
                                       {ps.length === 0 ? (
                                         <p className="text-sm text-muted-foreground">
-                                          Sem parcelas.
+                                          No installments.
                                         </p>
                                       ) : (
                                         <Table>
                                           <TableHeader>
                                             <TableRow>
                                               <TableHead className="w-8">#</TableHead>
-                                              <TableHead>Vencimento</TableHead>
-                                              <TableHead>Forma</TableHead>
-                                              <TableHead className="text-right">Valor</TableHead>
+                                              <TableHead>Due date</TableHead>
+                                              <TableHead>Method</TableHead>
+                                              <TableHead className="text-right">Amount</TableHead>
                                               <TableHead className="text-right">
-                                                Parte Ruche
+                                                Ruche share
                                               </TableHead>
-                                              <TableHead className="text-right">Pago</TableHead>
+                                              <TableHead className="text-right">Paid</TableHead>
                                               <TableHead>Status</TableHead>
                                             </TableRow>
                                           </TableHeader>
@@ -920,7 +908,7 @@ function VisaoInternaPage() {
                                                 <TableCell>
                                                   {p.vencimento
                                                     ? new Date(p.vencimento).toLocaleDateString(
-                                                        "pt-BR",
+                                                        "en-US",
                                                       )
                                                     : "—"}
                                                 </TableCell>
@@ -961,8 +949,8 @@ function VisaoInternaPage() {
                           <TableRow>
                             <TableCell colSpan={10} className="text-center text-muted-foreground">
                               {vencFiltro === "todas"
-                                ? "Nenhum deal com parcelas."
-                                : `Nenhuma parcela ${VENC_LABEL[vencFiltro].toLowerCase()}.`}
+                                ? "No deals with installments."
+                                : `No ${VENC_LABEL[vencFiltro].toLowerCase()} installments.`}
                             </TableCell>
                           </TableRow>
                         )}
@@ -974,7 +962,7 @@ function VisaoInternaPage() {
             </Card>
           )}
 
-          {/* ===== PARCELAS (todas) ===== */}
+          {/* ===== INSTALLMENTS (all) ===== */}
           {cobrView === "parc" && (
             <Card>
               <CardContent className="pt-6">
@@ -984,17 +972,17 @@ function VisaoInternaPage() {
                     <input
                       value={busca}
                       onChange={(e) => setBusca(e.target.value)}
-                      placeholder="Buscar cliente…"
+                      placeholder="Search client…"
                       className="w-full bg-transparent text-sm outline-none"
                     />
                   </div>
                   <div className="inline-flex max-w-full shrink overflow-x-auto rounded-lg border bg-background p-0.5">
                     {(
                       [
-                        ["abertas", "Abertas"],
-                        ["vencidas", "Vencidas"],
-                        ["pagas", "Pagas"],
-                        ["todas", "Todas"],
+                        ["abertas", "Open"],
+                        ["vencidas", "Overdue"],
+                        ["pagas", "Paid"],
+                        ["todas", "All"],
                       ] as const
                     ).map(([v, l]) => (
                       <button
@@ -1019,7 +1007,7 @@ function VisaoInternaPage() {
                       value={vencRange}
                       onChange={setVencRange}
                       clearable
-                      placeholder="Vencimento"
+                      placeholder="Due date"
                     />
                     <Popover
                       open={novaOpen}
@@ -1030,7 +1018,7 @@ function VisaoInternaPage() {
                     >
                       <PopoverTrigger asChild>
                         <Button className="shrink-0">
-                          <Plus className="mr-1 h-4 w-4" /> Nova cobrança
+                          <Plus className="mr-1 h-4 w-4" /> New charge
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent align="end" className="w-64 p-0">
@@ -1041,7 +1029,7 @@ function VisaoInternaPage() {
                               autoFocus
                               value={novaBusca}
                               onChange={(e) => setNovaBusca(e.target.value)}
-                              placeholder="Buscar cliente…"
+                              placeholder="Search client…"
                               className="w-full bg-transparent text-sm outline-none"
                             />
                           </div>
@@ -1069,7 +1057,7 @@ function VisaoInternaPage() {
                             nomeDe(d).toLowerCase().includes(novaBusca.trim().toLowerCase()),
                           ).length === 0 && (
                             <p className="px-2.5 py-3 text-center text-sm text-muted-foreground">
-                              Nenhum cliente.
+                              No clients.
                             </p>
                           )}
                         </div>
@@ -1084,11 +1072,11 @@ function VisaoInternaPage() {
                       className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium"
                       style={{ background: "#FAEEDA", color: "#7A4E05" }}
                     >
-                      Filtrando: {INC_LABEL[incFiltro]}
+                      Filtering: {INC_LABEL[incFiltro]}
                       <button
                         type="button"
                         onClick={() => setIncFiltro(null)}
-                        aria-label="Limpar filtro"
+                        aria-label="Clear filter"
                         className="hover:opacity-70"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -1097,25 +1085,25 @@ function VisaoInternaPage() {
                   </div>
                 )}
 
-                {/* KPIs contextuais — só o que é específico desta visão */}
+                {/* Contextual KPIs — only what is specific to this view */}
                 <div className="mb-4 grid grid-cols-2 gap-3">
                   <Kpi
-                    label="Parcelas no filtro"
+                    label="Installments in filter"
                     value={String(parcelasFlat.length)}
                     icon={FileText}
                   />
-                  <Kpi label="Total faturado" value={money(parcFaturado)} icon={Wallet} />
+                  <Kpi label="Total billed" value={money(parcFaturado)} icon={Wallet} />
                 </div>
 
                 {loading ? (
-                  <p className="text-sm text-muted-foreground">Carregando…</p>
+                  <p className="text-sm text-muted-foreground">Loading…</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <Table className="min-w-[760px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead className="sticky left-0 z-20 bg-card">
-                            Cliente
+                            Client
                             <ColumnFilter
                               type="text"
                               value={fparc.cliente}
@@ -1123,7 +1111,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead>
-                            Método
+                            Method
                             <ColumnFilter
                               type="select"
                               options={[...PAYMENT_METHODS, "—"]}
@@ -1132,7 +1120,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead className="text-right">
-                            Valor
+                            Amount
                             <ColumnFilter
                               type="num"
                               value={fparc.valor}
@@ -1140,7 +1128,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead>
-                            Conta
+                            Account
                             <ColumnFilter
                               type="select"
                               options={[...CONTAS, "—"]}
@@ -1149,7 +1137,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead>
-                            Vencimento
+                            Due date
                             <ColumnFilter
                               type="date"
                               align="end"
@@ -1158,7 +1146,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead>
-                            Pago em
+                            Paid on
                             <ColumnFilter
                               type="date"
                               align="end"
@@ -1167,7 +1155,7 @@ function VisaoInternaPage() {
                             />
                           </TableHead>
                           <TableHead>
-                            Período
+                            Period
                             <ColumnFilter
                               type="text"
                               align="end"
@@ -1209,12 +1197,12 @@ function VisaoInternaPage() {
                             </TableCell>
                             <TableCell>
                               {p.vencimento
-                                ? new Date(p.vencimento).toLocaleDateString("pt-BR")
+                                ? new Date(p.vencimento).toLocaleDateString("en-US")
                                 : "—"}
                             </TableCell>
                             <TableCell>
                               {p.data_pagamento
-                                ? new Date(p.data_pagamento).toLocaleDateString("pt-BR")
+                                ? new Date(p.data_pagamento).toLocaleDateString("en-US")
                                 : "—"}
                             </TableCell>
                             <TableCell className="text-muted-foreground">
@@ -1236,7 +1224,7 @@ function VisaoInternaPage() {
                         {parcelasFlat.length === 0 && (
                           <TableRow>
                             <TableCell colSpan={8} className="text-center text-muted-foreground">
-                              Nenhuma parcela neste filtro.
+                              No installments in this filter.
                             </TableCell>
                           </TableRow>
                         )}
@@ -1253,27 +1241,27 @@ function VisaoInternaPage() {
       {topView === "tracker" && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <SectionTitle dot="#F0A81E">Vendas no período</SectionTitle>
+            <SectionTitle dot="#F0A81E">Sales in period</SectionTitle>
             <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Kpi
-              label="Total vendido"
+              label="Total sold"
               value={money(totalVendido)}
-              sub={`${dealsNoPeriodo.length} deals fechados`}
+              sub={`${dealsNoPeriodo.length} deals closed`}
               tone="dark"
               icon={TrendingUp}
             />
             <Kpi
-              label="Total parceiro"
+              label="Total partner"
               value={money(totalParceiro)}
-              sub="fica com o parceiro"
+              sub="goes to the partner"
               icon={Users}
             />
             <Kpi
               label="Total Ruche"
               value={money(totalRuche)}
-              sub="margem da Ruche no período"
+              sub="Ruche margin in the period"
               icon={Building2}
             />
           </div>
@@ -1299,7 +1287,7 @@ function VisaoInternaPage() {
   );
 }
 
-// ---- Detalhe do deal --------------------------------------------------------
+// ---- Deal detail --------------------------------------------------------
 function DealDetail({
   deal,
   parcelas,
@@ -1313,7 +1301,7 @@ function DealDetail({
 }) {
   const [editing, setEditing] = useState<Parcela | "novo" | null>(null);
   const receb = recebidoDe(parcelas);
-  const cliente = deal.leads?.nome_cliente ?? "Cliente";
+  const cliente = deal.leads?.nome_cliente ?? "Client";
 
   const proximoNumero = (parcelas.at(-1)?.numero ?? 0) + 1;
 
@@ -1323,7 +1311,7 @@ function DealDetail({
         onClick={onBack}
         className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> Voltar
+        <ArrowLeft className="h-4 w-4" /> Back
       </button>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1332,20 +1320,20 @@ function DealDetail({
           <p className="text-sm text-muted-foreground">
             Deal · {CONTRACT_STATUS_LABEL[deal.contract_status]}
             {deal.fechado_at
-              ? ` · fechado ${new Date(deal.fechado_at).toLocaleDateString("pt-BR")}`
+              ? ` · closed ${new Date(deal.fechado_at).toLocaleDateString("en-US")}`
               : ""}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setEditing("novo")}>
-          <Plus className="mr-1 h-4 w-4" /> Nova parcela
+          <Plus className="mr-1 h-4 w-4" /> New installment
         </Button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <MiniKpi label="Vendido" value={money(deal.total_cliente)} />
-        <MiniKpi label="Parceiro" value={money(deal.total_repasse)} />
+        <MiniKpi label="Sold" value={money(deal.total_cliente)} />
+        <MiniKpi label="Partner" value={money(deal.total_repasse)} />
         <MiniKpi label="Ruche" value={money(deal.margem_ruche)} />
-        <MiniKpi label="Recebido" value={money(receb)} success />
+        <MiniKpi label="Collected" value={money(receb)} success />
       </div>
 
       <Card>
@@ -1355,13 +1343,13 @@ function DealDetail({
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-8">#</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Período</TableHead>
-                  <TableHead>Forma</TableHead>
-                  <TableHead>Conta</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead className="text-right">Parte Ruche</TableHead>
-                  <TableHead className="text-right">Pago</TableHead>
+                  <TableHead>Due date</TableHead>
+                  <TableHead>Period</TableHead>
+                  <TableHead>Method</TableHead>
+                  <TableHead>Account</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Ruche share</TableHead>
+                  <TableHead className="text-right">Paid</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1370,7 +1358,7 @@ function DealDetail({
                   <TableRow key={p.id} className="cursor-pointer" onClick={() => setEditing(p)}>
                     <TableCell>{p.numero}</TableCell>
                     <TableCell>
-                      {p.vencimento ? new Date(p.vencimento).toLocaleDateString("pt-BR") : "—"}
+                      {p.vencimento ? new Date(p.vencimento).toLocaleDateString("en-US") : "—"}
                     </TableCell>
                     <TableCell>{p.periodo || "—"}</TableCell>
                     <TableCell>{p.payment_method || "—"}</TableCell>
@@ -1398,7 +1386,7 @@ function DealDetail({
                 {parcelas.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center text-muted-foreground">
-                      Nenhuma parcela. As parcelas vêm acordadas na venda, ou adicione manualmente.
+                      No installments. Installments are agreed at the sale, or add them manually.
                     </TableCell>
                   </TableRow>
                 )}

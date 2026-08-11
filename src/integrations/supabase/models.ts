@@ -42,6 +42,18 @@ export async function callGhlSyncPartner(partnerUserId: string) {
 export type AppRole = "ruche" | "parceiro";
 export type UserStatus = "pendente" | "aprovado" | "reprovado";
 
+export const USER_STATUS_LABEL: Record<UserStatus, string> = {
+  pendente: "Pending",
+  aprovado: "Approved",
+  reprovado: "Rejected",
+};
+
+export type AppRoleLabel = "ruche" | "parceiro";
+export const ROLE_LABEL: Record<AppRoleLabel, string> = {
+  ruche: "Ruche",
+  parceiro: "Partner",
+};
+
 export interface AppUser {
   id: string;
   nome: string;
@@ -112,7 +124,7 @@ export const CONTRACT_STATUS_LABEL: Record<ContractStatus, string> = {
   pending: "Pending",
   on_hold: "On Hold",
   contractual_billing: "Contractual Billing",
-  encerrado: "Encerrado",
+  encerrado: "Closed",
 };
 
 // Status de uma parcela
@@ -120,12 +132,12 @@ export type ParcelaStatus =
   "pago" | "em_dia" | "vence_7d" | "vence_hoje" | "em_atraso" | "negociacao" | "processing";
 
 export const PARCELA_STATUS_LABEL: Record<ParcelaStatus, string> = {
-  pago: "Pago",
-  em_dia: "Em dia",
-  vence_7d: "Vence 7d",
-  vence_hoje: "Vence hoje",
-  em_atraso: "Em atraso",
-  negociacao: "Negociação",
+  pago: "Paid",
+  em_dia: "On time",
+  vence_7d: "Due in 7d",
+  vence_hoje: "Due today",
+  em_atraso: "Overdue",
+  negociacao: "Negotiation",
   processing: "Processing",
 };
 

@@ -46,16 +46,16 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
-// Fallback pra quando a proposal ainda não tem location_id gravado (leads
-// criados antes da etapa10). Hoje só existe 1 cliente rodando o sync.
+// Fallback for when the proposal does not yet have a location_id stored (leads
+// created before step 10). Today only 1 client is running the sync.
 const GHL_DEFAULT_LOCATION_ID = "jl5iFelWb5hiWu9FIeiD";
 
 type ViewMode = "kanban" | "calendar";
 type SortBy = "visita" | "alpha" | "created";
 const SORT_LABEL: Record<SortBy, string> = {
-  visita: "Data da visita",
-  alpha: "Ordem alfabética",
-  created: "Data de criação",
+  visita: "Visit date",
+  alpha: "Alphabetical",
+  created: "Creation date",
 };
 
 export const Route = createFileRoute("/_authenticated/overview")({
@@ -87,9 +87,9 @@ const inRange = (iso: string | null, r: Range) => {
 };
 
 const visitLabel = (iso: string | null) => {
-  if (!iso) return "Visita a agendar";
+  if (!iso) return "Visit to be scheduled";
   const d = new Date(iso);
-  return d.toLocaleString("pt-BR", {
+  return d.toLocaleString("en-US", {
     weekday: "short",
     day: "2-digit",
     month: "short",
@@ -98,7 +98,7 @@ const visitLabel = (iso: string | null) => {
   });
 };
 
-// Cores por estágio — tons com bom contraste (texto sempre no 900 da família).
+// Colors per stage — tones with good contrast (text always in the family's 900).
 const STAGE_COLOR: Record<
   ProposalStage,
   { bar: string; text: string; head: string; headText: string }
@@ -112,7 +112,7 @@ const STAGE_COLOR: Record<
 
 const REALIZADAS: ProposalStage[] = ["negotiation", "no_deal", "deal"];
 
-// Orçamento feito = tem valor calculado. É o gate para ir a Negociação.
+// Quote done = has a calculated value. It's the gate to move to Negotiation.
 const orcamentoFeito = (r: Row) => r.total_cliente != null && r.total_cliente > 0;
 
 function Overview() {
@@ -121,7 +121,7 @@ function Overview() {
   const [loading, setLoading] = useState(true);
   const [dragId, setDragId] = useState<string | null>(null);
   const [range, setRange] = useState<Range>(() => presetRange("90d"));
-  // Formulário de orçamento (= formulário de medição). advance move p/ negociação ao salvar.
+  // Quote form (= measurement form). advance moves to negotiation on save.
   const [orc, setOrc] = useState<{ row: Row; advance: boolean } | null>(null);
   const [orcView, setOrcView] = useState<Row | null>(null);
   const [askNeg, setAskNeg] = useState<Row | null>(null);
@@ -167,7 +167,7 @@ function Overview() {
         return (a.leads?.nome_cliente ?? "").localeCompare(b.leads?.nome_cliente ?? "");
       if (sortBy === "created")
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      // visita: mais próxima primeiro (nulos por último)
+      // visit: nearest first (nulls last)
       const ta = a.visita_at ? new Date(a.visita_at).getTime() : Infinity;
       const tb = b.visita_at ? new Date(b.visita_at).getTime() : Infinity;
       return ta - tb;
@@ -191,9 +191,9 @@ function Overview() {
 
   const changeStage = async (row: Row, next: ProposalStage) => {
     if (row.stage === next) return;
-    // Gate: só entra em Negociação com o orçamento (medição) preenchido.
+    // Gate: only enters Negotiation with the quote (measurement) filled in.
     if (next === "negotiation" && !orcamentoFeito(row)) {
-      toast.info("Preencha o orçamento (medição) para mover para Negociação.");
+      toast.info("Fill in the quote (measurement) to move to Negotiation.");
       setOrc({ row, advance: true });
       return;
     }
@@ -201,14 +201,14 @@ function Overview() {
     if (error) return toast.error(error.message);
     load();
 
-    // Cancelamento feito no site precisa espelhar pro GHL — Confirmed/Canceled
-    // é estágio que o GHL também é dono, então ele tem que saber. Deal/No Deal
-    // ficam só como destino do sync que vem do GHL (o closer decide lá).
+    // A cancellation made on the site needs to mirror to GHL — Confirmed/Canceled
+    // is a stage that GHL also owns, so it has to know. Deal/No Deal
+    // remain only as targets of the sync coming from GHL (the closer decides there).
     if (next === "appointment_canceled" && row.ghl_opportunity_id) {
       try {
         await callGhlSync("cancel_appointment", row.id);
       } catch (e) {
-        toast.error("Cancelado no site, mas falhou ao avisar o GHL — verifique manualmente.");
+        toast.error("Canceled on the site, but failed to notify GHL — please check manually.");
       }
     }
   };
@@ -217,7 +217,7 @@ function Overview() {
     const current = orc;
     setOrc(null);
     await load();
-    // Ao aprovar/salvar a medição, pergunta se quer mover para Negotiation.
+    // When approving/saving the measurement, ask whether to move to Negotiation.
     if (current && current.row.stage === "appointment_confirmed") {
       setAskNeg(current.row);
     }
@@ -231,18 +231,18 @@ function Overview() {
       .eq("id", row.id);
     if (error) return toast.error(error.message);
     await load();
-    toast.success("Movido para Negotiation");
-    // Medição + orçamento prontos → manda link do orçamento pro GHL (não muda stage lá).
+    toast.success("Moved to Negotiation");
+    // Measurement + quote ready → send the quote link to GHL (doesn't change stage there).
     if (row.ghl_opportunity_id) {
       try {
         await callGhlSync("push_quote_ready", row.id);
       } catch (e) {
-        toast.error("Movido, mas falhou ao enviar pro GHL — verifique manualmente.");
+        toast.error("Moved, but failed to send to GHL — please check manually.");
       }
     }
   };
 
-  // Ao clicar no orçamento: se já criado, abre o documento; senão, abre o formulário.
+  // When clicking the quote: if already created, open the document; otherwise, open the form.
   const abrirOrcamento = (row: Row) => {
     if (orcamentoFeito(row)) setOrcView(row);
     else setOrc({ row, advance: false });
@@ -253,12 +253,12 @@ function Overview() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Overview</h1>
         <p className="text-sm text-muted-foreground">
-          Bem-vindo, {user?.nome || user?.email}.{" "}
-          {isRuche ? "Você tem acesso total." : "Você é parceiro."}
+          Welcome, {user?.nome || user?.email}.{" "}
+          {isRuche ? "You have full access." : "You are a partner."}
         </p>
       </div>
 
-      {/* Barra de filtros — fixa no topo, sangrando até a borda */}
+      {/* Filter bar — fixed at the top, bleeding to the edge */}
       <div className="sticky top-14 z-30 -mx-4 flex flex-wrap items-center gap-2 border-b bg-background px-4 py-2.5 sm:-mx-6 sm:px-6">
         <div className="inline-flex shrink-0 rounded-lg border bg-card p-0.5">
           <button
@@ -277,7 +277,7 @@ function Overview() {
               view === "calendar" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
             }`}
           >
-            <CalendarDays className="h-4 w-4" /> Calendário
+            <CalendarDays className="h-4 w-4" /> Calendar
           </button>
         </div>
 
@@ -287,7 +287,7 @@ function Overview() {
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar cliente…"
+            placeholder="Search client…"
             className="w-full bg-transparent text-sm outline-none"
           />
         </div>
@@ -313,10 +313,10 @@ function Overview() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Funnel counts={{ count }} totais={totais} className="lg:col-span-2" />
         <div className="space-y-3">
-          <MetricBox label="Visitas realizadas" value={pct(realizadas, totais)} />
-          <MetricBox label="Deal / Negociação" value={pct(deals, realizadas)} />
-          <MetricBox label="Pipeline em negociação" value={money(pipeline)} />
-          <MetricBox label="Venda fechada" value={money(vendaFechada)} success />
+          <MetricBox label="Visits completed" value={pct(realizadas, totais)} />
+          <MetricBox label="Deal / Negotiation" value={pct(deals, realizadas)} />
+          <MetricBox label="Pipeline in negotiation" value={money(pipeline)} />
+          <MetricBox label="Closed sale" value={money(vendaFechada)} success />
         </div>
       </div>
 
@@ -341,7 +341,7 @@ function Overview() {
           }}
         />
       ) : isMobile ? (
-        // Mobile: carrossel — deslize pro lado pra trocar de estágio (uma tela por estágio).
+        // Mobile: carousel — swipe sideways to switch stage (one screen per stage).
         <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {STAGE_ORDER.map((stage) => (
             <div
@@ -356,9 +356,9 @@ function Overview() {
                 <span className="rounded-full bg-background/70 px-1.5">{count(stage)}</span>
               </div>
               <div className="flex h-[500px] flex-col gap-2 overflow-y-auto pr-1">
-                {loading && <p className="p-2 text-xs text-muted-foreground">Carregando…</p>}
+                {loading && <p className="p-2 text-xs text-muted-foreground">Loading…</p>}
                 {!loading && byStage[stage].length === 0 && (
-                  <p className="p-2 text-xs text-muted-foreground">Nenhum card neste estágio.</p>
+                  <p className="p-2 text-xs text-muted-foreground">No cards in this stage.</p>
                 )}
                 {byStage[stage].map((row) => (
                   <KanbanCard
@@ -402,7 +402,7 @@ function Overview() {
                 <span className="rounded-full bg-background/70 px-1.5">{count(stage)}</span>
               </div>
               <div className="flex h-[500px] flex-col gap-2 overflow-y-auto pr-1">
-                {loading && <p className="p-2 text-xs text-muted-foreground">Carregando…</p>}
+                {loading && <p className="p-2 text-xs text-muted-foreground">Loading…</p>}
                 {!loading && byStage[stage].length === 0 && (
                   <p className="p-2 text-xs text-muted-foreground">—</p>
                 )}
@@ -429,13 +429,13 @@ function Overview() {
         </div>
       )}
 
-      {/* Formulário de orçamento (mesmo de "Novo orçamento") */}
+      {/* Quote form (same as "New quote") */}
       <Dialog open={!!orc} onOpenChange={(o) => !o && setOrc(null)}>
         <DialogContent className="flex max-h-[88dvh] max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
           <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
-            <DialogTitle>Orçamento · medição</DialogTitle>
+            <DialogTitle>Quote · measurement</DialogTitle>
             <DialogDescription>
-              Mesmo formulário de "Novo orçamento". Preenchê-lo libera a etapa de Negociação.
+              Same form as "New quote". Filling it in unlocks the Negotiation stage.
             </DialogDescription>
           </DialogHeader>
           {orc && (
@@ -451,26 +451,26 @@ function Overview() {
         </DialogContent>
       </Dialog>
 
-      {/* Pergunta se quer mover para Negotiation após aprovar a medição */}
+      {/* Ask whether to move to Negotiation after approving the measurement */}
       <Dialog open={!!askNeg} onOpenChange={(o) => !o && setAskNeg(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Mover para Negotiation?</DialogTitle>
+            <DialogTitle>Move to Negotiation?</DialogTitle>
             <DialogDescription>
-              A medição de {askNeg?.leads?.nome_cliente ?? "este cliente"} foi salva. Deseja mover o
-              card para o estágio Negotiation agora?
+              The measurement for {askNeg?.leads?.nome_cliente ?? "this client"} has been saved. Do
+              you want to move the card to the Negotiation stage now?
             </DialogDescription>
           </DialogHeader>
           <div className="mt-2 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setAskNeg(null)}>
-              Agora não
+              Not now
             </Button>
-            <Button onClick={() => askNeg && moverParaNeg(askNeg)}>Mover para Negotiation</Button>
+            <Button onClick={() => askNeg && moverParaNeg(askNeg)}>Move to Negotiation</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Documento do orçamento (após criado) */}
+      {/* Quote document (after creation) */}
       <OrcamentoView
         open={!!orcView}
         proposalId={orcView?.id ?? null}
@@ -482,7 +482,7 @@ function Overview() {
         }}
       />
 
-      {/* Detalhe do card — grupos A–F (card do setter) */}
+      {/* Card detail — groups A–F (setter card) */}
       <LeadDetalhe
         lead={detail?.leads ?? null}
         open={!!detail}
@@ -492,7 +492,7 @@ function Overview() {
   );
 }
 
-// ---- Funil ------------------------------------------------------------------
+// ---- Funnel -----------------------------------------------------------------
 function Funnel({
   counts,
   totais,
@@ -554,23 +554,23 @@ function Funnel({
         >
           <CalendarIcon className="h-3.5 w-3.5" />
         </span>
-        <h2 className="text-base font-semibold text-foreground">Funil · visitas</h2>
+        <h2 className="text-base font-semibold text-foreground">Funnel · visits</h2>
       </div>
       <div className="space-y-3">
         <FunnelRow
-          label="Confirmadas"
+          label="Confirmed"
           value={conf}
           stage="appointment_confirmed"
-          sub={`−${canc} canceladas`}
+          sub={`−${canc} canceled`}
         />
-        <FunnelRow label="Negociação" value={neg} stage="negotiation" sub={`−${nodeal} no deal`} />
+        <FunnelRow label="Negotiation" value={neg} stage="negotiation" sub={`−${nodeal} no deal`} />
         <FunnelRow label="Deal" value={deal} stage="deal" />
       </div>
     </div>
   );
 }
 
-// ---- Quadro de métrica ------------------------------------------------------
+// ---- Metric box -------------------------------------------------------------
 function MetricBox({ label, value, success }: { label: string; value: string; success?: boolean }) {
   return (
     <div className="rounded-xl border bg-card p-4">
@@ -582,7 +582,7 @@ function MetricBox({ label, value, success }: { label: string; value: string; su
   );
 }
 
-// ---- Card do kanban ---------------------------------------------------------
+// ---- Kanban card ------------------------------------------------------------
 function KanbanCard({
   row,
   onDragStart,
@@ -597,7 +597,7 @@ function KanbanCard({
   onStageChange: (next: ProposalStage) => void;
 }) {
   const lead = row.leads;
-  const nome = lead?.nome_cliente ?? "Sem nome";
+  const nome = lead?.nome_cliente ?? "No name";
   const initials = nome
     .split(" ")
     .slice(0, 2)
@@ -605,7 +605,7 @@ function KanbanCard({
     .join("")
     .toUpperCase();
   const tel = lead?.telefone ?? "";
-  const endereco = lead?.endereco ?? "Endereço a confirmar";
+  const endereco = lead?.endereco ?? "Address to be confirmed";
   const feito = orcamentoFeito(row);
 
   const IconLink = ({
@@ -676,14 +676,14 @@ function KanbanCard({
         </p>
         <p className="flex items-center gap-1.5 font-medium text-foreground">
           <DollarSign className="h-3.5 w-3.5 shrink-0" /> {money(row.total_cliente)}
-          {!feito && <span className="font-normal text-muted-foreground">(após orçamento)</span>}
+          {!feito && <span className="font-normal text-muted-foreground">(after quote)</span>}
         </p>
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
         <IconLink
           icon={<Phone className="h-3.5 w-3.5" />}
-          label="Ligar"
+          label="Call"
           href={tel ? `tel:${tel}` : undefined}
         />
         <IconLink
@@ -713,11 +713,11 @@ function KanbanCard({
               : { background: "#FDECEC", color: "#B42318" }
           }
         >
-          <ClipboardList className="h-3.5 w-3.5" /> {feito ? "Medido" : "Medir"}
+          <ClipboardList className="h-3.5 w-3.5" /> {feito ? "Measured" : "Measure"}
         </button>
       </div>
 
-      {/* Trocar de estágio no mobile (arrastar não funciona bem no toque) */}
+      {/* Switch stage on mobile (dragging doesn't work well on touch) */}
       <div className="mt-2.5 md:hidden" onClick={(e) => e.stopPropagation()}>
         <Select value={row.stage} onValueChange={(v) => onStageChange(v as ProposalStage)}>
           <SelectTrigger

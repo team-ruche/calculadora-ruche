@@ -16,17 +16,17 @@ function AuthenticatedLayout() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">
-        Carregando…
+        Loading…
       </div>
     );
   }
 
   if (!session) return <Navigate to="/auth" />;
 
-  // 1º acesso (senha temporária / convite) ou recuperação → definir nova senha.
+  // First access (temporary password / invite) or recovery → set a new password.
   if (passwordRecovery || user?.must_change_password) {
     return (
-      <DefinirSenha title={passwordRecovery ? "Redefinir senha" : "Defina sua senha de acesso"} />
+      <DefinirSenha title={passwordRecovery ? "Reset password" : "Set your access password"} />
     );
   }
 
@@ -35,15 +35,15 @@ function AuthenticatedLayout() {
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Cadastro pendente</CardTitle>
+            <CardTitle>Registration pending</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Sua conta ({user.email}) está aguardando aprovação de um admin da Ruche. Você receberá
-              acesso assim que for aprovada.
+              Your account ({user.email}) is awaiting approval from a Ruche admin. You'll get access
+              as soon as it's approved.
             </p>
             <Button variant="outline" className="w-full" onClick={() => signOut()}>
-              Sair
+              Sign out
             </Button>
           </CardContent>
         </Card>

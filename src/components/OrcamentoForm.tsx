@@ -20,14 +20,14 @@ import { toast } from "sonner";
 type Opt = { value: string; label: string };
 
 const EXTRA_FIELDS: { key: keyof ExtrasDraft; label: string; unit: string }[] = [
-  { key: "degraus_escada", label: "Degraus de escada", unit: "un" },
-  { key: "baseboard_instalar_ft", label: "Baseboard a instalar", unit: "linear ft" },
-  { key: "baseboard_pintar_ft", label: "Baseboard a pintar", unit: "linear ft" },
+  { key: "degraus_escada", label: "Stair steps", unit: "ea" },
+  { key: "baseboard_instalar_ft", label: "Baseboard to install", unit: "linear ft" },
+  { key: "baseboard_pintar_ft", label: "Baseboard to paint", unit: "linear ft" },
   { key: "quarter_round_ft", label: "Quarter round", unit: "linear ft" },
-  { key: "transicoes", label: "Transições", unit: "un" },
-  { key: "ambientes_moveis", label: "Ambientes com móveis", unit: "un" },
-  { key: "aparelhos_mover", label: "Aparelhos a mover", unit: "un" },
-  { key: "portas_trim", label: "Portas para door trimming", unit: "un" },
+  { key: "transicoes", label: "Transitions", unit: "ea" },
+  { key: "ambientes_moveis", label: "Rooms with furniture", unit: "ea" },
+  { key: "aparelhos_mover", label: "Appliances to move", unit: "ea" },
+  { key: "portas_trim", label: "Doors for door trimming", unit: "ea" },
 ];
 
 interface ExtrasDraft {
@@ -99,7 +99,7 @@ export function OrcamentoForm({
 
   const [pisoNovoOpts, setPisoNovoOpts] = useState<Opt[]>([]);
   const [pisoAtualOpts, setPisoAtualOpts] = useState<Opt[]>([]);
-  const [prepOpts, setPrepOpts] = useState<Opt[]>([{ value: "nenhuma", label: "Nenhuma" }]);
+  const [prepOpts, setPrepOpts] = useState<Opt[]>([{ value: "nenhuma", label: "None" }]);
 
   const [nomeCliente, setNomeCliente] = useState("");
   const [telefone, setTelefone] = useState("");
@@ -128,7 +128,7 @@ export function OrcamentoForm({
         .filter((m) => m.grupo === "demolicao")
         .map((m) => ({ value: m.codigo, label: m.componente }));
       const prep = [
-        { value: "nenhuma", label: "Nenhuma" },
+        { value: "nenhuma", label: "None" },
         ...mp
           .filter((m) => m.grupo === "prep")
           .map((m) => ({ value: m.codigo, label: m.componente })),
@@ -276,7 +276,7 @@ export function OrcamentoForm({
         const path = `${pid}/${roomId}/${crypto.randomUUID()}_${safeName(m.file.name)}`;
         const { error: upErr } = await supabase.storage.from("proposal-media").upload(path, m.file);
         if (upErr) {
-          toast.error(`Falha no upload de ${m.file.name}: ${upErr.message}`);
+          toast.error(`Failed to upload ${m.file.name}: ${upErr.message}`);
           continue;
         }
         const { data: pub } = supabase.storage.from("proposal-media").getPublicUrl(path);
@@ -295,7 +295,7 @@ export function OrcamentoForm({
     e.preventDefault();
     if (!user) return;
     if (rooms.some((r) => !r.nome.trim() || r.areaSqft <= 0)) {
-      toast.error("Cada ambiente precisa de nome e área maior que zero");
+      toast.error("Each room needs a name and an area greater than zero");
       return;
     }
     setSubmitting(true);
@@ -316,7 +316,7 @@ export function OrcamentoForm({
         .single();
       if (leadErr || !lead) {
         setSubmitting(false);
-        return toast.error(leadErr?.message ?? "Erro ao criar lead");
+        return toast.error(leadErr?.message ?? "Error creating lead");
       }
       const { data: prop, error: propErr } = await supabase
         .from("proposals")
@@ -325,11 +325,11 @@ export function OrcamentoForm({
         .single();
       if (propErr || !prop) {
         setSubmitting(false);
-        return toast.error(propErr?.message ?? "Erro ao criar proposta");
+        return toast.error(propErr?.message ?? "Error creating proposal");
       }
       pid = prop.id;
     } else {
-      // edit: atualiza lead, limpa rooms/extras (cascade apaga media) e recria
+      // edit: update lead, clear rooms/extras (cascade deletes media) and recreate
       const { data: prop } = await supabase
         .from("proposals")
         .select("lead_id")
@@ -349,17 +349,17 @@ export function OrcamentoForm({
       }
       await supabase.from("proposal_rooms").delete().eq("proposal_id", pid);
       await supabase.from("proposal_extras").delete().eq("proposal_id", pid);
-      // remove do storage as mídias que o usuário tirou
+      // remove from storage the media the user deleted
       if (removedPaths.length) await supabase.storage.from("proposal-media").remove(removedPaths);
     }
 
-    // Notas gerais da medição (vale para create e edit).
+    // General measurement notes (applies to both create and edit).
     await supabase
       .from("proposals")
       .update({ notas: notas.trim() || null })
       .eq("id", pid);
 
-    // (re)cria ambientes um a um para vincular a mídia ao room_id
+    // (re)create rooms one by one to link the media to the room_id
     for (const r of rooms) {
       const { data: room, error: roomErr } = await supabase
         .from("proposal_rooms")
@@ -375,7 +375,7 @@ export function OrcamentoForm({
         .single();
       if (roomErr || !room) {
         setSubmitting(false);
-        return toast.error(roomErr?.message ?? "Erro ao salvar ambiente");
+        return toast.error(roomErr?.message ?? "Error saving room");
       }
       await uploadRoomMedia(pid, room.id, r.media);
     }
@@ -391,9 +391,8 @@ export function OrcamentoForm({
     }
 
     const { error: calcErr } = await supabase.rpc("rpc_calcular_proposta", { p_proposal_id: pid });
-    if (calcErr) toast.warning("Salvo, mas o cálculo falhou: " + calcErr.message);
-    else
-      toast.success(mode === "create" ? "Orçamento criado e precificado" : "Orçamento atualizado");
+    if (calcErr) toast.warning("Saved, but the calculation failed: " + calcErr.message);
+    else toast.success(mode === "create" ? "Quote created and priced" : "Quote updated");
 
     setSubmitting(false);
     onSaved();
@@ -402,7 +401,7 @@ export function OrcamentoForm({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando…
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
       </div>
     );
   }
@@ -411,11 +410,11 @@ export function OrcamentoForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Cliente</CardTitle>
+          <CardTitle>Client</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="nome-cliente">Nome</Label>
+            <Label htmlFor="nome-cliente">Name</Label>
             <Input
               id="nome-cliente"
               required
@@ -424,15 +423,15 @@ export function OrcamentoForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="telefone">Telefone</Label>
+            <Label htmlFor="telefone">Phone</Label>
             <Input id="telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="endereco">Endereço</Label>
+            <Label htmlFor="endereco">Address</Label>
             <Input id="endereco" value={endereco} onChange={(e) => setEndereco(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
@@ -446,11 +445,11 @@ export function OrcamentoForm({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div>
-            <CardTitle>Ambientes</CardTitle>
-            <CardDescription>Medição, tipo de piso e fotos/vídeos por cômodo</CardDescription>
+            <CardTitle>Rooms</CardTitle>
+            <CardDescription>Measurement, floor type and photos/videos per room</CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={addRoom}>
-            <Plus className="mr-1 h-4 w-4" /> Ambiente
+            <Plus className="mr-1 h-4 w-4" /> Room
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -458,16 +457,16 @@ export function OrcamentoForm({
             <div key={room.localId} className="space-y-3 rounded-lg border p-4">
               <div className="grid gap-3 md:grid-cols-5">
                 <div className="space-y-2 md:col-span-2">
-                  <Label>Nome do ambiente</Label>
+                  <Label>Room name</Label>
                   <Input
                     required
-                    placeholder={`Ambiente ${i + 1}`}
+                    placeholder={`Room ${i + 1}`}
                     value={room.nome}
                     onChange={(e) => updateRoom(room.localId, { nome: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Área (sqft)</Label>
+                  <Label>Area (sqft)</Label>
                   <Input
                     type="number"
                     min={0}
@@ -478,7 +477,7 @@ export function OrcamentoForm({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Piso atual</Label>
+                  <Label>Current floor</Label>
                   <RoomSelect
                     value={room.pisoAtual}
                     opts={pisoAtualOpts}
@@ -486,7 +485,7 @@ export function OrcamentoForm({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Piso novo</Label>
+                  <Label>New floor</Label>
                   <RoomSelect
                     value={room.pisoNovo}
                     opts={pisoNovoOpts}
@@ -496,7 +495,7 @@ export function OrcamentoForm({
               </div>
               <div className="grid items-start gap-3 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Preparação</Label>
+                  <Label>Prep</Label>
                   <RoomSelect
                     value={room.preparo}
                     opts={prepOpts}
@@ -504,7 +503,7 @@ export function OrcamentoForm({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Fotos / vídeos</Label>
+                  <Label>Photos / videos</Label>
                   <div className="flex items-center gap-2">
                     <Input
                       type="file"
@@ -523,7 +522,7 @@ export function OrcamentoForm({
                       className="shrink-0"
                       disabled={rooms.length === 1}
                       onClick={() => removeRoom(room.localId)}
-                      title="Remover ambiente"
+                      title="Remove room"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -549,7 +548,7 @@ export function OrcamentoForm({
                           type="button"
                           onClick={() => removeMedia(room.localId, idx)}
                           className="absolute right-0 top-0 bg-black/60 p-0.5 text-white"
-                          title="Remover"
+                          title="Remove"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -565,7 +564,7 @@ export function OrcamentoForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Extras do projeto</CardTitle>
+          <CardTitle>Project extras</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           {EXTRA_FIELDS.map((field) => (
@@ -590,7 +589,7 @@ export function OrcamentoForm({
               onCheckedChange={(v) => setSegundoAndar(v === true)}
             />
             <Label htmlFor="segundo-andar" className="cursor-pointer">
-              2º andar sem elevador
+              2nd floor no elevator
             </Label>
           </div>
         </CardContent>
@@ -598,13 +597,13 @@ export function OrcamentoForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>Notas</CardTitle>
-          <CardDescription>Observações gerais da medição (opcional)</CardDescription>
+          <CardTitle>Notes</CardTitle>
+          <CardDescription>General measurement notes (optional)</CardDescription>
         </CardHeader>
         <CardContent>
           <Textarea
             rows={4}
-            placeholder="Ex.: cliente pediu rodapé branco; medir de novo a suíte; acesso pela garagem…"
+            placeholder="e.g., client requested white baseboard; re-measure the master suite; access through the garage…"
             value={notas}
             onChange={(e) => setNotas(e.target.value)}
           />
@@ -614,11 +613,11 @@ export function OrcamentoForm({
       <div className="flex justify-end gap-2">
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
-            Cancelar
+            Cancel
           </Button>
         )}
         <Button type="submit" disabled={submitting}>
-          {submitting ? "Salvando…" : mode === "create" ? "Criar orçamento" : "Salvar alterações"}
+          {submitting ? "Saving…" : mode === "create" ? "Create quote" : "Save changes"}
         </Button>
       </div>
     </form>
@@ -637,7 +636,7 @@ function RoomSelect({
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger>
-        <SelectValue placeholder="Selecione" />
+        <SelectValue placeholder="Select" />
       </SelectTrigger>
       <SelectContent>
         {opts.map((o) => (

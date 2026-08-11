@@ -129,16 +129,16 @@ export function ParcelaDialog({
         ).error;
     setSaving(false);
     if (err) return toast.error(err.message);
-    toast.success("Parcela salva");
+    toast.success("Installment saved");
     onSaved();
   };
 
   const remover = async () => {
     if (!parcela) return;
-    if (!confirm(`Excluir a parcela ${parcela.numero}?`)) return;
+    if (!confirm(`Delete installment ${parcela.numero}?`)) return;
     const { error } = await supabase.from("parcelas").delete().eq("id", parcela.id);
     if (error) return toast.error(error.message);
-    toast.success("Parcela excluída");
+    toast.success("Installment deleted");
     onSaved();
   };
 
@@ -147,7 +147,7 @@ export function ParcelaDialog({
       .from("parcelas")
       .insert({ ...payload(), proposal_id: proposalId, numero: proximoNumero });
     if (error) return toast.error(error.message);
-    toast.success("Parcela duplicada");
+    toast.success("Installment duplicated");
     onSaved();
   };
 
@@ -155,18 +155,20 @@ export function ParcelaDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90dvh] max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
         <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
-          <DialogTitle>{parcela ? `Editar parcela ${parcela.numero}` : "Nova parcela"}</DialogTitle>
+          <DialogTitle>
+            {parcela ? `Edit installment ${parcela.numero}` : "New installment"}
+          </DialogTitle>
           <DialogDescription className="flex items-center gap-1 text-primary">
-            <FileText className="h-3.5 w-3.5" /> {cliente} · orçamento do sistema
+            <FileText className="h-3.5 w-3.5" /> {cliente} · system quote
           </DialogDescription>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
           <div className="grid gap-4 sm:grid-cols-3">
-            <Campo label="Cliente">
+            <Campo label="Client">
               <Input value={cliente} disabled />
             </Campo>
-            <Campo label="Forma de pagamento">
+            <Campo label="Payment method">
               <Select
                 value={d.payment_method || NONE}
                 onValueChange={(v) => set("payment_method", v === NONE ? "" : v)}
@@ -184,7 +186,7 @@ export function ParcelaDialog({
                 </SelectContent>
               </Select>
             </Campo>
-            <Campo label="Conta">
+            <Campo label="Account">
               <Select
                 value={d.conta || NONE}
                 onValueChange={(v) => set("conta", v === NONE ? "" : v)}
@@ -203,18 +205,18 @@ export function ParcelaDialog({
               </Select>
             </Campo>
 
-            <Campo label="Direção">
+            <Campo label="Direction">
               <Select value={d.direcao} onValueChange={(v) => set("direcao", v as Direcao)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="inflow">Inflow (Ruche recebe)</SelectItem>
-                  <SelectItem value="outflow">Outflow (saída)</SelectItem>
+                  <SelectItem value="inflow">Inflow (Ruche receives)</SelectItem>
+                  <SelectItem value="outflow">Outflow</SelectItem>
                 </SelectContent>
               </Select>
             </Campo>
-            <Campo label="Período (MM/AAAA)">
+            <Campo label="Period (MM/YYYY)">
               <Input
                 value={d.periodo}
                 onChange={(e) => set("periodo", e.target.value)}
@@ -236,17 +238,17 @@ export function ParcelaDialog({
               </Select>
             </Campo>
 
-            <Campo label="Valor da parcela (USD)">
+            <Campo label="Installment amount (USD)">
               <Input type="number" value={d.valor} onChange={(e) => set("valor", e.target.value)} />
             </Campo>
-            <Campo label="Parte parceiro">
+            <Campo label="Partner share">
               <Input
                 type="number"
                 value={d.valor_parceiro}
                 onChange={(e) => set("valor_parceiro", e.target.value)}
               />
             </Campo>
-            <Campo label="Parte Ruche">
+            <Campo label="Ruche share">
               <Input
                 type="number"
                 value={d.valor_ruche}
@@ -254,21 +256,21 @@ export function ParcelaDialog({
               />
             </Campo>
 
-            <Campo label="Vencimento">
+            <Campo label="Due date">
               <Input
                 type="date"
                 value={d.vencimento}
                 onChange={(e) => set("vencimento", e.target.value)}
               />
             </Campo>
-            <Campo label="Data do pagamento">
+            <Campo label="Payment date">
               <Input
                 type="date"
                 value={d.data_pagamento}
                 onChange={(e) => set("data_pagamento", e.target.value)}
               />
             </Campo>
-            <Campo label="Valor pago (USD)">
+            <Campo label="Amount paid (USD)">
               <Input
                 type="number"
                 value={d.valor_pago}
@@ -276,7 +278,7 @@ export function ParcelaDialog({
               />
             </Campo>
 
-            <Campo label="Conciliado">
+            <Campo label="Reconciled">
               <Select
                 value={d.conciliado ? "sim" : "nao"}
                 onValueChange={(v) => set("conciliado", v === "sim")}
@@ -285,19 +287,19 @@ export function ParcelaDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="nao">Não</SelectItem>
-                  <SelectItem value="sim">Sim</SelectItem>
+                  <SelectItem value="nao">No</SelectItem>
+                  <SelectItem value="sim">Yes</SelectItem>
                 </SelectContent>
               </Select>
             </Campo>
-            <Campo label="Valor nativo (extrato)">
+            <Campo label="Native amount (statement)">
               <Input
                 type="number"
                 value={d.valor_nativo}
                 onChange={(e) => set("valor_nativo", e.target.value)}
               />
             </Campo>
-            <Campo label="Moeda nativa">
+            <Campo label="Native currency">
               <Input
                 value={d.moeda_nativa}
                 onChange={(e) => set("moeda_nativa", e.target.value)}
@@ -306,12 +308,12 @@ export function ParcelaDialog({
             </Campo>
 
             <div className="sm:col-span-3">
-              <Label className="text-xs text-muted-foreground">Notas</Label>
+              <Label className="text-xs text-muted-foreground">Notes</Label>
               <Textarea
                 rows={3}
                 value={d.notas}
                 onChange={(e) => set("notas", e.target.value)}
-                placeholder="Cole um print (Ctrl+V) ou escreva…"
+                placeholder="Paste a screenshot (Ctrl+V) or type…"
                 className="mt-1"
               />
             </div>
@@ -325,7 +327,7 @@ export function ParcelaDialog({
               onClick={remover}
               className="border-destructive/40 text-destructive hover:bg-destructive/5"
             >
-              <Trash2 className="mr-1 h-4 w-4" /> Excluir
+              <Trash2 className="mr-1 h-4 w-4" /> Delete
             </Button>
           ) : (
             <span />
@@ -333,7 +335,7 @@ export function ParcelaDialog({
           <div className="flex flex-wrap gap-2">
             {parcela && (
               <Button variant="outline" onClick={duplicar}>
-                <Copy className="mr-1 h-4 w-4" /> Duplicar
+                <Copy className="mr-1 h-4 w-4" /> Duplicate
               </Button>
             )}
             <Button
@@ -345,17 +347,17 @@ export function ParcelaDialog({
               ) : (
                 <FileText className="mr-1 h-4 w-4" />
               )}
-              Invoice gerada
+              Invoice generated
             </Button>
             <Button
               variant="outline"
-              onClick={() => toast.info("Integração com o GHL ainda não configurada.")}
+              onClick={() => toast.info("GHL integration not configured yet.")}
             >
-              <DollarSign className="mr-1 h-4 w-4" /> Registrar no GHL
+              <DollarSign className="mr-1 h-4 w-4" /> Log in GHL
             </Button>
             <Button onClick={save} disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Salvar
+              Save
             </Button>
           </div>
         </div>

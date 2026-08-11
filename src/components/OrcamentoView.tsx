@@ -20,9 +20,9 @@ import { OrcamentoDocPreview, type DocData, type DocGrupo } from "@/components/O
 import { toast } from "sonner";
 
 export const GRUPO_LABEL: Record<MotorGrupo, string> = {
-  instalacao: "Instalação",
-  demolicao: "Remoção",
-  prep: "Preparação",
+  instalacao: "Installation",
+  demolicao: "Removal",
+  prep: "Prep",
   extra: "Extras",
 };
 export const GRUPO_ORDER: MotorGrupo[] = ["instalacao", "demolicao", "prep", "extra"];
@@ -64,7 +64,7 @@ function buildDocData(prop: PropRow, items: ProposalItem[]): DocData {
 
   const contato = [prop.leads?.telefone, prop.leads?.email].filter(Boolean).join(" · ");
   return {
-    clienteNome: prop.leads?.nome_cliente || "Cliente",
+    clienteNome: prop.leads?.nome_cliente || "Client",
     clienteContato: contato || "—",
     projetoEndereco: prop.leads?.endereco || "—",
     escopo: prop.leads?.endereco || "",
@@ -73,7 +73,7 @@ function buildDocData(prop: PropRow, items: ProposalItem[]): DocData {
   };
 }
 
-// Documento do orçamento (renderiza com o layout do parceiro) + PDF + editar + atualizar template.
+// Quote document (rendered with the partner's layout) + PDF + edit + update template.
 export function OrcamentoView({
   open,
   proposalId,
@@ -115,7 +115,7 @@ export function OrcamentoView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, proposalId]);
 
-  const cliente = row?.leads?.nome_cliente || "Cliente";
+  const cliente = row?.leads?.nome_cliente || "Client";
   const usandoSnapshot = !!row?.orcamento_layout;
 
   const atualizarTemplate = async () => {
@@ -132,16 +132,16 @@ export function OrcamentoView({
       .eq("id", proposalId);
     if (error) return toast.error(error.message);
     setLayout(lay);
-    toast.success("Documento atualizado com o template atual do parceiro");
+    toast.success("Document updated with the partner's current template");
     carregar();
   };
 
   const printPdf = () => {
     const w = window.open("", "_blank", "width=820,height=1000");
-    if (!w) return toast.error("Permita pop-ups para exportar o PDF");
+    if (!w) return toast.error("Allow pop-ups to export the PDF");
     const node = document.getElementById("orc-doc");
     w.document.write(
-      `<!doctype html><html><head><meta charset="utf-8"><title>Orçamento — ${cliente}</title></head><body style="margin:0">${node?.innerHTML ?? ""}<script>window.onload=function(){window.print()}</script></body></html>`,
+      `<!doctype html><html><head><meta charset="utf-8"><title>Quote — ${cliente}</title></head><body style="margin:0">${node?.innerHTML ?? ""}<script>window.onload=function(){window.print()}</script></body></html>`,
     );
     w.document.close();
   };
@@ -152,20 +152,20 @@ export function OrcamentoView({
         <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <DialogTitle>Orçamento — {cliente}</DialogTitle>
+              <DialogTitle>Quote — {cliente}</DialogTitle>
               <DialogDescription>
                 {usandoSnapshot
-                  ? "Layout congelado desta proposta"
-                  : "Usando o template atual do parceiro"}
+                  ? "Layout frozen for this proposal"
+                  : "Using the partner's current template"}
               </DialogDescription>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={atualizarTemplate}>
-                <RefreshCw className="mr-1 h-4 w-4" /> Atualizar com template atual
+                <RefreshCw className="mr-1 h-4 w-4" /> Update with current template
               </Button>
               {onEdit && (
                 <Button variant="outline" size="sm" onClick={onEdit}>
-                  <Pencil className="mr-1 h-4 w-4" /> Editar
+                  <Pencil className="mr-1 h-4 w-4" /> Edit
                 </Button>
               )}
               <Button
@@ -182,10 +182,10 @@ export function OrcamentoView({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
           {loading || !layout ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Carregando…</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
           ) : items.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Sem itens precificados neste orçamento.
+              No priced items in this quote.
             </p>
           ) : (
             <div id="orc-doc" className="overflow-hidden rounded-lg border">

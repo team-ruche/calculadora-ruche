@@ -42,7 +42,7 @@ import { toast } from "sonner";
 type DialogState = { mode: "create" } | { mode: "edit"; proposalId: string } | null;
 
 export const Route = createFileRoute("/_authenticated/orcamentos")({
-  head: () => ({ meta: [{ title: "Orçamentos · Ruche" }] }),
+  head: () => ({ meta: [{ title: "Quotes · Ruche" }] }),
   component: OrcamentosPage,
 });
 
@@ -56,7 +56,7 @@ type ProposalRow = Proposal & {
   } | null;
 };
 
-// Cor do badge por estágio do kanban (sincronizado).
+// Badge color per kanban stage (synchronized).
 const STAGE_BADGE: Record<ProposalStage, { bg: string; fg: string }> = {
   appointment_confirmed: { bg: "#FBE7BF", fg: "#7A4E05" },
   appointment_canceled: { bg: "#F6D6C7", fg: "#7A2E12" },
@@ -66,9 +66,9 @@ const STAGE_BADGE: Record<ProposalStage, { bg: string; fg: string }> = {
 };
 
 const GRUPO_LABEL: Record<MotorGrupo, string> = {
-  instalacao: "Instalação",
-  demolicao: "Remoção",
-  prep: "Preparação",
+  instalacao: "Installation",
+  demolicao: "Removal",
+  prep: "Preparation",
   extra: "Extras",
 };
 
@@ -77,7 +77,7 @@ const GRUPO_ORDER: MotorGrupo[] = ["instalacao", "demolicao", "prep", "extra"];
 const money = (n: number | null) =>
   (n ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
 
-const shortDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("pt-BR") : "—");
+const shortDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-US") : "—");
 
 type Range = { from: Date; to: Date };
 const inRange = (iso: string | null, r: Range) => {
@@ -95,13 +95,13 @@ function OrcamentosPage() {
   const [itemsLoading, setItemsLoading] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [leadDetail, setLeadDetail] = useState<LeadLike>(null);
-  // Proposta que deve avançar p/ Negociação assim que o orçamento for salvo (gate).
+  // Proposal that should advance to Negotiation as soon as the quote is saved (gate).
   const [advanceNegId, setAdvanceNegId] = useState<string | null>(null);
-  // Filtro de período por data de criação do orçamento.
+  // Period filter by quote creation date.
   const [range, setRange] = useState<Range>(() => presetRange("90d"));
-  // Busca por nome do cliente + documento do orçamento (layout do parceiro).
+  // Search by client name + quote document (partner layout).
   const [busca, setBusca] = useState("");
-  // Filtro de status (stage) — múltiplo; vazio = todos.
+  // Status (stage) filter — multiple; empty = all.
   const [statusFiltro, setStatusFiltro] = useState<Set<ProposalStage>>(new Set());
   const toggleStatus = (s: ProposalStage) =>
     setStatusFiltro((prev) => {
@@ -111,7 +111,7 @@ function OrcamentosPage() {
       return n;
     });
   const [viewId, setViewId] = useState<string | null>(null);
-  // Configuração do layout do orçamento (por parceiro).
+  // Quote layout settings (per partner).
   const { user, isRuche } = useAuth();
   const [configOpen, setConfigOpen] = useState(false);
   const [configPid, setConfigPid] = useState<string | null>(null);
@@ -141,7 +141,7 @@ function OrcamentosPage() {
     if (error) toast.error(error.message);
     else setRows((data as ProposalRow[]) ?? []);
 
-    // Nomes dos autores (RLS: parceiro vê só o próprio; ruche vê todos)
+    // Author names (RLS: partner sees only their own; ruche sees all)
     const { data: us } = await supabase.from("users").select("id, nome, email");
     if (us) {
       const map: Record<string, string> = {};
@@ -169,22 +169,22 @@ function OrcamentosPage() {
     setItemsLoading(false);
   };
 
-  // Abre o documento do orçamento com o layout do parceiro (mesma visão do Overview).
+  // Opens the quote document with the partner layout (same view as Overview).
   const openDetail = (row: ProposalRow) => setViewId(row.id);
 
-  // Sincroniza o status com o kanban (mesmo campo `stage`), com o mesmo gate.
+  // Syncs the status with the kanban (same `stage` field), with the same gate.
   const changeStage = async (row: ProposalRow, next: ProposalStage) => {
     if (row.stage === next) return;
-    // Gate: só entra em Negociação com o orçamento (medição) preenchido.
+    // Gate: only enters Negotiation with the quote (measurement) filled in.
     if (next === "negotiation" && !(row.total_cliente && row.total_cliente > 0)) {
-      toast.info("Preencha o orçamento (medição) para mover para Negociação.");
+      toast.info("Fill in the quote (measurement) to move to Negotiation.");
       setAdvanceNegId(row.id);
       setDialog({ mode: "edit", proposalId: row.id });
       return;
     }
     const { error } = await supabase.from("proposals").update({ stage: next }).eq("id", row.id);
     if (error) return toast.error(error.message);
-    toast.success("Status atualizado");
+    toast.success("Status updated");
     load();
   };
 
@@ -192,7 +192,7 @@ function OrcamentosPage() {
     setDialog(null);
     await load();
 
-    // Após salvar o orçamento, avança p/ Negociação se estava pendente no gate.
+    // After saving the quote, advance to Negotiation if it was pending at the gate.
     if (advanceNegId === proposalId) {
       setAdvanceNegId(null);
       const { data: fresh } = await supabase
@@ -203,7 +203,7 @@ function OrcamentosPage() {
       const total = (fresh as { total_cliente: number | null } | null)?.total_cliente ?? 0;
       if (total > 0) {
         await supabase.from("proposals").update({ stage: "negotiation" }).eq("id", proposalId);
-        toast.success("Orçamento salvo · movido para Negociação");
+        toast.success("Quote saved · moved to Negotiation");
         await load();
       }
     }
@@ -223,9 +223,7 @@ function OrcamentosPage() {
     <Dialog open={dialog !== null} onOpenChange={(o) => !o && setDialog(null)}>
       <DialogContent className="flex max-h-[88dvh] max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
         <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
-          <DialogTitle>
-            {dialog?.mode === "edit" ? "Editar orçamento" : "Novo orçamento"}
-          </DialogTitle>
+          <DialogTitle>{dialog?.mode === "edit" ? "Edit quote" : "New quote"}</DialogTitle>
         </DialogHeader>
         {dialog && (
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
@@ -248,7 +246,7 @@ function OrcamentosPage() {
       <div className="space-y-4">
         {isRuche && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Parceiro:</span>
+            <span className="text-xs text-muted-foreground">Partner:</span>
             <Select value={configPid} onValueChange={setConfigPid}>
               <SelectTrigger className="h-9 w-64">
                 <SelectValue />
@@ -309,17 +307,17 @@ function OrcamentosPage() {
         }}
       />
       <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Orçamentos</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Quotes</h1>
         <p className="text-sm text-muted-foreground">
-          Propostas geradas. Abra para ver o orçamento do cliente e exportar.
+          Generated proposals. Open to view the client's quote and export.
         </p>
       </div>
 
-      {/* Barra de filtros fixa no scroll — compacta */}
+      {/* Filter bar fixed on scroll — compact */}
       <div className="sticky top-14 z-30 -mx-4 space-y-2 border-b bg-background px-4 py-2.5 sm:-mx-6 sm:px-6">
         <div className="flex items-center gap-2">
           <Button onClick={() => setDialog({ mode: "create" })} className="shrink-0">
-            <Plus className="mr-1 h-4 w-4" /> Novo Orçamento
+            <Plus className="mr-1 h-4 w-4" /> New Quote
           </Button>
           <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
           <Button
@@ -327,7 +325,7 @@ function OrcamentosPage() {
             size="icon"
             onClick={abrirConfig}
             className="shrink-0"
-            aria-label="Configuração"
+            aria-label="Settings"
           >
             <Settings className="h-4 w-4" />
           </Button>
@@ -338,7 +336,7 @@ function OrcamentosPage() {
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar cliente…"
+              placeholder="Search client…"
               className="w-full bg-transparent text-sm outline-none"
             />
           </div>
@@ -386,7 +384,7 @@ function OrcamentosPage() {
                   onClick={() => setStatusFiltro(new Set())}
                   className="mt-1 w-full rounded-md px-2 py-1.5 text-left text-xs font-medium text-muted-foreground hover:bg-accent"
                 >
-                  Limpar filtros
+                  Clear filters
                 </button>
               )}
             </PopoverContent>
@@ -396,23 +394,23 @@ function OrcamentosPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Propostas</CardTitle>
+          <CardTitle>Proposals</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Carregando…</p>
+            <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
             <div className="overflow-x-auto">
               <Table className="min-w-[720px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="sticky left-0 z-20 bg-card">Cliente</TableHead>
-                    <TableHead>Autor</TableHead>
-                    <TableHead>Criado em</TableHead>
-                    <TableHead>Última edição</TableHead>
+                    <TableHead className="sticky left-0 z-20 bg-card">Client</TableHead>
+                    <TableHead>Author</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Last edit</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Valor da proposta</TableHead>
-                    <TableHead className="text-right">Ação</TableHead>
+                    <TableHead className="text-right">Proposal value</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -429,7 +427,7 @@ function OrcamentosPage() {
                             type="button"
                             onClick={() => setLeadDetail(row.leads)}
                             className="font-medium text-primary underline-offset-2 hover:underline"
-                            title="Abrir card do setter"
+                            title="Open setter card"
                           >
                             {row.leads?.nome_cliente || "—"}
                           </button>
@@ -471,7 +469,7 @@ function OrcamentosPage() {
                         <TableCell className="text-right">{money(row.total_cliente)}</TableCell>
                         <TableCell className="text-right">
                           <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
-                            <FileText className="mr-1 h-4 w-4" /> Ver
+                            <FileText className="mr-1 h-4 w-4" /> View
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -483,7 +481,7 @@ function OrcamentosPage() {
                     ).length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground">
-                        Nenhum orçamento encontrado.
+                        No quotes found.
                       </TableCell>
                     </TableRow>
                   )}
@@ -510,7 +508,7 @@ function OrcamentoDetail({
   onBack: () => void;
   onEdit: () => void;
 }) {
-  const cliente = row.leads?.nome_cliente || "Cliente";
+  const cliente = row.leads?.nome_cliente || "Client";
 
   const printPdf = () => {
     const linhas = GRUPO_ORDER.map((grupo) => {
@@ -529,7 +527,7 @@ function OrcamentoDetail({
       return `<tr><th colspan="4" style="text-align:left;background:#f3f3f3;padding:6px">${GRUPO_LABEL[grupo]}</th></tr>${rowsHtml}`;
     }).join("");
 
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Orçamento — ${cliente}</title>
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Quote — ${cliente}</title>
       <style>
         body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:32px}
         h1{margin:0 0 4px} .muted{color:#666;font-size:13px}
@@ -537,10 +535,10 @@ function OrcamentoDetail({
         td,th{border-bottom:1px solid #ddd;padding:6px}
         .total{font-size:18px;font-weight:bold;text-align:right;margin-top:16px}
       </style></head><body>
-      <h1>Orçamento — ${cliente}</h1>
+      <h1>Quote — ${cliente}</h1>
       <div class="muted">${row.leads?.endereco ?? ""}${row.leads?.endereco ? " · " : ""}${row.leads?.telefone ?? ""}</div>
       <table>
-        <thead><tr><th style="text-align:left">Item</th><th style="text-align:right">Qtd</th><th style="text-align:right">Unit</th><th style="text-align:right">Subtotal</th></tr></thead>
+        <thead><tr><th style="text-align:left">Item</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit</th><th style="text-align:right">Subtotal</th></tr></thead>
         <tbody>${linhas}</tbody>
       </table>
       <div class="total">Total: ${money(row.total_cliente)}</div>
@@ -549,7 +547,7 @@ function OrcamentoDetail({
 
     const w = window.open("", "_blank", "width=800,height=900");
     if (!w) {
-      toast.error("Permita pop-ups para exportar o PDF");
+      toast.error("Allow pop-ups to export the PDF");
       return;
     }
     w.document.write(html);
@@ -565,29 +563,29 @@ function OrcamentoDetail({
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{cliente}</h1>
-            <p className="text-sm text-muted-foreground">{row.leads?.endereco || "Sem endereço"}</p>
+            <p className="text-sm text-muted-foreground">{row.leads?.endereco || "No address"}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onEdit}>
-            <Pencil className="mr-1 h-4 w-4" /> Editar
+            <Pencil className="mr-1 h-4 w-4" /> Edit
           </Button>
           <Button variant="outline" onClick={printPdf} disabled={loading || !items.length}>
-            <Printer className="mr-1 h-4 w-4" /> Exportar PDF
+            <Printer className="mr-1 h-4 w-4" /> Export PDF
           </Button>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Orçamento do cliente</CardTitle>
+          <CardTitle>Client quote</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Carregando itens…</p>
+            <p className="text-sm text-muted-foreground">Loading items…</p>
           ) : items.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Sem itens precificados. Verifique se o Motor de Preços cobre os tipos usados.
+              No priced items. Check that the Pricing Engine covers the types used.
             </p>
           ) : (
             <>
@@ -603,7 +601,7 @@ function OrcamentoDetail({
                       <TableHeader>
                         <TableRow>
                           <TableHead>Item</TableHead>
-                          <TableHead className="text-right">Qtd</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
                           <TableHead className="text-right">Unit</TableHead>
                           <TableHead className="text-right">Subtotal</TableHead>
                         </TableRow>
@@ -630,7 +628,7 @@ function OrcamentoDetail({
               })}
               <div className="mt-4 flex justify-end border-t pt-4">
                 <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Valor da proposta</p>
+                  <p className="text-sm text-muted-foreground">Proposal value</p>
                   <p className="text-3xl font-bold">{money(row.total_cliente)}</p>
                 </div>
               </div>

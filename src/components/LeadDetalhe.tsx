@@ -15,10 +15,10 @@ export type LeadLike = {
   qualificacao: LeadQualificacao | null;
 } | null;
 
-const yn = (v: boolean | undefined) => (v === undefined ? undefined : v ? "Sim" : "Não");
+const yn = (v: boolean | undefined) => (v === undefined ? undefined : v ? "Yes" : "No");
 
-// Card do formulário do Setter — grupos A a F (discovery GHL). Reutilizado no
-// Overview (kanban/calendário) e na aba Orçamentos.
+// Setter form card — groups A to F (GHL discovery). Reused in the
+// Overview (kanban/calendar) and the Quotes tab.
 export function LeadDetalhe({
   lead,
   open,
@@ -34,60 +34,58 @@ export function LeadDetalhe({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[88dvh] max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
         <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
-          <DialogTitle>{lead?.nome_cliente ?? "Detalhes do lead"}</DialogTitle>
-          <DialogDescription>
-            Discovery do setter — grupos A a F (formulário GHL).
-          </DialogDescription>
+          <DialogTitle>{lead?.nome_cliente ?? "Lead details"}</DialogTitle>
+          <DialogDescription>Setter discovery — groups A to F (GHL form).</DialogDescription>
         </DialogHeader>
 
         {lead && (
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <Section title="A · Contato">
-              <Field label="Nome completo" value={q?.a_nome ?? lead.nome_cliente} />
-              <Field label="Telefone validado" value={q?.a_telefone ?? lead.telefone} />
-              <Field label="E-mail" value={q?.a_email ?? lead.email} />
-              <Field label="Endereço + ZIP" value={q?.a_endereco ?? lead.endereco} />
-              <Field label="Fonte do lead" value={q?.a_fonte} />
+            <Section title="A · Contact">
+              <Field label="Full name" value={q?.a_nome ?? lead.nome_cliente} />
+              <Field label="Validated phone" value={q?.a_telefone ?? lead.telefone} />
+              <Field label="Email" value={q?.a_email ?? lead.email} />
+              <Field label="Address + ZIP" value={q?.a_endereco ?? lead.endereco} />
+              <Field label="Lead source" value={q?.a_fonte} />
             </Section>
 
-            <Section title="B · Elegibilidade">
-              <Field label="É dono do imóvel?" value={yn(q?.b_dono)} />
-              <Field label="ZIP na área do parceiro?" value={yn(q?.b_zip_area)} />
-              <Field label="Tipo de imóvel" value={q?.b_tipo_imovel} />
-              <Field label="Sqft estimado" value={q?.b_sqft_estimado} />
+            <Section title="B · Eligibility">
+              <Field label="Owns the property?" value={yn(q?.b_dono)} />
+              <Field label="ZIP in partner's area?" value={yn(q?.b_zip_area)} />
+              <Field label="Property type" value={q?.b_tipo_imovel} />
+              <Field label="Estimated sqft" value={q?.b_sqft_estimado} />
             </Section>
 
-            <Section title="C · Motivação">
-              <Field label="Por que trocar agora" value={q?.c_motivo} />
-              <Field label="Parte de reforma maior?" value={yn(q?.c_reforma_maior)} />
-              <Field label="Quem mora na casa" value={q?.c_quem_mora} />
-              <Field label="Data-limite" value={q?.c_data_limite} />
+            <Section title="C · Motivation">
+              <Field label="Why change now" value={q?.c_motivo} />
+              <Field label="Part of larger remodel?" value={yn(q?.c_reforma_maior)} />
+              <Field label="Who lives in the home" value={q?.c_quem_mora} />
+              <Field label="Deadline" value={q?.c_data_limite} />
             </Section>
 
-            <Section title="D · Escopo">
-              <Field label="Ambientes" value={(q?.d_ambientes ?? []).join(", ")} />
-              <Field label="Sqft total" value={q?.d_sqft_total} />
-              <Field label="Piso atual" value={q?.d_piso_atual} />
-              <Field label="Piso desejado" value={q?.d_piso_desejado} />
-              <Field label="Material comprado" value={q?.d_material_comprado} />
-              <Field label="Cor / estilo" value={q?.d_cor_estilo} />
-              <Field label="Serviço" value={q?.d_servico} />
+            <Section title="D · Scope">
+              <Field label="Rooms" value={(q?.d_ambientes ?? []).join(", ")} />
+              <Field label="Total sqft" value={q?.d_sqft_total} />
+              <Field label="Current floor" value={q?.d_piso_atual} />
+              <Field label="Desired floor" value={q?.d_piso_desejado} />
+              <Field label="Material purchased" value={q?.d_material_comprado} />
+              <Field label="Color / style" value={q?.d_cor_estilo} />
+              <Field label="Service" value={q?.d_servico} />
             </Section>
 
-            <Section title="E · Dinheiro e concorrência">
-              <Field label="Faixa de budget" value={q?.e_budget} />
-              <Field label="Forma de pagamento" value={q?.e_pagamento} />
-              <Field label="Outros orçamentos" value={q?.e_outros_orcamentos} />
+            <Section title="E · Money and competition">
+              <Field label="Budget range" value={q?.e_budget} />
+              <Field label="Payment method" value={q?.e_pagamento} />
+              <Field label="Other quotes" value={q?.e_outros_orcamentos} />
             </Section>
 
-            <Section title="F · Decisão e agendamento">
-              <Field label="Decisores" value={q?.f_decisores} />
-              <Field label="Decisores confirmados" value={yn(q?.f_decisores_confirmados)} />
+            <Section title="F · Decision and scheduling">
+              <Field label="Decision-makers" value={q?.f_decisores} />
+              <Field label="Decision-makers confirmed" value={yn(q?.f_decisores_confirmados)} />
               <Field
-                label="Temperatura do lead"
+                label="Lead temperature"
                 value={q?.f_temperatura ? `${q.f_temperatura}/5` : undefined}
               />
-              <Field label="Observações" value={q?.f_observacoes} full />
+              <Field label="Notes" value={q?.f_observacoes} full />
             </Section>
           </div>
         )}

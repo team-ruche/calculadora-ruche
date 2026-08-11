@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-// Tela de definir nova senha. Usada em 3 casos: 1º acesso (senha temporária),
-// convite por e-mail e recuperação ("esqueci minha senha").
+// Set-new-password screen. Used in 3 cases: first access (temporary password),
+// email invite, and recovery ("forgot my password").
 export function DefinirSenha({ title }: { title?: string }) {
   const { session, refreshProfile, clearRecovery, signOut } = useAuth();
   const [senha, setSenha] = useState("");
@@ -18,8 +18,8 @@ export function DefinirSenha({ title }: { title?: string }) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (senha.length < 6) return toast.error("A senha precisa ter ao menos 6 caracteres.");
-    if (senha !== confirma) return toast.error("As senhas não conferem.");
+    if (senha.length < 6) return toast.error("The password must be at least 6 characters.");
+    if (senha !== confirma) return toast.error("The passwords don't match.");
 
     setSaving(true);
     const { error } = await supabase.auth.updateUser({ password: senha });
@@ -27,7 +27,7 @@ export function DefinirSenha({ title }: { title?: string }) {
       setSaving(false);
       return toast.error(error.message);
     }
-    // Limpa o flag de troca obrigatória (se houver sessão de usuário).
+    // Clears the mandatory-change flag (if there is a user session).
     if (session?.user) {
       await supabase
         .from("users")
@@ -37,22 +37,22 @@ export function DefinirSenha({ title }: { title?: string }) {
     clearRecovery();
     await refreshProfile();
     setSaving(false);
-    toast.success("Senha definida");
+    toast.success("Password set");
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{title ?? "Defina sua senha"}</CardTitle>
+          <CardTitle>{title ?? "Set your password"}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={submit} className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Para sua segurança, escolha uma nova senha para acessar a plataforma.
+              For your security, choose a new password to access the platform.
             </p>
             <div className="space-y-1.5">
-              <Label htmlFor="nova">Nova senha</Label>
+              <Label htmlFor="nova">New password</Label>
               <Input
                 id="nova"
                 type="password"
@@ -63,7 +63,7 @@ export function DefinirSenha({ title }: { title?: string }) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="conf">Confirmar senha</Label>
+              <Label htmlFor="conf">Confirm password</Label>
               <Input
                 id="conf"
                 type="password"
@@ -75,7 +75,7 @@ export function DefinirSenha({ title }: { title?: string }) {
             </div>
             <Button type="submit" className="w-full" disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Salvar senha
+              Save password
             </Button>
             <Button
               type="button"
@@ -84,7 +84,7 @@ export function DefinirSenha({ title }: { title?: string }) {
               onClick={() => signOut()}
               disabled={saving}
             >
-              Sair
+              Sign out
             </Button>
           </form>
         </CardContent>

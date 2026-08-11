@@ -19,10 +19,10 @@ type Item = { title: string; url: string; icon: typeof LayoutDashboard; rucheOnl
 
 const items: Item[] = [
   { title: "Overview", url: "/overview", icon: LayoutDashboard },
-  { title: "Orçamentos", url: "/orcamentos", icon: FileText },
-  { title: "Precificação", url: "/motor", icon: Calculator, rucheOnly: true },
-  { title: "Controle Financeiro", url: "/visao-interna", icon: EyeOff, rucheOnly: true },
-  { title: "Usuários", url: "/usuarios", icon: Users, rucheOnly: true },
+  { title: "Quotes", url: "/orcamentos", icon: FileText },
+  { title: "Pricing", url: "/motor", icon: Calculator, rucheOnly: true },
+  { title: "Financial Control", url: "/visao-interna", icon: EyeOff, rucheOnly: true },
+  { title: "Users", url: "/usuarios", icon: Users, rucheOnly: true },
 ];
 
 export function AppSidebar() {
@@ -51,7 +51,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navegação</SidebarGroupLabel>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {visible.map((item) => {
@@ -86,14 +86,14 @@ export function AppSidebar() {
         )}
         <SidebarMenuButton onClick={() => signOut()} className="text-sidebar-foreground/80">
           <LogOut className="h-4 w-4" />
-          {!collapsed && <span>Sair</span>}
+          {!collapsed && <span>Sign out</span>}
         </SidebarMenuButton>
       </SidebarFooter>
     </Sidebar>
   );
 }
 
-// Barra de navegação inferior — só no mobile, pra alcance com o polegar.
+// Bottom navigation bar — mobile only, for thumb reach.
 export function MobileBottomNav() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const { isRuche } = useAuth();

@@ -7,11 +7,11 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Entrar · Ruche Digital" }] }),
+  head: () => ({ meta: [{ title: "Sign in · Ruche Digital" }] }),
   component: AuthPage,
 });
 
-// Padrão de colmeia (hexagons) — heropatterns, em âmbar de baixa opacidade.
+// Hive pattern (hexagons) — heropatterns, in low-opacity amber.
 const HEX_BG =
   "url(\"data:image/svg+xml,%3Csvg width='28' height='49' viewBox='0 0 28 49' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z' fill='%23E9B93E' fill-opacity='0.14' fill-rule='evenodd'/%3E%3C/svg%3E\")";
 
@@ -49,19 +49,19 @@ function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setSubmitting(false);
     if (error) return toast.error(error.message);
-    toast.success("Bem-vindo!");
+    toast.success("Welcome!");
     navigate({ to: "/overview" });
   };
 
   const handleForgot = async () => {
-    if (!email) return toast.error("Digite seu e-mail no campo acima primeiro.");
+    if (!email) return toast.error("Enter your email in the field above first.");
     setSubmitting(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/overview`,
     });
     setSubmitting(false);
     if (error) return toast.error(error.message);
-    toast.success("Enviamos um link de redefinição para seu e-mail.");
+    toast.success("We sent a reset link to your email.");
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -77,13 +77,13 @@ function AuthPage() {
     });
     setSubmitting(false);
     if (error) return toast.error(error.message);
-    toast.success("Cadastro criado. Aguarde aprovação de um admin Ruche.");
+    toast.success("Account created. Wait for approval from a Ruche admin.");
     setTab("login");
   };
 
   return (
     <div className="relative flex min-h-screen">
-      {/* Textura de colmeia no fundo — só no mobile */}
+      {/* Hive texture in the background — mobile only */}
       <div
         className="absolute inset-0 lg:hidden"
         style={{ backgroundColor: "#17140c", backgroundImage: HEX_BG }}
@@ -95,7 +95,7 @@ function AuthPage() {
         }}
       />
 
-      {/* ===== Painel da marca (colmeia) — só no desktop ===== */}
+      {/* ===== Brand panel (hive) — desktop only ===== */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden p-10 lg:flex">
         <div
           className="absolute inset-0"
@@ -116,14 +116,14 @@ function AuthPage() {
             Internal OS
           </p>
           <h2 className="text-4xl font-bold leading-tight text-white">
-            Toda a operação em
+            The whole operation
             <br />
-            uma colmeia.
+            in one hive.
           </h2>
         </div>
       </div>
 
-      {/* ===== Formulário ===== */}
+      {/* ===== Form ===== */}
       <div className="relative z-10 flex flex-1 items-center justify-center p-6 lg:bg-[#F7F3E9]">
         <div className="w-full max-w-sm rounded-2xl bg-[#F7F3E9] p-6 shadow-2xl lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none">
           <div className="mb-8 lg:hidden">
@@ -131,12 +131,12 @@ function AuthPage() {
           </div>
 
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            {tab === "login" ? "Bem-vindo de volta" : "Criar conta"}
+            {tab === "login" ? "Welcome back" : "Create account"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {tab === "login"
-              ? "Entre para acessar o painel"
-              : "Cadastre-se — a aprovação é feita por um admin Ruche"}
+              ? "Sign in to access the panel"
+              : "Sign up — approval is handled by a Ruche admin"}
           </p>
 
           {tab === "login" ? (
@@ -145,7 +145,7 @@ function AuthPage() {
                 <Input
                   type="email"
                   required
-                  placeholder="E-mail"
+                  placeholder="Email"
                   className="h-12 border-none bg-white pl-10 shadow-sm"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -155,20 +155,20 @@ function AuthPage() {
                 <Input
                   type="password"
                   required
-                  placeholder="Senha"
+                  placeholder="Password"
                   className="h-12 border-none bg-white pl-10 shadow-sm"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </IconField>
-              <SubmitButton submitting={submitting} label="Entrar" />
+              <SubmitButton submitting={submitting} label="Sign in" />
             </form>
           ) : (
             <form onSubmit={handleSignup} className="mt-7 space-y-3">
               <IconField icon={User}>
                 <Input
                   required
-                  placeholder="Nome completo"
+                  placeholder="Full name"
                   className="h-12 border-none bg-white pl-10 shadow-sm"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
@@ -176,7 +176,7 @@ function AuthPage() {
               </IconField>
               <IconField icon={Phone}>
                 <Input
-                  placeholder="Telefone"
+                  placeholder="Phone"
                   className="h-12 border-none bg-white pl-10 shadow-sm"
                   value={telefone}
                   onChange={(e) => setTelefone(e.target.value)}
@@ -186,7 +186,7 @@ function AuthPage() {
                 <Input
                   type="email"
                   required
-                  placeholder="E-mail"
+                  placeholder="Email"
                   className="h-12 border-none bg-white pl-10 shadow-sm"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -197,13 +197,13 @@ function AuthPage() {
                   type="password"
                   required
                   minLength={6}
-                  placeholder="Senha"
+                  placeholder="Password"
                   className="h-12 border-none bg-white pl-10 shadow-sm"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </IconField>
-              <SubmitButton submitting={submitting} label="Criar conta" />
+              <SubmitButton submitting={submitting} label="Create account" />
             </form>
           )}
 
@@ -215,7 +215,7 @@ function AuthPage() {
                 disabled={submitting}
                 className="block w-full font-medium text-[#9A7B12] hover:underline"
               >
-                Esqueci minha senha
+                Forgot my password
               </button>
             )}
             <button
@@ -223,7 +223,9 @@ function AuthPage() {
               onClick={() => setTab(tab === "login" ? "signup" : "login")}
               className="block w-full font-medium text-[#9A7B12] hover:underline"
             >
-              {tab === "login" ? "Não tem uma conta? Criar conta" : "Já tem conta? Entrar"}
+              {tab === "login"
+                ? "Don't have an account? Create one"
+                : "Already have an account? Sign in"}
             </button>
           </div>
         </div>
@@ -248,7 +250,7 @@ function SubmitButton({ submitting, label }: { submitting: boolean; label: strin
       disabled={submitting}
       className="mt-1 flex h-12 w-full items-center justify-center gap-2 rounded-md bg-[#E9B93E] font-semibold text-[#3D2600] shadow-sm transition-colors hover:bg-[#e0ad2a] disabled:opacity-60"
     >
-      {submitting ? "Aguarde…" : label}
+      {submitting ? "Please wait…" : label}
       {!submitting && <ArrowRight className="h-4 w-4" />}
     </button>
   );

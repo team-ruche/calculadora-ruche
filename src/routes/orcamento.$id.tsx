@@ -4,11 +4,11 @@ import { supabase, type OrcamentoLayout, defaultLayout } from "@/integrations/su
 import { OrcamentoDocPreview, type DocData, type DocGrupo } from "@/components/OrcamentoDocPreview";
 import { GRUPO_LABEL, GRUPO_ORDER } from "@/components/OrcamentoView";
 
-// Rota pública (sem login) — o link vai pro campo "Quote Link" no GHL.
-// Protegida só pela imprevisibilidade do proposal_id (uuid v4), igual a um
-// link "qualquer um com o link" — a RPC nunca devolve repasse/margem/GHL ids.
+// Public route (no login) — the link goes to the "Quote Link" field in GHL.
+// Protected only by the unpredictability of the proposal_id (uuid v4), like an
+// "anyone with the link" link — the RPC never returns payout/margin/GHL ids.
 export const Route = createFileRoute("/orcamento/$id")({
-  head: () => ({ meta: [{ title: "Orçamento · Ruche" }] }),
+  head: () => ({ meta: [{ title: "Quote · Ruche" }] }),
   component: PublicOrcamento,
 });
 
@@ -45,7 +45,7 @@ function buildDocData(d: PublicOrcData): DocData {
   })).filter((g) => g.itens.length > 0);
 
   return {
-    clienteNome: d.cliente_nome || "Cliente",
+    clienteNome: d.cliente_nome || "Client",
     clienteContato: d.cliente_contato || "—",
     projetoEndereco: d.endereco || "—",
     escopo: d.endereco || "",
@@ -79,13 +79,13 @@ function PublicOrcamento() {
   }, [id]);
 
   if (status === "loading") {
-    return <p className="p-10 text-center text-sm text-muted-foreground">Carregando…</p>;
+    return <p className="p-10 text-center text-sm text-muted-foreground">Loading…</p>;
   }
 
   if (status === "not_found" || !data || !data.items.length) {
     return (
       <p className="p-10 text-center text-sm text-muted-foreground">
-        Orçamento não encontrado ou ainda sem itens.
+        Quote not found or has no items yet.
       </p>
     );
   }

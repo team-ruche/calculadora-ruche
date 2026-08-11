@@ -79,23 +79,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Ruche · Orçamentos para Flooring e Home Improvement" },
+      { title: "Ruche · Quotes for Flooring and Home Improvement" },
       {
         name: "description",
-        content: "Crie orçamentos profissionais para flooring e home improvement com a Ruche Digital. Calculadora de preços, propostas e controle de margem em um só lugar.",
+        content:
+          "Create professional quotes for flooring and home improvement with Ruche Digital. Pricing calculator, proposals, and margin control all in one place.",
       },
       { name: "author", content: "Ruche Digital" },
-      { property: "og:title", content: "Ruche · Orçamentos para Flooring e Home Improvement" },
+      { property: "og:title", content: "Ruche · Quotes for Flooring and Home Improvement" },
       {
         property: "og:description",
-        content: "Crie orçamentos profissionais para flooring e home improvement com a Ruche Digital. Calculadora de preços, propostas e controle de margem em um só lugar.",
+        content:
+          "Create professional quotes for flooring and home improvement with Ruche Digital. Pricing calculator, proposals, and margin control all in one place.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Ruche · Orçamentos para Flooring e Home Improvement" },
+      { name: "twitter:title", content: "Ruche · Quotes for Flooring and Home Improvement" },
       {
         name: "twitter:description",
-        content: "Crie orçamentos profissionais para flooring e home improvement com a Ruche Digital. Calculadora de preços, propostas e controle de margem em um só lugar.",
+        content:
+          "Create professional quotes for flooring and home improvement with Ruche Digital. Pricing calculator, proposals, and margin control all in one place.",
       },
       {
         property: "og:image",

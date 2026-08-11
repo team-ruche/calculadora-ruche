@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,12 @@ import { cn } from "@/lib/utils";
 export type Preset = "hoje" | "7d" | "30d" | "mes" | "mes_passado" | "90d";
 
 const PRESETS: { key: Preset; label: string }[] = [
-  { key: "hoje", label: "Hoje" },
-  { key: "7d", label: "Últimos 7 dias" },
-  { key: "30d", label: "Últimos 30 dias" },
-  { key: "mes", label: "Este mês" },
-  { key: "mes_passado", label: "Mês passado" },
-  { key: "90d", label: "Últimos 90 dias" },
+  { key: "hoje", label: "Today" },
+  { key: "7d", label: "Last 7 days" },
+  { key: "30d", label: "Last 30 days" },
+  { key: "mes", label: "This month" },
+  { key: "mes_passado", label: "Last month" },
+  { key: "90d", label: "Last 90 days" },
 ];
 
 export function presetRange(p: Preset): { from: Date; to: Date } {
@@ -53,18 +53,18 @@ const fmt = (d: Date) => format(d, "d MMM yy");
 interface Props {
   value: { from: Date; to: Date } | null;
   onChange: (range: { from: Date; to: Date } | null) => void;
-  // Permite limpar o filtro ("Todas as datas") — usado na cobrança.
+  // Allows clearing the filter ("All dates") — used in collections.
   clearable?: boolean;
   placeholder?: string;
 }
 
-// Filtro global de período — presets + calendário duplo (formato do anexo).
+// Global period filter — presets + dual calendar (attachment format).
 export function DateRangePicker({ value, onChange, clearable, placeholder }: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>(value ?? undefined);
   const isMobile = useIsMobile();
-  // Rótulo sempre no formato extenso (9 May 26 – 13 Jun 26).
-  const label = value ? `${fmt(value.from)} – ${fmt(value.to)}` : (placeholder ?? "Período");
+  // Label always in the long format (9 May 26 – 13 Jun 26).
+  const label = value ? `${fmt(value.from)} – ${fmt(value.to)}` : (placeholder ?? "Period");
 
   const applyPreset = (p: Preset) => {
     const r = presetRange(p);
@@ -113,7 +113,7 @@ export function DateRangePicker({ value, onChange, clearable, placeholder }: Pro
                   value ? "text-foreground" : "bg-accent text-foreground",
                 )}
               >
-                Todas as datas
+                All dates
               </button>
             )}
             {PRESETS.map((p) => (
@@ -137,10 +137,10 @@ export function DateRangePicker({ value, onChange, clearable, placeholder }: Pro
               defaultMonth={value?.from ?? new Date()}
               selected={draft}
               onSelect={onSelect}
-              locale={ptBR}
+              locale={enUS}
             />
             <p className="px-2 pb-1 text-xs text-muted-foreground">
-              Clique no início e no fim do período.
+              Click the start and end of the range.
             </p>
           </div>
         </div>

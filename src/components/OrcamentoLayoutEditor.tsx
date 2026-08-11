@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { OrcamentoDocPreview } from "@/components/OrcamentoDocPreview";
 import { toast } from "sonner";
 
-// Definido fora do componente para não ser recriado a cada tecla (senão o input perde o foco).
+// Defined outside the component so it isn't recreated on every keystroke (otherwise the input loses focus).
 function Fld({
   label,
   value,
@@ -73,7 +73,7 @@ export function OrcamentoLayoutEditor({
     })();
   }, [partnerId]);
 
-  if (loading || !layout) return <p className="p-6 text-sm text-muted-foreground">Carregando…</p>;
+  if (loading || !layout) return <p className="p-6 text-sm text-muted-foreground">Loading…</p>;
 
   const L = layout;
   const setL = (patch: Partial<OrcamentoLayout>) => setLayout({ ...L, ...patch });
@@ -96,10 +96,10 @@ export function OrcamentoLayoutEditor({
       {
         id,
         tipo: "custom",
-        label: "Nova seção",
+        label: "New section",
         on: true,
-        title: "Nova seção",
-        body: "Escreva aqui…",
+        title: "New section",
+        body: "Write here…",
       },
     ]);
     setEditId(id);
@@ -126,11 +126,11 @@ export function OrcamentoLayoutEditor({
       .upsert({ ...L, updated_at: new Date().toISOString() });
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Configuração salva");
+    toast.success("Settings saved");
   };
 
   const restaurar = () => {
-    if (!confirm("Restaurar o layout padrão? As alterações não salvas serão perdidas.")) return;
+    if (!confirm("Restore the default layout? Unsaved changes will be lost.")) return;
     setLayout({ ...defaultLayout(partnerId), logo_url: L.logo_url });
   };
 
@@ -144,13 +144,13 @@ export function OrcamentoLayoutEditor({
             </Button>
           )}
           <div>
-            <h1 className="text-xl font-bold tracking-tight">Configuração do orçamento</h1>
-            <p className="text-sm text-muted-foreground">Identidade visual e seções do documento</p>
+            <h1 className="text-xl font-bold tracking-tight">Quote settings</h1>
+            <p className="text-sm text-muted-foreground">Visual identity and document sections</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={restaurar}>
-            <RefreshCw className="mr-1 h-4 w-4" /> Restaurar padrão
+            <RefreshCw className="mr-1 h-4 w-4" /> Restore default
           </Button>
           <Button size="sm" onClick={salvar} disabled={saving}>
             {saving ? (
@@ -158,7 +158,7 @@ export function OrcamentoLayoutEditor({
             ) : (
               <Check className="mr-1 h-4 w-4" />
             )}
-            Salvar
+            Save
           </Button>
         </div>
       </div>
@@ -168,7 +168,7 @@ export function OrcamentoLayoutEditor({
         <div className="max-h-[70vh] space-y-4 overflow-y-auto rounded-xl border bg-card p-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Marca
+              Brand
             </p>
             <div className="mb-3 flex items-center gap-3">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border">
@@ -186,16 +186,12 @@ export function OrcamentoLayoutEditor({
               />
             </div>
             <div className="space-y-2">
-              <Fld label="Empresa" value={L.empresa} onChange={(v) => setL({ empresa: v })} />
+              <Fld label="Company" value={L.empresa} onChange={(v) => setL({ empresa: v })} />
               <Fld label="Slogan" value={L.slogan} onChange={(v) => setL({ slogan: v })} />
-              <Fld
-                label="Título do documento"
-                value={L.titulo}
-                onChange={(v) => setL({ titulo: v })}
-              />
+              <Fld label="Document title" value={L.titulo} onChange={(v) => setL({ titulo: v })} />
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Cor 1</Label>
+                  <Label className="text-xs text-muted-foreground">Color 1</Label>
                   <input
                     type="color"
                     value={L.cor1}
@@ -204,7 +200,7 @@ export function OrcamentoLayoutEditor({
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Cor 2</Label>
+                  <Label className="text-xs text-muted-foreground">Color 2</Label>
                   <input
                     type="color"
                     value={L.cor2}
@@ -218,14 +214,14 @@ export function OrcamentoLayoutEditor({
 
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Contato e licenças
+              Contact and licenses
             </p>
             <div className="space-y-2">
-              <Fld label="Telefone" value={L.telefone} onChange={(v) => setL({ telefone: v })} />
-              <Fld label="Site" value={L.site} onChange={(v) => setL({ site: v })} />
+              <Fld label="Phone" value={L.telefone} onChange={(v) => setL({ telefone: v })} />
+              <Fld label="Website" value={L.site} onChange={(v) => setL({ site: v })} />
               <Fld label="Instagram" value={L.instagram} onChange={(v) => setL({ instagram: v })} />
-              <Fld label="Endereço" value={L.endereco} onChange={(v) => setL({ endereco: v })} />
-              <Fld label="E-mail" value={L.email} onChange={(v) => setL({ email: v })} />
+              <Fld label="Address" value={L.endereco} onChange={(v) => setL({ endereco: v })} />
+              <Fld label="Email" value={L.email} onChange={(v) => setL({ email: v })} />
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <Fld label="License" value={L.license} onChange={(v) => setL({ license: v })} />
                 <Fld label="HIC" value={L.hic} onChange={(v) => setL({ hic: v })} />
@@ -236,10 +232,10 @@ export function OrcamentoLayoutEditor({
           <div>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Seções
+                Sections
               </p>
               <Button variant="outline" size="sm" onClick={addCustom}>
-                <Plus className="mr-1 h-4 w-4" /> Nova seção
+                <Plus className="mr-1 h-4 w-4" /> New section
               </Button>
             </div>
             <div className="space-y-1.5">
@@ -271,7 +267,7 @@ export function OrcamentoLayoutEditor({
                         type="button"
                         onClick={() => setEditId(editId === s.id ? null : s.id)}
                         className="text-muted-foreground hover:text-foreground"
-                        aria-label="Editar"
+                        aria-label="Edit"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -280,7 +276,7 @@ export function OrcamentoLayoutEditor({
                       type="button"
                       onClick={() => delSecao(s.id)}
                       className="text-muted-foreground hover:text-destructive"
-                      aria-label="Excluir"
+                      aria-label="Delete"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -293,7 +289,7 @@ export function OrcamentoLayoutEditor({
                           onChange={(e) =>
                             patchSecao(s.id, { title: e.target.value, label: e.target.value })
                           }
-                          placeholder="Título"
+                          placeholder="Title"
                           className="h-8 text-xs"
                         />
                       )}
@@ -301,9 +297,7 @@ export function OrcamentoLayoutEditor({
                         rows={3}
                         value={s.body ?? ""}
                         onChange={(e) => patchSecao(s.id, { body: e.target.value })}
-                        placeholder={
-                          s.id === "termos" ? "Texto dos termos e condições" : "Conteúdo"
-                        }
+                        placeholder={s.id === "termos" ? "Terms and conditions text" : "Content"}
                         className="text-xs"
                       />
                     </div>
@@ -316,9 +310,7 @@ export function OrcamentoLayoutEditor({
 
         {/* Preview */}
         <div className="rounded-xl border bg-card">
-          <div className="border-b px-4 py-2 text-xs text-muted-foreground">
-            Preview do documento
-          </div>
+          <div className="border-b px-4 py-2 text-xs text-muted-foreground">Document preview</div>
           <div className="overflow-hidden rounded-b-xl">
             <OrcamentoDocPreview layout={L} />
           </div>

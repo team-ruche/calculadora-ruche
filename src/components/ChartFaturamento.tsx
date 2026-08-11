@@ -11,7 +11,7 @@ import {
   Legend,
 } from "recharts";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 
 export type DealPonto = {
   fechado_at: string | null;
@@ -21,7 +21,7 @@ export type DealPonto = {
 };
 
 type Gran = "dia" | "semana" | "mes";
-const GRAN_LABEL: Record<Gran, string> = { dia: "Diário", semana: "Semanal", mes: "Mensal" };
+const GRAN_LABEL: Record<Gran, string> = { dia: "Daily", semana: "Weekly", mes: "Monthly" };
 
 const money = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
 const axisMoney = (n: number) => `$${Math.round(n / 1000)}k`;
@@ -37,16 +37,16 @@ function bucket(dateStr: string, g: Gran): { key: string; label: string } {
   const d = new Date(dateStr);
   if (g === "mes") {
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    return { key, label: format(d, "MMM/yy", { locale: ptBR }) };
+    return { key, label: format(d, "MMM/yy", { locale: enUS }) };
   }
   if (g === "semana") {
     const s = startOfWeek(d);
     return {
       key: format(s, "yyyy-MM-dd"),
-      label: format(s, "dd/MM", { locale: ptBR }),
+      label: format(s, "dd/MM", { locale: enUS }),
     };
   }
-  return { key: format(d, "yyyy-MM-dd"), label: format(d, "dd/MM", { locale: ptBR }) };
+  return { key: format(d, "yyyy-MM-dd"), label: format(d, "dd/MM", { locale: enUS }) };
 }
 
 export function ChartFaturamento({ deals }: { deals: DealPonto[] }) {
@@ -69,7 +69,7 @@ export function ChartFaturamento({ deals }: { deals: DealPonto[] }) {
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">Faturamento</h2>
+        <h2 className="text-base font-semibold">Revenue</h2>
         <div className="inline-flex rounded-lg border bg-background p-0.5">
           {(Object.keys(GRAN_LABEL) as Gran[]).map((g) => (
             <button
@@ -87,9 +87,7 @@ export function ChartFaturamento({ deals }: { deals: DealPonto[] }) {
       </div>
 
       {data.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          Sem faturamento no período.
-        </p>
+        <p className="py-12 text-center text-sm text-muted-foreground">No revenue in period.</p>
       ) : (
         <div style={{ width: "100%", height: 320 }}>
           <ResponsiveContainer>
@@ -110,7 +108,7 @@ export function ChartFaturamento({ deals }: { deals: DealPonto[] }) {
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar
                 dataKey="total"
-                name="Faturamento total"
+                name="Total revenue"
                 fill="#EF9F27"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={44}
@@ -118,7 +116,7 @@ export function ChartFaturamento({ deals }: { deals: DealPonto[] }) {
               <Line
                 type="monotone"
                 dataKey="parceiro"
-                name="Parceiro"
+                name="Partner"
                 stroke="#1D9E75"
                 strokeWidth={2}
                 dot={{ r: 3 }}

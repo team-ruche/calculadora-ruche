@@ -18,14 +18,14 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/motor")({
-  head: () => ({ meta: [{ title: "Precificação · Ruche" }] }),
+  head: () => ({ meta: [{ title: "Pricing · Ruche" }] }),
   component: MotorPage,
 });
 
 const GRUPO_LABEL: Record<MotorGrupo, string> = {
-  instalacao: "Instalação",
-  demolicao: "Remoção",
-  prep: "Preparação",
+  instalacao: "Installation",
+  demolicao: "Removal",
+  prep: "Prep",
   extra: "Extras",
 };
 
@@ -49,8 +49,8 @@ const emptySub = (unidade: string): NewSub => ({
   teto_repasse: 0,
 });
 
-// slug automático p/ o codigo a partir do nome (usado como chave no cálculo).
-// Não precisa ser bonito — só determinístico e estável.
+// Automatic slug for the codigo from the name (used as the key in the calculation).
+// It doesn't need to be pretty — just deterministic and stable.
 const slugify = (s: string) =>
   s
     .toLowerCase()
@@ -88,7 +88,7 @@ function MotorPage() {
 
   const saveRow = async (row: MotorPrice) => {
     if (row.repasse_partida > row.teto_repasse) {
-      toast.error("Repasse de partida não pode ser maior que o teto");
+      toast.error("Payout start cannot be greater than the cap");
       return;
     }
     setSavingId(row.id);
@@ -102,7 +102,7 @@ function MotorPage() {
       .eq("id", row.id);
     setSavingId(null);
     if (error) return toast.error(error.message);
-    toast.success(`${row.componente} atualizado`);
+    toast.success(`${row.componente} updated`);
   };
 
   const toggleAtivo = async (row: MotorPrice, ativo: boolean) => {
@@ -120,9 +120,9 @@ function MotorPage() {
   };
 
   const addSub = async (grupo: MotorGrupo) => {
-    if (!draft.componente.trim()) return toast.error("Informe o nome da subcategoria");
+    if (!draft.componente.trim()) return toast.error("Enter the subcategory name");
     if (draft.repasse_partida > draft.teto_repasse)
-      return toast.error("Repasse de partida não pode ser maior que o teto");
+      return toast.error("Payout start cannot be greater than the cap");
     const codigo = (draft.codigo.trim() || slugify(draft.componente)).slice(0, 60);
     const { error } = await supabase.from("motor_prices").insert({
       grupo,
@@ -135,33 +135,33 @@ function MotorPage() {
     });
     if (error) {
       if (error.code === "23505")
-        return toast.error(`Já existe a subcategoria "${codigo}" nesse grupo`);
+        return toast.error(`Subcategory "${codigo}" already exists in this group`);
       return toast.error(error.message);
     }
-    toast.success("Subcategoria adicionada");
+    toast.success("Subcategory added");
     setAddingGrupo(null);
     load();
   };
 
   const deleteRow = async (row: MotorPrice) => {
-    if (!confirm(`Remover a subcategoria "${row.componente}"?`)) return;
+    if (!confirm(`Remove the subcategory "${row.componente}"?`)) return;
     const { error } = await supabase.from("motor_prices").delete().eq("id", row.id);
     if (error) return toast.error(error.message);
-    toast.success("Subcategoria removida");
+    toast.success("Subcategory removed");
     load();
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Precificação</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Pricing</h1>
         <p className="text-sm text-muted-foreground">
-          Preço cobrado do cliente e banda de repasse ao parceiro (partida → teto), por unidade.
+          Price charged to the client and the partner payout band (start → cap), per unit.
         </p>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Carregando…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         GRUPO_ORDER.map((grupo) => {
           const rows = prices.filter((p) => p.grupo === grupo);
@@ -172,12 +172,12 @@ function MotorPage() {
                 <div>
                   <CardTitle>{GRUPO_LABEL[grupo]}</CardTitle>
                   <CardDescription>
-                    {grupo === "extra" ? "Valores por unidade do extra" : "Valores por sqft"}
+                    {grupo === "extra" ? "Values per unit of the extra" : "Values per sqft"}
                   </CardDescription>
                 </div>
                 {canEditRows && (
                   <Button type="button" variant="outline" size="sm" onClick={() => startAdd(grupo)}>
-                    <Plus className="mr-1 h-4 w-4" /> Subcategoria
+                    <Plus className="mr-1 h-4 w-4" /> Subcategory
                   </Button>
                 )}
               </CardHeader>
@@ -186,13 +186,13 @@ function MotorPage() {
                   <Table className="min-w-[760px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="sticky left-0 z-20 bg-card">Componente</TableHead>
-                        <TableHead>Unidade</TableHead>
-                        <TableHead className="w-32">Preço cliente</TableHead>
-                        <TableHead className="w-32">Repasse partida</TableHead>
-                        <TableHead className="w-32">Teto repasse</TableHead>
-                        <TableHead className="w-20">Ativo</TableHead>
-                        <TableHead className="w-36 text-right">Ação</TableHead>
+                        <TableHead className="sticky left-0 z-20 bg-card">Component</TableHead>
+                        <TableHead>Unit</TableHead>
+                        <TableHead className="w-32">Client price</TableHead>
+                        <TableHead className="w-32">Payout start</TableHead>
+                        <TableHead className="w-32">Payout cap</TableHead>
+                        <TableHead className="w-20">Active</TableHead>
+                        <TableHead className="w-36 text-right">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -233,7 +233,7 @@ function MotorPage() {
                                 disabled={savingId === row.id}
                                 onClick={() => saveRow(row)}
                               >
-                                {savingId === row.id ? "Salvando…" : "Salvar"}
+                                {savingId === row.id ? "Saving…" : "Save"}
                               </Button>
                               {canEditRows && (
                                 <Button
@@ -241,8 +241,8 @@ function MotorPage() {
                                   variant="outline"
                                   className="h-8 w-8 text-muted-foreground hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive"
                                   onClick={() => deleteRow(row)}
-                                  title="Remover"
-                                  aria-label="Remover"
+                                  title="Remove"
+                                  aria-label="Remove"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -255,7 +255,7 @@ function MotorPage() {
                         <TableRow>
                           <TableCell>
                             <Input
-                              placeholder="Nome (ex: Bamboo)"
+                              placeholder="Name (e.g. Bamboo)"
                               value={draft.componente}
                               onChange={(e) =>
                                 setDraft((d) => ({ ...d, componente: e.target.value }))
@@ -292,14 +292,14 @@ function MotorPage() {
                           <TableCell>
                             <div className="flex items-center justify-end gap-2">
                               <Button size="sm" onClick={() => addSub(grupo)}>
-                                Adicionar
+                                Add
                               </Button>
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => setAddingGrupo(null)}
                               >
-                                Cancelar
+                                Cancel
                               </Button>
                             </div>
                           </TableCell>

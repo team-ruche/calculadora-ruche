@@ -4,6 +4,8 @@ import { Plus, Loader2, Copy, Trash2 } from "lucide-react";
 import {
   supabase,
   callGhlSyncPartner,
+  USER_STATUS_LABEL,
+  ROLE_LABEL,
   type AppUser,
   type AppRole,
 } from "@/integrations/supabase/models";
@@ -39,7 +41,7 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
-  head: () => ({ meta: [{ title: "Usuários · Ruche" }] }),
+  head: () => ({ meta: [{ title: "Users · Ruche" }] }),
   component: UsuariosPage,
 });
 
@@ -75,31 +77,31 @@ function UsuariosPage() {
       await supabase.from("user_roles").insert({ user_id: id, role: patch.role });
     }
 
-    // Aprovando um parceiro -> cria a opção dele no dropdown "Assigned
-    // Partner" do GHL + a linha em ghl_partner_map, pra visita marcada pelo
-    // call center já cair no kanban certo. Best-effort: não trava a aprovação.
+    // Approving a partner -> creates their option in the GHL "Assigned
+    // Partner" dropdown + the row in ghl_partner_map, so an appointment booked
+    // by the call center lands in the right kanban. Best-effort: does not block approval.
     const target = users.find((u) => u.id === id);
     const role = patch.role ?? target?.role;
     if (patch.status === "aprovado" && role === "parceiro") {
       callGhlSyncPartner(id).catch(() =>
         toast.error(
-          "Parceiro aprovado, mas falhou ao criar no dropdown do GHL — avise pra checar manualmente.",
+          "Partner approved, but failed to create them in the GHL dropdown — please check manually.",
         ),
       );
     }
 
-    toast.success("Usuário atualizado");
+    toast.success("User updated");
     load();
   };
 
   const excluirUser = async (u: AppUser) => {
-    if (u.id === current?.id) return toast.error("Você não pode excluir a si mesmo.");
-    if (!confirm(`Excluir ${u.nome || u.email}? Esta ação não pode ser desfeita.`)) return;
+    if (u.id === current?.id) return toast.error("You cannot delete yourself.");
+    if (!confirm(`Delete ${u.nome || u.email}? This action cannot be undone.`)) return;
     const { error } = await supabase.functions.invoke("admin-delete-user", {
       body: { user_id: u.id },
     });
     if (error) return toast.error(error.message);
-    toast.success("Usuário excluído");
+    toast.success("User deleted");
     load();
   };
 
@@ -108,33 +110,33 @@ function UsuariosPage() {
       <NovoUsuarioDialog open={novoOpen} onOpenChange={setNovoOpen} onCreated={load} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Usuários</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Users</h1>
           <p className="text-sm text-muted-foreground">
-            Crie parceiros, aprove cadastros e defina o papel.
+            Create partners, approve sign-ups and set the role.
           </p>
         </div>
         <Button onClick={() => setNovoOpen(true)}>
-          <Plus className="mr-1 h-4 w-4" /> Novo usuário
+          <Plus className="mr-1 h-4 w-4" /> New user
         </Button>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Todos os usuários</CardTitle>
+          <CardTitle>All users</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">Carregando…</p>
+            <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
             <div className="overflow-x-auto">
               <Table className="min-w-[680px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>E-mail</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Papel</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -145,7 +147,7 @@ function UsuariosPage() {
                         <TableCell className="font-medium">
                           {u.nome || "—"}
                           {isSelf && (
-                            <span className="ml-1 text-xs text-muted-foreground">(você)</span>
+                            <span className="ml-1 text-xs text-muted-foreground">(you)</span>
                           )}
                         </TableCell>
                         <TableCell>{u.email}</TableCell>
@@ -160,8 +162,8 @@ function UsuariosPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="parceiro">parceiro</SelectItem>
-                              <SelectItem value="ruche">ruche</SelectItem>
+                              <SelectItem value="parceiro">{ROLE_LABEL.parceiro}</SelectItem>
+                              <SelectItem value="ruche">{ROLE_LABEL.ruche}</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -175,7 +177,7 @@ function UsuariosPage() {
                                   : "outline"
                             }
                           >
-                            {u.status}
+                            {USER_STATUS_LABEL[u.status]}
                           </Badge>
                         </TableCell>
                         <TableCell className="space-x-2 text-right">
@@ -184,7 +186,7 @@ function UsuariosPage() {
                               size="sm"
                               onClick={() => updateUser(u.id, { status: "aprovado" })}
                             >
-                              Aprovar
+                              Approve
                             </Button>
                           )}
                           {u.status !== "reprovado" && !isSelf && (
@@ -193,7 +195,7 @@ function UsuariosPage() {
                               variant="outline"
                               onClick={() => updateUser(u.id, { status: "reprovado" })}
                             >
-                              Reprovar
+                              Reject
                             </Button>
                           )}
                           {!isSelf && (
@@ -202,7 +204,7 @@ function UsuariosPage() {
                               variant="outline"
                               onClick={() => excluirUser(u)}
                               className="border-destructive/40 text-destructive hover:bg-destructive/5"
-                              aria-label="Excluir usuário"
+                              aria-label="Delete user"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -214,7 +216,7 @@ function UsuariosPage() {
                   {users.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center text-muted-foreground">
-                        Nenhum usuário ainda.
+                        No users yet.
                       </TableCell>
                     </TableRow>
                   )}
@@ -228,7 +230,7 @@ function UsuariosPage() {
   );
 }
 
-// ---- Criar usuário (parceiro) ----------------------------------------------
+// ---- Create user (partner) ----------------------------------------------
 type NovoForm = {
   nome: string;
   email: string;
@@ -276,7 +278,7 @@ function NovoUsuarioDialog({
 
   const submit = async () => {
     if (!form.nome.trim() || !form.email.trim() || !form.telefone.trim()) {
-      toast.error("Nome, e-mail e telefone são obrigatórios.");
+      toast.error("Name, email and phone are required.");
       return;
     }
     setSaving(true);
@@ -285,14 +287,14 @@ function NovoUsuarioDialog({
     });
     setSaving(false);
     if (error) {
-      // A mensagem de erro (403/400 etc.) vem no corpo da resposta.
-      let msg = error.message ?? "Falha ao criar usuário";
+      // The error message (403/400 etc.) comes in the response body.
+      let msg = error.message ?? "Failed to create user";
       try {
         const ctx = (error as { context?: Response }).context;
         const body = ctx ? await ctx.json() : null;
         if (body?.error) msg = body.error;
       } catch {
-        /* mantém msg padrão */
+        /* keep default msg */
       }
       return toast.error(msg);
     }
@@ -303,7 +305,7 @@ function NovoUsuarioDialog({
       error?: string;
     };
     if (res?.error) return toast.error(res.error);
-    toast.success(res?.mode === "invite" ? "Convite enviado" : "Usuário criado");
+    toast.success(res?.mode === "invite" ? "Invite sent" : "User created");
     setResultado({
       mode: res?.mode ?? form.mode,
       email: form.email,
@@ -322,9 +324,9 @@ function NovoUsuarioDialog({
     >
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Novo usuário</DialogTitle>
+          <DialogTitle>New user</DialogTitle>
           <DialogDescription>
-            Cria o login do parceiro já aprovado. Nome, e-mail e telefone são obrigatórios.
+            Creates the partner's login, already approved. Name, email and phone are required.
           </DialogDescription>
         </DialogHeader>
 
@@ -332,14 +334,14 @@ function NovoUsuarioDialog({
           <div className="space-y-4 py-2">
             {resultado.mode === "invite" ? (
               <p className="text-sm text-muted-foreground">
-                Convite enviado para <strong>{resultado.email}</strong>. O parceiro vai receber um
-                e-mail com um link para definir a própria senha e acessar a plataforma.
+                Invite sent to <strong>{resultado.email}</strong>. The partner will receive an email
+                with a link to set their own password and access the platform.
               </p>
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Usuário criado. Compartilhe a senha temporária com o parceiro — ele entra com o
-                  e-mail e essa senha, e será obrigado a trocá-la no primeiro acesso.
+                  User created. Share the temporary password with the partner — they log in with
+                  their email and this password, and will be required to change it on first access.
                 </p>
                 <div className="flex items-center gap-2 rounded-md border bg-muted/40 p-3">
                   <code className="flex-1 text-sm font-semibold">{resultado.senha}</code>
@@ -349,9 +351,9 @@ function NovoUsuarioDialog({
                     className="h-8 w-8"
                     onClick={() => {
                       navigator.clipboard.writeText(resultado.senha ?? "");
-                      toast.success("Senha copiada");
+                      toast.success("Password copied");
                     }}
-                    title="Copiar"
+                    title="Copy"
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
@@ -360,34 +362,30 @@ function NovoUsuarioDialog({
             )}
             <DialogFooter>
               <Button variant="outline" onClick={reset}>
-                Criar outro
+                Create another
               </Button>
-              <Button onClick={() => onOpenChange(false)}>Fechar</Button>
+              <Button onClick={() => onOpenChange(false)}>Close</Button>
             </DialogFooter>
           </div>
         ) : (
           <div className="space-y-4 py-2">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Campo label="Nome *" value={form.nome} onChange={(v) => set("nome", v)} />
+              <Campo label="Name *" value={form.nome} onChange={(v) => set("nome", v)} />
               <Campo
-                label="E-mail *"
+                label="Email *"
                 type="email"
                 value={form.email}
                 onChange={(v) => set("email", v)}
               />
-              <Campo
-                label="Telefone *"
-                value={form.telefone}
-                onChange={(v) => set("telefone", v)}
-              />
+              <Campo label="Phone *" value={form.telefone} onChange={(v) => set("telefone", v)} />
               <div className="space-y-1.5">
-                <Label>Papel</Label>
+                <Label>Role</Label>
                 <Select value={form.role} onValueChange={(v) => set("role", v as AppRole)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="parceiro">Parceiro</SelectItem>
+                    <SelectItem value="parceiro">Partner</SelectItem>
                     <SelectItem value="ruche">Ruche (admin)</SelectItem>
                   </SelectContent>
                 </Select>
@@ -397,18 +395,14 @@ function NovoUsuarioDialog({
             {form.role === "parceiro" && (
               <div className="rounded-lg border p-3">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Dados do parceiro <span className="font-normal normal-case">(opcional)</span>
+                  Partner details <span className="font-normal normal-case">(optional)</span>
                 </p>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Campo
-                    label="Nicho de atuação"
-                    value={form.nicho}
-                    onChange={(v) => set("nicho", v)}
-                  />
+                  <Campo label="Niche" value={form.nicho} onChange={(v) => set("nicho", v)} />
                   <Campo label="EIN number" value={form.ein} onChange={(v) => set("ein", v)} />
                   <div className="sm:col-span-2">
                     <Campo
-                      label="Endereço da empresa"
+                      label="Company address"
                       value={form.endereco_empresa}
                       onChange={(v) => set("endereco_empresa", v)}
                     />
@@ -418,30 +412,30 @@ function NovoUsuarioDialog({
             )}
 
             <div className="space-y-1.5">
-              <Label>Como o usuário vai acessar?</Label>
+              <Label>How will the user access?</Label>
               <Select value={form.mode} onValueChange={(v) => set("mode", v as NovoForm["mode"])}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="invite">Enviar convite por e-mail (define a senha)</SelectItem>
-                  <SelectItem value="password">Gerar senha temporária</SelectItem>
+                  <SelectItem value="invite">Send email invite (sets their password)</SelectItem>
+                  <SelectItem value="password">Generate temporary password</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
                 {form.mode === "invite"
-                  ? "O parceiro recebe um link por e-mail para criar a própria senha."
-                  : "Você recebe uma senha temporária para repassar; a troca é obrigatória no 1º acesso."}
+                  ? "The partner receives an email link to create their own password."
+                  : "You get a temporary password to pass along; changing it is required on first access."}
               </p>
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-                Cancelar
+                Cancel
               </Button>
               <Button onClick={submit} disabled={saving}>
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {form.mode === "invite" ? "Criar e enviar convite" : "Criar usuário"}
+                {form.mode === "invite" ? "Create and send invite" : "Create user"}
               </Button>
             </DialogFooter>
           </div>

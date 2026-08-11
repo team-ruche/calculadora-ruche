@@ -1,6 +1,6 @@
 import type { OrcamentoLayout } from "@/integrations/supabase/models";
 
-// Dados que variam por orçamento (no editor usamos exemplo; no documento real vêm do lead/proposta).
+// Data that varies per quote (in the editor we use a sample; in the real document it comes from the lead/proposal).
 export type DocItem = { item: string; qtd: string; unit: string; subtotal: string };
 export type DocGrupo = { grupo: string; itens: DocItem[] };
 export type DocData = {
@@ -13,37 +13,44 @@ export type DocData = {
   fotoUrl?: string | null;
 };
 
-// Texto padrão dos termos (editável por parceiro na configuração).
+// Default terms text (editable per partner in the settings).
 export const DEFAULT_TERMOS =
-  "Validade de 15 dias. 50% na assinatura, 50% na entrega. Garantia de 1 ano na instalação.";
+  "Valid for 15 days. 50% due at signing, 50% on completion. 1-year warranty on the installation.";
 
 export const SAMPLE_DATA: DocData = {
   clienteNome: "David Zig-Kreger",
   clienteContato: "(339) 933-0322 · Dzk100@gmail.com",
   projetoEndereco: "1 Mead Street, Somerville, MA",
-  escopo: "Sala · 800 sqft · Laminado · Troca",
+  escopo: "Living room · 800 sqft · Laminate · Replacement",
   grupos: [
     {
-      grupo: "Instalação",
-      itens: [{ item: "Sala — Laminado", qtd: "800 sqft", unit: "$3.50", subtotal: "$2,800.00" }],
-    },
-    {
-      grupo: "Remoção",
+      grupo: "Installation",
       itens: [
-        { item: "Sala — remover Laminado", qtd: "800 sqft", unit: "$1.00", subtotal: "$800.00" },
+        { item: "Living room — Laminate", qtd: "800 sqft", unit: "$3.50", subtotal: "$2,800.00" },
       ],
     },
     {
-      grupo: "Preparação",
+      grupo: "Removal",
       itens: [
-        { item: "Sala — Prep simples", qtd: "800 sqft", unit: "$1.70", subtotal: "$1,360.00" },
+        {
+          item: "Living room — remove Laminate",
+          qtd: "800 sqft",
+          unit: "$1.00",
+          subtotal: "$800.00",
+        },
+      ],
+    },
+    {
+      grupo: "Prep",
+      itens: [
+        { item: "Living room — Basic prep", qtd: "800 sqft", unit: "$1.70", subtotal: "$1,360.00" },
       ],
     },
   ],
   total: "$4,960.00",
 };
 
-// Renderiza o documento do orçamento a partir do layout do parceiro + dados.
+// Renders the quote document from the partner's layout + data.
 export function OrcamentoDocPreview({
   layout,
   data = SAMPLE_DATA,
@@ -53,7 +60,7 @@ export function OrcamentoDocPreview({
 }) {
   const cor1 = layout.cor1 || "#1D9E75";
   const cor2 = layout.cor2 || "#1A1A1A";
-  const empresa = layout.empresa || "Sua empresa";
+  const empresa = layout.empresa || "Your company";
 
   const Head = ({ t }: { t: string }) => (
     <div
@@ -75,7 +82,7 @@ export function OrcamentoDocPreview({
     if (s.tipo === "custom") {
       return (
         <div key={s.id} style={{ marginBottom: 12 }}>
-          <Head t={s.title || s.label || "Seção"} />
+          <Head t={s.title || s.label || "Section"} />
           <div style={{ whiteSpace: "pre-wrap" }}>{s.body || ""}</div>
         </div>
       );
@@ -176,7 +183,7 @@ export function OrcamentoDocPreview({
               margin: "2px 0 12px",
             }}
           >
-            {layout.titulo || "Orçamento"}
+            {layout.titulo || "Quote"}
           </div>
         );
       case "partes":
@@ -192,15 +199,13 @@ export function OrcamentoDocPreview({
             }}
           >
             <div>
-              <div style={{ fontWeight: 500, color: cor1, marginBottom: 2 }}>Cliente</div>
+              <div style={{ fontWeight: 500, color: cor1, marginBottom: 2 }}>Client</div>
               {data.clienteNome}
               <br />
               {data.clienteContato}
             </div>
             <div>
-              <div style={{ fontWeight: 500, color: cor1, marginBottom: 2 }}>
-                Endereço do projeto
-              </div>
+              <div style={{ fontWeight: 500, color: cor1, marginBottom: 2 }}>Project address</div>
               {data.projetoEndereco}
             </div>
           </div>
@@ -227,7 +232,7 @@ export function OrcamentoDocPreview({
                   fontSize: 11,
                 }}
               >
-                Foto do projeto
+                Project photo
               </div>
             )}
           </div>
@@ -235,14 +240,14 @@ export function OrcamentoDocPreview({
       case "escopo":
         return (
           <div key={s.id} style={{ marginBottom: 12 }}>
-            <Head t="Escopo" />
+            <Head t="Scope" />
             {data.escopo}
           </div>
         );
       case "itens":
         return (
           <div key={s.id} style={{ marginBottom: 12 }}>
-            <Head t="Itens e preços" />
+            <Head t="Items and pricing" />
             {data.grupos.map((g, gi) => (
               <div key={gi} style={{ marginBottom: 10 }}>
                 <div style={{ fontSize: 12, fontWeight: 500, color: cor1, marginBottom: 3 }}>
@@ -252,7 +257,7 @@ export function OrcamentoDocPreview({
                   <thead>
                     <tr style={{ color: "#999", fontSize: 10 }}>
                       <td style={{ padding: "2px 0" }}>Item</td>
-                      <td style={{ padding: "2px 0", textAlign: "right" }}>Qtd</td>
+                      <td style={{ padding: "2px 0", textAlign: "right" }}>Qty</td>
                       <td style={{ padding: "2px 0", textAlign: "right" }}>Unit</td>
                       <td style={{ padding: "2px 0", textAlign: "right" }}>Subtotal</td>
                     </tr>
@@ -279,14 +284,14 @@ export function OrcamentoDocPreview({
                 paddingTop: 6,
               }}
             >
-              Valor da proposta: {data.total}
+              Proposal total: {data.total}
             </div>
           </div>
         );
       case "termos":
         return (
           <div key={s.id} style={{ marginBottom: 12 }}>
-            <Head t="Termos e condições" />
+            <Head t="Terms and conditions" />
             <div style={{ whiteSpace: "pre-wrap" }}>{s.body || DEFAULT_TERMOS}</div>
           </div>
         );

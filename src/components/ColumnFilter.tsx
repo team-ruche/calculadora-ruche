@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-// Estado de um filtro de coluna. Só os campos do tipo usado ficam preenchidos.
+// State of a column filter. Only the fields of the used type are populated.
 export type FVal = {
   text?: string;
   sel?: string[];
@@ -19,7 +19,7 @@ export type ColFilters = Record<string, FVal>;
 export const colFilterActive = (v?: FVal) =>
   !!(v && (v.text || (v.sel && v.sel.length) || v.min || v.max || v.from || v.to));
 
-// Predicados de correspondência usados nas tabelas.
+// Matching predicates used in the tables.
 export const matchText = (field: string, f?: FVal) =>
   !f?.text || field.toLowerCase().includes(f.text.toLowerCase());
 export const matchSel = (field: string, f?: FVal) => !f?.sel?.length || f.sel.includes(field);
@@ -36,7 +36,7 @@ export const matchDate = (iso: string | null, f?: FVal) => {
 
 type FilterType = "text" | "select" | "num" | "date";
 
-// Botão de funil no cabeçalho da coluna + popover com o controle certo por tipo.
+// Funnel button in the column header + popover with the right control per type.
 export function ColumnFilter({
   type,
   options,
@@ -72,7 +72,7 @@ export function ColumnFilter({
         <button
           type="button"
           onClick={(e) => e.stopPropagation()}
-          aria-label="Filtrar coluna"
+          aria-label="Filter column"
           className={`ml-1 inline-flex h-5 w-5 items-center justify-center rounded align-middle ${
             active ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground"
           }`}
@@ -89,7 +89,7 @@ export function ColumnFilter({
         {type === "text" && (
           <Input
             autoFocus
-            placeholder="Contém…"
+            placeholder="Contains…"
             value={v.text ?? ""}
             onChange={(e) => set({ text: e.target.value || undefined })}
           />
@@ -97,7 +97,7 @@ export function ColumnFilter({
         {type === "num" && (
           <div className="space-y-2">
             <label className="block text-xs text-muted-foreground">
-              Mínimo
+              Minimum
               <Input
                 type="number"
                 placeholder="—"
@@ -107,7 +107,7 @@ export function ColumnFilter({
               />
             </label>
             <label className="block text-xs text-muted-foreground">
-              Máximo
+              Maximum
               <Input
                 type="number"
                 placeholder="—"
@@ -121,7 +121,7 @@ export function ColumnFilter({
         {type === "date" && (
           <div className="space-y-2">
             <label className="block text-xs text-muted-foreground">
-              De
+              From
               <Input
                 type="date"
                 className="mt-1"
@@ -130,7 +130,7 @@ export function ColumnFilter({
               />
             </label>
             <label className="block text-xs text-muted-foreground">
-              Até
+              To
               <Input
                 type="date"
                 className="mt-1"
@@ -168,7 +168,7 @@ export function ColumnFilter({
               setOpen(false);
             }}
           >
-            Limpar
+            Clear
           </Button>
         )}
       </PopoverContent>
