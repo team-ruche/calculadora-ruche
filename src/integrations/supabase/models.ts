@@ -257,6 +257,10 @@ export interface LeadQualificacao {
   f_decisores_confirmados?: boolean;
   f_temperatura?: number;
   f_observacoes?: string;
+  // F5 do doc do setter: canal preferido + consentimento de SMS (CHECKBOX no
+  // GHL, entao vem como lista). O consentimento importa por TCPA, nao e so
+  // preferencia de contato.
+  f_canal_sms?: string[];
 }
 
 export interface ProposalRoom {

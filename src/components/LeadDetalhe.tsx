@@ -85,6 +85,10 @@ export function LeadDetalhe({
                 label="Lead temperature"
                 value={q?.f_temperatura ? `${q.f_temperatura}/5` : undefined}
               />
+              <Field
+                label="Preferred channel + SMS consent"
+                value={(q?.f_canal_sms ?? []).join(", ")}
+              />
               <Field label="Notes" value={q?.f_observacoes} full />
             </Section>
           </div>
