@@ -16,10 +16,13 @@ import {
   Users,
   Building2,
   X,
+  ListPlus,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
 import {
   supabase,
+  gerarParcelas,
   type Proposal,
   type Parcela,
   type ParcelaStatus,
@@ -283,6 +286,10 @@ function VisaoInternaPage() {
   // "New charge" popover (choose the client).
   const [novaOpen, setNovaOpen] = useState(false);
   const [novaBusca, setNovaBusca] = useState("");
+  // "Generate installments" popover — builds the whole schedule at once from
+  // what the closer negotiated in GHL (proposals.payment_schedule).
+  const [gerOpen, setGerOpen] = useState(false);
+  const [gerBusy, setGerBusy] = useState<string | null>(null);
   // Column filters (By client and Installments).
   const [fcli, setFcli] = useState<ColFilters>({});
   const [fparc, setFparc] = useState<ColFilters>({});
@@ -325,6 +332,26 @@ function VisaoInternaPage() {
     for (const p of parcelas) (m[p.proposal_id] ??= []).push(p);
     return m;
   }, [parcelas]);
+
+  // Só aparece pra gerar quem tem cronograma vindo do GHL e ainda nao tem
+  // nenhuma parcela. Deal fechado sem cronograma nao entra na lista — o closer
+  // esqueceu de preencher, e a RPC recusaria de qualquer jeito.
+  const podeGerar = (d: Deal) =>
+    (d.payment_schedule?.length ?? 0) > 0 && (parcelasDe[d.id]?.length ?? 0) === 0;
+
+  const onGerarParcelas = async (d: Deal) => {
+    setGerBusy(d.id);
+    try {
+      const n = await gerarParcelas(d.id);
+      toast.success(`${n} installments generated for ${nomeDe(d)}`);
+      setGerOpen(false);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setGerBusy(null);
+    }
+  };
 
   if (!isRuche) return <Navigate to="/overview" />;
 
@@ -1058,6 +1085,52 @@ function VisaoInternaPage() {
                           ).length === 0 && (
                             <p className="px-2.5 py-3 text-center text-sm text-muted-foreground">
                               No clients.
+                            </p>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <Popover open={gerOpen} onOpenChange={setGerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="shrink-0">
+                          <ListPlus className="mr-1 h-4 w-4" /> Generate installments
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-80 p-0">
+                        <div className="border-b px-3 py-2">
+                          <p className="text-sm font-medium">Closed deals without installments</p>
+                          <p className="text-xs text-muted-foreground">
+                            Uses the payment schedule the closer set in GHL.
+                          </p>
+                        </div>
+                        <div className="max-h-72 overflow-y-auto p-1">
+                          {deals.filter(podeGerar).map((d) => (
+                            <button
+                              key={d.id}
+                              type="button"
+                              disabled={gerBusy !== null}
+                              onClick={() => onGerarParcelas(d)}
+                              className="w-full rounded-md px-2.5 py-2 text-left hover:bg-accent disabled:opacity-50"
+                            >
+                              <span className="flex items-center justify-between gap-2">
+                                <span className="truncate text-sm">{nomeDe(d)}</span>
+                                {gerBusy === d.id ? (
+                                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                                ) : (
+                                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                                    {d.payment_schedule?.length}× · {money(d.total_cliente)}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                                {d.payment_schedule?.map((e) => `${e.pct}%`).join(" · ")}
+                              </span>
+                            </button>
+                          ))}
+                          {deals.filter(podeGerar).length === 0 && (
+                            <p className="px-2.5 py-3 text-center text-sm text-muted-foreground">
+                              Nothing to generate. A deal shows up here once the closer fills the
+                              payment schedule in GHL.
                             </p>
                           )}
                         </div>

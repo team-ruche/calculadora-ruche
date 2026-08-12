@@ -157,6 +157,24 @@ export const CONTAS = ["WISE", "Asaas"] as const;
 
 export type Direcao = "inflow" | "outflow";
 
+// Uma linha do cronograma de pagamento do contrato. Quem define e o closer,
+// na Sales Call — nao ha 30/40/30 fixo.
+export interface PaymentScheduleEntry {
+  pct: number;
+  label: string;
+}
+
+// Gera as parcelas a partir do cronograma ja gravado na proposta. A RPC recusa
+// se nao houver cronograma, se a soma nao der 100, ou se alguma parcela ja
+// tiver movimento. Retorna quantas parcelas criou.
+export async function gerarParcelas(proposalId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("rpc_gerar_parcelas", {
+    p_proposal_id: proposalId,
+  });
+  if (error) throw error;
+  return (data as number) ?? 0;
+}
+
 export interface Parcela {
   id: string;
   proposal_id: string;
@@ -179,6 +197,14 @@ export interface Parcela {
   valor_nativo: number | null;
   moeda_nativa: string | null;
   notas: string | null;
+  // Modelo de repasse (etapa 13): o parceiro recebe do cliente e repassa a
+  // margem pra Ruche. Uma parcela tem DOIS eventos:
+  //   cliente_pagou_em -> quando o cliente pagou o parceiro (auto-declarado)
+  //   data_pagamento   -> quando a Ruche recebeu o repasse
+  // O prazo corre a partir do primeiro; vencimento = +repasse_prazo_dias uteis.
+  cliente_pagou_em: string | null;
+  comprovante_url: string | null;
+  repasse_prazo_dias: number;
   created_at: string;
   updated_at: string;
 }
@@ -202,6 +228,10 @@ export interface Proposal {
   margem_ruche: number | null;
   // Notas gerais da medição (texto livre).
   notas: string | null;
+  // Cronograma de pagamento negociado pelo closer, digitado no GHL e trazido
+  // pelo ghl-sync-inbound ao fechar. Nao ha default: sem isso, gerar parcelas
+  // e recusado. Os percentuais somam 100.
+  payment_schedule: PaymentScheduleEntry[] | null;
   // Snapshot do layout do orçamento (congelado ao gerar).
   orcamento_layout: OrcamentoLayout | null;
   // Sync GHL — ver supabase-migration-etapa10-ghl-sync.sql
