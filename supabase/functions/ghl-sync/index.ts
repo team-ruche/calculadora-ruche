@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
         "total_cliente, total_repasse, margem_ruche, visita_at, notas, " +
         // O contrato do GHL lê merge field de contact, não de opportunity —
         // por isso o contact_id vem junto, ver push do bloco `contact` abaixo.
-        "leads:lead_id ( ghl_contact_id )",
+        "leads:lead_id ( ghl_contact_id, endereco )",
     )
     .eq("id", proposalId)
     .maybeSingle();
@@ -216,6 +216,10 @@ Deno.serve(async (req) => {
     extras = x ?? null;
   }
 
+  const leadRow = (
+    prop as { leads?: { ghl_contact_id: string | null; endereco: string | null } | null }
+  ).leads;
+
   const sqftTotal = rooms.reduce((a, r) => a + (Number(r.area_sqft) || 0), 0);
   const escopo = summarizeRooms(rooms);
   const simNao = (v: unknown) => (v === true ? "Yes" : v === false ? "No" : null);
@@ -248,10 +252,11 @@ Deno.serve(async (req) => {
             scope: escopo,
             sqft: sqftTotal || null,
             total: prop.total_cliente ?? null,
+            // Endereco da obra: o parceiro ja digitou no orcamento, entao o
+            // closer nao precisa redigitar pro contrato.
+            address: leadRow?.endereco ?? null,
           },
         };
-
-  const lead = (prop as { leads?: { ghl_contact_id: string | null } | null }).leads;
 
   const n8nRes = await fetch(n8nWebhookUrl, {
     method: "POST",
@@ -260,7 +265,7 @@ Deno.serve(async (req) => {
       action,
       proposal_id: proposalId,
       ghl_opportunity_id: prop.ghl_opportunity_id,
-      ghl_contact_id: lead?.ghl_contact_id ?? null,
+      ghl_contact_id: leadRow?.ghl_contact_id ?? null,
       location_id: config.location_id,
       config: {
         pipeline_id: config.pipeline_id,
@@ -273,6 +278,7 @@ Deno.serve(async (req) => {
         contact_scope_field_id: config.contact_scope_field_id,
         contact_sqft_field_id: config.contact_sqft_field_id,
         contact_total_field_id: config.contact_total_field_id,
+        contact_address_field_id: config.contact_address_field_id,
       },
       payload,
     }),
