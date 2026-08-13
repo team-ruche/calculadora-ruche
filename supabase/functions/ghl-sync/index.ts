@@ -83,8 +83,13 @@ Deno.serve(async (req) => {
     Deno.env.get("N8N_GHL_SYNC_OUTBOUND_URL") ?? "https://workflows.ruchedigital.online/webhook/ghl-sync-outbound";
   const n8nSecret =
     Deno.env.get("N8N_GHL_SYNC_SECRET") ?? "3OqEzmOOFjxcr1xaRwG2DXp-mcIvQZTkUKXSk9ReOrU";
-  // TODO confirmar o domínio real de produção do calculadora-ruche.
-  const publicAppUrl = Deno.env.get("PUBLIC_APP_URL") ?? "https://app.ruchedigital.online";
+  // Dominio onde o parceiro abre o orcamento. Vai dentro do Quote Link que o
+  // closer clica no card do GHL, entao se estiver errado o link chega quebrado.
+  // Provisorio no Lovable ate existir dominio proprio — trocar por PUBLIC_APP_URL
+  // nos secrets em vez de mexer aqui de novo.
+  const publicAppUrl = (
+    Deno.env.get("PUBLIC_APP_URL") ?? "https://ruche-partner.lovable.app"
+  ).replace(/\/+$/, "");
   const admin = createClient(url, serviceKey);
 
   const authHeader = req.headers.get("Authorization") ?? "";
