@@ -208,7 +208,9 @@ function Overview() {
       try {
         await callGhlSync("cancel_appointment", row.id);
       } catch (e) {
-        toast.error("Canceled on the site, but failed to notify GHL — please check manually.");
+        toast.error(
+          `Canceled on the site, but GHL was not notified: ${e instanceof Error ? e.message : String(e)}`,
+        );
       }
     }
   };
@@ -237,7 +239,7 @@ function Overview() {
       try {
         await callGhlSync("push_quote_ready", row.id);
       } catch (e) {
-        toast.error("Moved, but failed to send to GHL — please check manually.");
+        toast.error(`Moved, but not sent to GHL: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
   };

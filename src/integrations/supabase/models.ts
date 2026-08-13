@@ -24,10 +24,21 @@ export async function callGhlSync(
   action: "cancel_appointment" | "push_quote_ready",
   proposalId: string,
 ) {
-  const { error } = await supabase.functions.invoke("ghl-sync", {
+  const { data, error } = await supabase.functions.invoke("ghl-sync", {
     body: { action, proposal_id: proposalId },
   });
-  if (error) throw error;
+  // O invoke devolve erro generico ("non-2xx status") e joga o corpo pra data.
+  // Sem desempacotar, todo problema vira a mesma mensagem inutil na tela.
+  const detalhe = (data as { error?: string; detail?: string } | null) ?? null;
+  if (error || detalhe?.error) {
+    const alvo = `${detalhe?.detail ?? ""} ${detalhe?.error ?? ""}`;
+    // O 404 do GHL e o caso comum: o contato ou a oportunidade foi apagado la,
+    // e o lead daqui ficou apontando pro vazio. Vale dizer isso, nao "verifique".
+    if (/not found|OPPORTUNITY_NOT_FOUND/i.test(alvo)) {
+      throw new Error("Este lead não existe mais no GHL — contato ou oportunidade foi apagado lá.");
+    }
+    throw new Error(detalhe?.error ?? error?.message ?? "Falha ao falar com o GHL");
+  }
 }
 
 // Cria a opção do parceiro no dropdown "Assigned Partner" do GHL + a linha
