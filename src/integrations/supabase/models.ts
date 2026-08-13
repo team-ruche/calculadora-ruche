@@ -219,10 +219,11 @@ export interface Proposal {
   contract_status: ContractStatus;
   visita_at: string | null;
   fechado_at: string | null;
-  // Gate da medição
-  medicao_preenchida: boolean;
-  medicao: MedicaoData | null;
-  medicao_at: string | null;
+  // O que o parceiro mede fica em proposal_rooms, proposal_extras e notas.
+  // As colunas medicao / medicao_preenchida / medicao_at existem no banco
+  // desde a etapa 5 mas NUNCA foram escritas pelo app — o único dado nelas
+  // veio do seed de exemplo. Ficam fora do tipo para ninguém ler achando que
+  // têm conteúdo. O portão para ir a Negotiation usa total_cliente.
   total_cliente: number | null;
   total_repasse: number | null;
   margem_ruche: number | null;
@@ -240,16 +241,6 @@ export interface Proposal {
   last_ghl_sync_at: string | null;
   created_at: string;
   updated_at: string;
-}
-
-// Dados do formulário de medição (preenchido na aba Orçamento antes de negociar).
-export interface MedicaoData {
-  sqft_real: number | null;
-  piso_atual: string | null;
-  subfloor: string | null;
-  nivelamento_necessario: boolean | null;
-  umidade_ok: boolean | null;
-  observacoes: string | null;
 }
 
 // Qualificação do setter — grupos A a F do formulário de discovery (GHL).

@@ -19,28 +19,6 @@ const json = (body: unknown, status = 200) =>
 
 type Action = "cancel_appointment" | "push_quote_ready" | "provision_partner";
 
-type MedicaoData = {
-  sqft_real: number | null;
-  piso_atual: string | null;
-  subfloor: string | null;
-  nivelamento_necessario: boolean | null;
-  umidade_ok: boolean | null;
-  observacoes: string | null;
-} | null;
-
-function summarizeMedicao(m: MedicaoData): string {
-  if (!m) return "";
-  const parts = [
-    m.sqft_real ? `${m.sqft_real} sqft` : null,
-    m.piso_atual ? `piso atual: ${m.piso_atual}` : null,
-    m.subfloor ? `subfloor: ${m.subfloor}` : null,
-    m.nivelamento_necessario ? "nivelamento necessário" : null,
-    m.umidade_ok === false ? "umidade fora do padrão" : null,
-    m.observacoes || null,
-  ].filter(Boolean);
-  return parts.join(" · ");
-}
-
 type Room = {
   nome: string;
   area_sqft: number;
@@ -48,6 +26,22 @@ type Room = {
   piso_atual: string;
   preparo: string;
 };
+
+// Codigos de prep vindos do motor. 'nenhuma' e legado de linhas antigas.
+const PREP_RANK: Record<string, number> = {
+  sem_prepara_o: 0,
+  nenhuma: 0,
+  simples: 1,
+  pesada: 2,
+};
+const PREP_LABEL = ["None", "Light", "Heavy"];
+
+// O pior prep entre os ambientes -- e o que dita a dificuldade do job.
+function prepLevel(rooms: Room[]): string | null {
+  if (!rooms.length) return null;
+  const pior = Math.max(...rooms.map((r) => PREP_RANK[r.preparo] ?? 0));
+  return PREP_LABEL[pior];
+}
 
 function summarizeRooms(rooms: Room[]): string {
   return rooms
@@ -164,7 +158,7 @@ Deno.serve(async (req) => {
     .from("proposals")
     .select(
       "id, lead_id, partner_id, ghl_opportunity_id, location_id, " +
-        "total_cliente, total_repasse, margem_ruche, medicao, medicao_at, " +
+        "total_cliente, total_repasse, margem_ruche, visita_at, notas, " +
         // O contrato do GHL lê merge field de contact, não de opportunity —
         // por isso o contact_id vem junto, ver push do bloco `contact` abaixo.
         "leads:lead_id ( ghl_contact_id )",
@@ -217,38 +211,37 @@ Deno.serve(async (req) => {
     extras = x ?? null;
   }
 
-  const med = (prop.medicao ?? {}) as Record<string, unknown>;
-  // Os campos RADIO do GHL esperam o rótulo, não booleano.
-  const simNao = (v: unknown) => (v === true ? "Sim" : v === false ? "Não" : null);
-  const escopo = summarizeRooms(rooms) || summarizeMedicao(prop.medicao as MedicaoData);
+  const sqftTotal = rooms.reduce((a, r) => a + (Number(r.area_sqft) || 0), 0);
+  const escopo = summarizeRooms(rooms);
+  const simNao = (v: unknown) => (v === true ? "Yes" : v === false ? "No" : null);
 
   const payload =
     action === "cancel_appointment"
       ? {}
       : {
           quote_link: `${publicAppUrl}/orcamento/${proposalId}`,
-          // Mantido: o resumo em texto continua indo pro Project Scope Summary.
-          scope_summary: summarizeMedicao(prop.medicao as MedicaoData),
+          // Resumo do card no GHL: sai dos ambientes, nao mais do campo medicao
+          // (que o formulario nunca preencheu).
+          scope_summary: escopo,
           total_cliente: prop.total_cliente,
-          // Medição campo a campo -> custom fields de opportunity.
+          // Um por campo do formulario de orcamento, que e onde o parceiro mede.
           measurements: {
-            sqft_real: med.sqft_real ?? null,
-            piso_atual: med.piso_atual ?? null,
-            subfloor: med.subfloor ?? null,
-            nivelamento_necessario: simNao(med.nivelamento_necessario),
-            umidade_ok: simNao(med.umidade_ok),
-            observacoes: med.observacoes ?? null,
-            medicao_at: prop.medicao_at ?? null,
+            sqft_total: sqftTotal || null,
+            rooms_count: rooms.length || null,
+            prep_level: prepLevel(rooms),
+            segundo_andar: simNao(extras?.segundo_andar_sem_elevador ?? null),
+            visita_at: prop.visita_at ? String(prop.visita_at).slice(0, 10) : null,
+            notas: prop.notas ?? null,
+            ambientes: escopo,
+            extras: summarizeExtras(extras),
             total_cliente: prop.total_cliente ?? null,
             total_repasse: prop.total_repasse ?? null,
             margem_ruche: prop.margem_ruche ?? null,
-            ambientes: summarizeRooms(rooms),
-            extras: summarizeExtras(extras),
           },
           // O que o contrato precisa, gravado no CONTACT.
           contact: {
             scope: escopo,
-            sqft: med.sqft_real ?? null,
+            sqft: sqftTotal || null,
             total: prop.total_cliente ?? null,
           },
         };
