@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
-import { Plus, Trash2, X, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, X, Loader2, Camera, Images, Mic, MicOff, ChevronDown } from "lucide-react";
 import { supabase, type MotorPrice } from "@/integrations/supabase/models";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Select,
@@ -18,13 +20,30 @@ import { toast } from "sonner";
 
 type Opt = { value: string; label: string };
 
-// Project extras ficou so com appliances to move, agora cobrado por HORA.
-// Os demais saem do formulario mas continuam no tipo e no save: assim um
-// orcamento antigo editado preserva o que ja tinha, em vez de zerar escondido.
-const EXTRA_FIELDS: { key: keyof ExtrasDraft; label: string; unit: string }[] = [
-  { key: "aparelhos_mover", label: "Appliances to move", unit: "hours" },
+// Servicos extras que o parceiro pode marcar por ambiente. Ainda sem preco:
+// quem precifica e a aba de pricing do proprio orcamento, na aprovacao.
+const SERVICOS: Opt[] = [
+  { value: "painting", label: "Painting" },
+  { value: "ceiling_repair", label: "Ceiling repair" },
+  { value: "drywall_repair", label: "Drywall repair" },
+  { value: "baseboard_install", label: "Baseboard installation" },
+  { value: "baseboard_paint", label: "Baseboard painting" },
+  { value: "quarter_round", label: "Quarter round" },
+  { value: "transitions", label: "Floor transitions" },
+  { value: "stair_steps", label: "Stairs / steps" },
+  { value: "door_trim", label: "Door trim / undercut" },
+  { value: "subfloor_repair", label: "Subfloor repair" },
+  { value: "moisture_barrier", label: "Moisture barrier / underlayment" },
+  { value: "debris_haul", label: "Debris haul-away" },
 ];
+const SERVICO_LABEL: Record<string, string> = Object.fromEntries(
+  SERVICOS.map((s) => [s.value, s.label]),
+);
 
+// Os extras do orcamento inteiro sairam da tela, mas continuam no tipo e no
+// save: um orcamento antigo editado preserva o que ja tinha, em vez de zerar
+// escondido. A unica excecao e aparelhos_mover, que agora e a SOMA das horas
+// declaradas ambiente a ambiente.
 interface ExtrasDraft {
   degraus_escada: number;
   baseboard_instalar_ft: number;
@@ -53,6 +72,11 @@ interface RoomDraft {
   pisoNovo: string;
   pisoAtual: string;
   preparo: string;
+  remocao: boolean;
+  moverMoveis: boolean;
+  moverMoveisHoras: number;
+  servicos: string[];
+  observacao: string;
   media: MediaItem[];
 }
 
@@ -67,13 +91,20 @@ const emptyExtras = (): ExtrasDraft => ({
   portas_trim: 0,
 });
 
-const emptyRoom = (novo = "", atual = ""): RoomDraft => ({
+// Piso atual e piso novo nascem EM BRANCO — o parceiro escolhe, nada vem
+// pre-selecionado (um default silencioso ja virou preco errado antes).
+const emptyRoom = (): RoomDraft => ({
   localId: crypto.randomUUID(),
   nome: "",
   areaSqft: 0,
-  pisoNovo: novo,
-  pisoAtual: atual,
+  pisoNovo: "",
+  pisoAtual: "",
   preparo: "nenhuma",
+  remocao: true,
+  moverMoveis: false,
+  moverMoveisHoras: 0,
+  servicos: [],
+  observacao: "",
   media: [],
 });
 
@@ -100,7 +131,7 @@ export function OrcamentoForm({
   const [telefone, setTelefone] = useState("");
   const [endereco, setEndereco] = useState("");
   const [email, setEmail] = useState("");
-  const [notas, setNotas] = useState("");
+  const [transcricao, setTranscricao] = useState("");
   const [rooms, setRooms] = useState<RoomDraft[]>([emptyRoom()]);
   const [extras, setExtras] = useState<ExtrasDraft>(emptyExtras());
   const [segundoAndar, setSegundoAndar] = useState(false);
@@ -116,40 +147,38 @@ export function OrcamentoForm({
         .eq("ativo", true)
         .order("componente");
       const mp = (data as MotorPrice[]) ?? [];
-      const novo = mp
-        .filter((m) => m.grupo === "instalacao")
-        .map((m) => ({ value: m.codigo, label: m.componente }));
-      const atual = mp
-        .filter((m) => m.grupo === "demolicao")
-        .map((m) => ({ value: m.codigo, label: m.componente }));
-      const prep = [
+      setPisoNovoOpts(
+        mp
+          .filter((m) => m.grupo === "instalacao")
+          .map((m) => ({ value: m.codigo, label: m.componente })),
+      );
+      setPisoAtualOpts(
+        mp
+          .filter((m) => m.grupo === "demolicao")
+          .map((m) => ({ value: m.codigo, label: m.componente })),
+      );
+      setPrepOpts([
         { value: "nenhuma", label: "None" },
         ...mp
           .filter((m) => m.grupo === "prep")
           .map((m) => ({ value: m.codigo, label: m.componente })),
-      ];
-      setPisoNovoOpts(novo);
-      setPisoAtualOpts(atual);
-      setPrepOpts(prep);
+      ]);
 
-      if (mode === "edit" && proposalId) {
-        await loadExisting(proposalId, novo[0]?.value ?? "", atual[0]?.value ?? "");
-      } else {
-        setRooms([emptyRoom(novo[0]?.value ?? "", atual[0]?.value ?? "")]);
-      }
+      if (mode === "edit" && proposalId) await loadExisting(proposalId);
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadExisting = async (pid: string, defNovo: string, defAtual: string) => {
+  const loadExisting = async (pid: string) => {
     const { data: prop } = await supabase
       .from("proposals")
-      .select("lead_id, notas, leads(nome_cliente, telefone, endereco, email)")
+      .select("lead_id, notas, transcricao, leads(nome_cliente, telefone, endereco, email)")
       .eq("id", pid)
       .maybeSingle();
     const propRow = prop as {
       notas: string | null;
+      transcricao: string | null;
       leads: {
         nome_cliente: string;
         telefone: string | null;
@@ -164,7 +193,9 @@ export function OrcamentoForm({
       setEndereco(lead.endereco ?? "");
       setEmail(lead.email ?? "");
     }
-    setNotas(propRow?.notas ?? "");
+    // Orcamento antigo: o que estava em notas vira o ponto de partida da
+    // transcricao, para o texto nao sumir da tela.
+    setTranscricao(propRow?.transcricao ?? propRow?.notas ?? "");
 
     const { data: rms } = await supabase.from("proposal_rooms").select("*").eq("proposal_id", pid);
     const { data: media } = await supabase
@@ -195,17 +226,28 @@ export function OrcamentoForm({
         piso_novo: string;
         piso_atual: string;
         preparo: string;
+        remocao: boolean | null;
+        mover_moveis: boolean | null;
+        mover_moveis_horas: number | null;
+        servicos: string[] | null;
+        observacao: string | null;
       }[]) ?? []
     ).map((r) => ({
       localId: crypto.randomUUID(),
       nome: r.nome,
       areaSqft: Number(r.area_sqft),
-      pisoNovo: r.piso_novo || defNovo,
-      pisoAtual: r.piso_atual || defAtual,
+      pisoNovo: r.piso_novo ?? "",
+      pisoAtual: r.piso_atual ?? "",
       preparo: r.preparo || "nenhuma",
+      // null = sim: e assim que todo registro anterior foi cobrado.
+      remocao: r.remocao ?? true,
+      moverMoveis: r.mover_moveis ?? false,
+      moverMoveisHoras: Number(r.mover_moveis_horas ?? 0),
+      servicos: r.servicos ?? [],
+      observacao: r.observacao ?? "",
       media: mediaByRoom[r.id] ?? [],
     }));
-    setRooms(roomDrafts.length ? roomDrafts : [emptyRoom(defNovo, defAtual)]);
+    setRooms(roomDrafts.length ? roomDrafts : [emptyRoom()]);
 
     const { data: ex } = await supabase
       .from("proposal_extras")
@@ -228,8 +270,7 @@ export function OrcamentoForm({
     }
   };
 
-  const addRoom = () =>
-    setRooms((p) => [...p, emptyRoom(pisoNovoOpts[0]?.value ?? "", pisoAtualOpts[0]?.value ?? "")]);
+  const addRoom = () => setRooms((p) => [...p, emptyRoom()]);
   const removeRoom = (id: string) =>
     setRooms((p) => (p.length === 1 ? p : p.filter((r) => r.localId !== id)));
   const updateRoom = (id: string, patch: Partial<RoomDraft>) =>
@@ -290,8 +331,19 @@ export function OrcamentoForm({
     e.preventDefault();
     if (!user) return;
     if (rooms.some((r) => !r.nome.trim() || r.areaSqft <= 0)) {
-      toast.error("Each room needs a name and an area greater than zero");
-      return;
+      return toast.error("Each room needs a name and an area greater than zero");
+    }
+    if (rooms.some((r) => !r.pisoNovo)) {
+      return toast.error("Pick the new floor for every room");
+    }
+    // Sem piso atual nao da para cobrar a remocao — ou escolhe, ou desmarca.
+    if (rooms.some((r) => r.remocao && !r.pisoAtual)) {
+      return toast.error(
+        "Pick the current floor, or uncheck “Remove current floor” when the new floor goes on top",
+      );
+    }
+    if (rooms.some((r) => r.moverMoveis && r.moverMoveisHoras <= 0)) {
+      return toast.error("Furniture to move needs the estimated hours");
     }
     setSubmitting(true);
 
@@ -348,10 +400,9 @@ export function OrcamentoForm({
       if (removedPaths.length) await supabase.storage.from("proposal-media").remove(removedPaths);
     }
 
-    // General measurement notes (applies to both create and edit).
     await supabase
       .from("proposals")
-      .update({ notas: notas.trim() || null })
+      .update({ transcricao: transcricao.trim() || null })
       .eq("id", pid);
 
     // (re)create rooms one by one to link the media to the room_id
@@ -365,6 +416,11 @@ export function OrcamentoForm({
           piso_novo: r.pisoNovo,
           piso_atual: r.pisoAtual,
           preparo: r.preparo,
+          remocao: r.remocao,
+          mover_moveis: r.moverMoveis,
+          mover_moveis_horas: r.moverMoveis ? r.moverMoveisHoras : 0,
+          servicos: r.servicos,
+          observacao: r.observacao.trim() || null,
         })
         .select()
         .single();
@@ -375,9 +431,16 @@ export function OrcamentoForm({
       await uploadRoomMedia(pid, room.id, r.media);
     }
 
+    // O motor continua lendo as horas de mover moveis de proposal_extras.
+    // A conta agora nasce dos ambientes; o preco por hora e o mesmo.
+    const horasMoveis = rooms.reduce(
+      (a, r) => a + (r.moverMoveis ? Number(r.moverMoveisHoras) || 0 : 0),
+      0,
+    );
     const { error: exErr } = await supabase.from("proposal_extras").insert({
       proposal_id: pid,
       ...extras,
+      aparelhos_mover: horasMoveis,
       segundo_andar_sem_elevador: segundoAndar,
     });
     if (exErr) {
@@ -441,7 +504,10 @@ export function OrcamentoForm({
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div>
             <CardTitle>Rooms</CardTitle>
-            <CardDescription>Measurement, floor type and photos/videos per room</CardDescription>
+            <CardDescription>
+              Everything is measured room by room: floors, furniture, extra services, notes and
+              photos.
+            </CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={addRoom}>
             <Plus className="mr-1 h-4 w-4" /> Room
@@ -449,148 +515,40 @@ export function OrcamentoForm({
         </CardHeader>
         <CardContent className="space-y-4">
           {rooms.map((room, i) => (
-            <div key={room.localId} className="space-y-3 rounded-lg border p-4">
-              <div className="grid gap-3 md:grid-cols-5">
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Room name</Label>
-                  <Input
-                    required
-                    placeholder={`Room ${i + 1}`}
-                    value={room.nome}
-                    onChange={(e) => updateRoom(room.localId, { nome: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Area (sqft)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.1"
-                    required
-                    value={room.areaSqft || ""}
-                    onChange={(e) => updateRoom(room.localId, { areaSqft: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Current floor</Label>
-                  <RoomSelect
-                    value={room.pisoAtual}
-                    opts={pisoAtualOpts}
-                    onChange={(v) => updateRoom(room.localId, { pisoAtual: v })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>New floor</Label>
-                  <RoomSelect
-                    value={room.pisoNovo}
-                    opts={pisoNovoOpts}
-                    onChange={(v) => updateRoom(room.localId, { pisoNovo: v })}
-                  />
-                </div>
-              </div>
-              <div className="grid items-start gap-3 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Prep</Label>
-                  <RoomSelect
-                    value={room.preparo}
-                    opts={prepOpts}
-                    onChange={(v) => updateRoom(room.localId, { preparo: v })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Photos / videos</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      accept="image/*,video/*"
-                      multiple
-                      className="flex-1"
-                      onChange={(e) => {
-                        addFiles(room.localId, e.target.files);
-                        e.target.value = "";
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0"
-                      disabled={rooms.length === 1}
-                      onClick={() => removeRoom(room.localId)}
-                      title="Remove room"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              {room.media.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {room.media.map((m, idx) => {
-                    const url = m.kind === "existing" ? m.url : m.previewUrl;
-                    const isVideo =
-                      m.kind === "existing"
-                        ? m.mime?.startsWith("video")
-                        : m.file.type.startsWith("video");
-                    return (
-                      <div key={idx} className="relative h-20 w-20 overflow-hidden rounded border">
-                        {isVideo ? (
-                          <video src={url} className="h-full w-full object-cover" />
-                        ) : (
-                          <img src={url} alt="" className="h-full w-full object-cover" />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeMedia(room.localId, idx)}
-                          className="absolute right-0 top-0 bg-black/60 p-0.5 text-white"
-                          title="Remove"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <RoomCard
+              key={room.localId}
+              room={room}
+              index={i}
+              canRemove={rooms.length > 1}
+              pisoNovoOpts={pisoNovoOpts}
+              pisoAtualOpts={pisoAtualOpts}
+              prepOpts={prepOpts}
+              onChange={(patch) => updateRoom(room.localId, patch)}
+              onRemove={() => removeRoom(room.localId)}
+              onFiles={(files) => addFiles(room.localId, files)}
+              onRemoveMedia={(idx) => removeMedia(room.localId, idx)}
+            />
           ))}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Project extras</CardTitle>
+          <CardTitle>Post-visit transcript</CardTitle>
+          <CardDescription>
+            Paste here the conversation with the client. The AI reads it against the quote and flags
+            what the client asked for and is missing — a room, a service, a photo.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          {EXTRA_FIELDS.map((field) => (
-            <div key={field.key} className="space-y-2">
-              <Label htmlFor={field.key}>
-                {field.label} <span className="text-muted-foreground">({field.unit})</span>
-              </Label>
-              <Input
-                id={field.key}
-                type="number"
-                min={0}
-                step={field.unit === "ea" ? "1" : "0.5"}
-                value={extras[field.key] || ""}
-                onChange={(e) => setExtras((p) => ({ ...p, [field.key]: Number(e.target.value) }))}
-              />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Notes</CardTitle>
-          <CardDescription>General measurement notes (optional)</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
+          <div className="flex justify-end">
+            <DictateButton onText={(t) => setTranscricao((p) => (p ? p + " " + t : t))} />
+          </div>
           <Textarea
-            rows={4}
-            placeholder="e.g., client requested white baseboard; re-measure the master suite; access through the garage…"
-            value={notas}
-            onChange={(e) => setNotas(e.target.value)}
+            rows={8}
+            placeholder="Paste the transcript of the visit, or use the mic to dictate…"
+            value={transcricao}
+            onChange={(e) => setTranscricao(e.target.value)}
           />
         </CardContent>
       </Card>
@@ -606,6 +564,402 @@ export function OrcamentoForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+function RoomCard({
+  room,
+  index,
+  canRemove,
+  pisoNovoOpts,
+  pisoAtualOpts,
+  prepOpts,
+  onChange,
+  onRemove,
+  onFiles,
+  onRemoveMedia,
+}: {
+  room: RoomDraft;
+  index: number;
+  canRemove: boolean;
+  pisoNovoOpts: Opt[];
+  pisoAtualOpts: Opt[];
+  prepOpts: Opt[];
+  onChange: (patch: Partial<RoomDraft>) => void;
+  onRemove: () => void;
+  onFiles: (files: FileList | null) => void;
+  onRemoveMedia: (idx: number) => void;
+}) {
+  return (
+    <div className="space-y-4 rounded-lg border p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold">{room.nome.trim() || `Room ${index + 1}`}</p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          disabled={!canRemove}
+          onClick={onRemove}
+          title="Remove room"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="space-y-2">
+          <Label>Room name</Label>
+          <Input
+            required
+            placeholder={`Room ${index + 1}`}
+            value={room.nome}
+            onChange={(e) => onChange({ nome: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Area (sqft)</Label>
+          <Input
+            type="number"
+            min={0}
+            step="0.1"
+            required
+            value={room.areaSqft || ""}
+            onChange={(e) => onChange({ areaSqft: Number(e.target.value) })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Prep</Label>
+          <RoomSelect
+            value={room.preparo}
+            opts={prepOpts}
+            onChange={(v) => onChange({ preparo: v })}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Current floor</Label>
+          <RoomSelect
+            value={room.pisoAtual}
+            opts={pisoAtualOpts}
+            onChange={(v) => onChange({ pisoAtual: v })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>New floor</Label>
+          <RoomSelect
+            value={room.pisoNovo}
+            opts={pisoNovoOpts}
+            onChange={(v) => onChange({ pisoNovo: v })}
+          />
+        </div>
+      </div>
+
+      <label className="flex items-start gap-2.5">
+        <Checkbox
+          className="mt-0.5"
+          checked={room.remocao}
+          onCheckedChange={(c) => onChange({ remocao: c === true })}
+        />
+        <span className="text-sm leading-tight">
+          Remove the current floor
+          <span className="block text-xs text-muted-foreground">
+            Uncheck when the new floor is installed over the existing one — no removal is charged.
+          </span>
+        </span>
+      </label>
+
+      <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+        <label className="flex items-center gap-2.5">
+          <Checkbox
+            checked={room.moverMoveis}
+            onCheckedChange={(c) =>
+              onChange({ moverMoveis: c === true, ...(c === true ? {} : { moverMoveisHoras: 0 }) })
+            }
+          />
+          <span className="text-sm">Furniture to move</span>
+        </label>
+        {room.moverMoveis && (
+          <div className="space-y-2">
+            <Label>Estimated hours</Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.5"
+              className="max-w-40"
+              value={room.moverMoveisHoras || ""}
+              onChange={(e) => onChange({ moverMoveisHoras: Number(e.target.value) })}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Additional services</Label>
+        <MultiSelect
+          values={room.servicos}
+          opts={SERVICOS}
+          placeholder="None selected"
+          onChange={(v) => onChange({ servicos: v })}
+        />
+        {room.servicos.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {room.servicos.map((s) => (
+              <span
+                key={s}
+                className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs"
+              >
+                {SERVICO_LABEL[s] ?? s}
+                <button
+                  type="button"
+                  onClick={() => onChange({ servicos: room.servicos.filter((x) => x !== s) })}
+                  title="Remove"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label>Notes</Label>
+          <DictateButton
+            onText={(t) =>
+              onChange({ observacao: room.observacao ? room.observacao + " " + t : t })
+            }
+          />
+        </div>
+        <Textarea
+          rows={3}
+          placeholder="What the client said about this room, access, anything odd…"
+          value={room.observacao}
+          onChange={(e) => onChange({ observacao: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Photos / videos</Label>
+        <div className="flex flex-wrap gap-2">
+          <PickerButton
+            icon={<Camera className="mr-1.5 h-4 w-4" />}
+            label="Camera"
+            accept="image/*,video/*"
+            capture="environment"
+            onFiles={onFiles}
+          />
+          <PickerButton
+            icon={<Images className="mr-1.5 h-4 w-4" />}
+            label="Gallery"
+            accept="image/*,video/*"
+            multiple
+            onFiles={onFiles}
+          />
+        </div>
+        {room.media.length > 0 && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {room.media.map((m, idx) => {
+              const url = m.kind === "existing" ? m.url : m.previewUrl;
+              const isVideo =
+                m.kind === "existing"
+                  ? m.mime?.startsWith("video")
+                  : m.file.type.startsWith("video");
+              return (
+                <div key={idx} className="relative h-20 w-20 overflow-hidden rounded border">
+                  {isVideo ? (
+                    <video src={url} className="h-full w-full object-cover" />
+                  ) : (
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onRemoveMedia(idx)}
+                    className="absolute right-0 top-0 bg-black/60 p-0.5 text-white"
+                    title="Remove"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Botao que abre a camera do celular ou a galeria. No desktop os dois caem no
+// seletor de arquivos — `capture` e simplesmente ignorado la.
+function PickerButton({
+  icon,
+  label,
+  accept,
+  capture,
+  multiple,
+  onFiles,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  accept: string;
+  capture?: "environment" | "user";
+  multiple?: boolean;
+  onFiles: (files: FileList | null) => void;
+}) {
+  return (
+    <label className="inline-flex h-9 cursor-pointer items-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground">
+      {icon}
+      {label}
+      <input
+        type="file"
+        className="sr-only"
+        accept={accept}
+        capture={capture}
+        multiple={multiple}
+        onChange={(e) => {
+          onFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
+    </label>
+  );
+}
+
+function MultiSelect({
+  values,
+  opts,
+  placeholder,
+  onChange,
+}: {
+  values: string[];
+  opts: Opt[];
+  placeholder: string;
+  onChange: (v: string[]) => void;
+}) {
+  const toggle = (v: string) =>
+    onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full justify-between font-normal"
+          role="combobox"
+        >
+          <span className={values.length ? "" : "text-muted-foreground"}>
+            {values.length ? `${values.length} selected` : placeholder}
+          </span>
+          <ChevronDown className="h-4 w-4 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="max-h-72 w-[--radix-popover-trigger-width] overflow-y-auto p-1"
+      >
+        {opts.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => toggle(o.value)}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+          >
+            <Checkbox checked={values.includes(o.value)} className="pointer-events-none" />
+            {o.label}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// --- Ditado ------------------------------------------------------------
+// Web Speech API: o navegador transcreve ao vivo e o texto cai direto na
+// nota. Sem upload, sem chave de API, sem backend. Chrome, Edge, Android e
+// Safari do iPhone tem; Firefox nao — la o botao aparece desabilitado.
+type SpeechResultList = ArrayLike<{ 0: { transcript: string }; isFinal: boolean }>;
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start: () => void;
+  stop: () => void;
+  onresult: ((e: { resultIndex: number; results: SpeechResultList }) => void) | null;
+  onerror: ((e: { error: string }) => void) | null;
+  onend: (() => void) | null;
+};
+
+const speechCtor = (): (new () => SpeechRecognitionLike) | undefined => {
+  if (typeof window === "undefined") return undefined;
+  const w = window as unknown as {
+    SpeechRecognition?: new () => SpeechRecognitionLike;
+    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition;
+};
+
+function DictateButton({ onText }: { onText: (t: string) => void }) {
+  const [on, setOn] = useState(false);
+  const recRef = useRef<SpeechRecognitionLike | null>(null);
+  // onresult fecha sobre o callback do momento do start; o ref mantem o atual.
+  const cbRef = useRef(onText);
+  cbRef.current = onText;
+
+  useEffect(() => () => recRef.current?.stop(), []);
+
+  const supported = !!speechCtor();
+
+  const toggle = () => {
+    if (recRef.current) {
+      recRef.current.stop();
+      return;
+    }
+    const Ctor = speechCtor();
+    if (!Ctor) return;
+    const r = new Ctor();
+    r.lang = "en-US";
+    r.continuous = true;
+    r.interimResults = false;
+    r.onresult = (e) => {
+      let txt = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        if (res?.isFinal) txt += res[0].transcript;
+      }
+      if (txt.trim()) cbRef.current(txt.trim());
+    };
+    r.onerror = (e) => {
+      if (e.error !== "aborted") toast.error(`Dictation failed: ${e.error}`);
+    };
+    r.onend = () => {
+      recRef.current = null;
+      setOn(false);
+    };
+    r.start();
+    recRef.current = r;
+    setOn(true);
+  };
+
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant={on ? "default" : "ghost"}
+      disabled={!supported}
+      onClick={toggle}
+      title={supported ? "Dictate into this note" : "Dictation is not available in this browser"}
+    >
+      {on ? (
+        <Mic className="mr-1.5 h-4 w-4 animate-pulse" />
+      ) : (
+        <MicOff className="mr-1.5 h-4 w-4" />
+      )}
+      {on ? "Listening… tap to stop" : "Dictate"}
+    </Button>
   );
 }
 

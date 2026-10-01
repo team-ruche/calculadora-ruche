@@ -45,7 +45,10 @@ function prepLevel(rooms: Room[]): string | null {
 
 function summarizeRooms(rooms: Room[]): string {
   return rooms
-    .map((r) => `${r.nome} — ${r.area_sqft} sqft · ${r.piso_atual} → ${r.piso_novo} · preparo: ${r.preparo}`)
+    .map(
+      (r) =>
+        `${r.nome} — ${r.area_sqft} sqft · ${r.piso_atual} → ${r.piso_novo} · preparo: ${r.preparo}`,
+    )
     .join("\n");
 }
 
@@ -80,7 +83,8 @@ Deno.serve(async (req) => {
   // fallback hardcoded (mesmo padrão já usado nos nodes do n8n desta conta).
   // Trocar por `supabase secrets set` quando alguém tiver acesso ao dashboard.
   const n8nWebhookUrl =
-    Deno.env.get("N8N_GHL_SYNC_OUTBOUND_URL") ?? "https://workflows.ruchedigital.online/webhook/ghl-sync-outbound";
+    Deno.env.get("N8N_GHL_SYNC_OUTBOUND_URL") ??
+    "https://workflows.ruchedigital.online/webhook/ghl-sync-outbound";
   const n8nSecret =
     Deno.env.get("N8N_GHL_SYNC_SECRET") ?? "3OqEzmOOFjxcr1xaRwG2DXp-mcIvQZTkUKXSk9ReOrU";
   // Dominio onde o parceiro abre o orcamento. Vai dentro do Quote Link que o
@@ -156,14 +160,17 @@ Deno.serve(async (req) => {
 
   const proposalId = String(body.proposal_id ?? "");
   if (!proposalId || !["cancel_appointment", "push_quote_ready"].includes(action)) {
-    return json({ error: "proposal_id e action (cancel_appointment | push_quote_ready) são obrigatórios" }, 400);
+    return json(
+      { error: "proposal_id e action (cancel_appointment | push_quote_ready) são obrigatórios" },
+      400,
+    );
   }
 
   const { data: prop, error: propErr } = await admin
     .from("proposals")
     .select(
       "id, lead_id, partner_id, ghl_opportunity_id, location_id, " +
-        "total_cliente, total_repasse, margem_ruche, visita_at, notas, " +
+        "total_cliente, total_repasse, margem_ruche, visita_at, notas, transcricao, " +
         // O contrato do GHL lê merge field de contact, não de opportunity —
         // por isso o contact_id vem junto, ver push do bloco `contact` abaixo.
         "leads:lead_id ( ghl_contact_id, endereco )",
@@ -240,7 +247,9 @@ Deno.serve(async (req) => {
             prep_level: prepLevel(rooms),
             segundo_andar: simNao(extras?.segundo_andar_sem_elevador ?? null),
             visita_at: prop.visita_at ? String(prop.visita_at).slice(0, 10) : null,
-            notas: prop.notas ?? null,
+            // A partir da etapa 20 o campo da tela e a transcricao pos-visita;
+            // notas fica como fallback dos orcamentos antigos.
+            notas: prop.transcricao ?? prop.notas ?? null,
             ambientes: escopo,
             extras: summarizeExtras(extras),
             total_cliente: prop.total_cliente ?? null,
@@ -289,7 +298,10 @@ Deno.serve(async (req) => {
     return json({ error: `Falha ao chamar o n8n (${n8nRes.status})`, detail: text }, 502);
   }
 
-  await admin.from("proposals").update({ last_ghl_sync_at: new Date().toISOString() }).eq("id", proposalId);
+  await admin
+    .from("proposals")
+    .update({ last_ghl_sync_at: new Date().toISOString() })
+    .eq("id", proposalId);
 
   return json({ ok: true });
 });

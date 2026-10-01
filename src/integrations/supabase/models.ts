@@ -240,6 +240,9 @@ export interface Proposal {
   margem_ruche: number | null;
   // Notas gerais da medição (texto livre).
   notas: string | null;
+  // Transcricao da conversa pos-visita, colada pelo parceiro. Entrada da
+  // comparacao por IA contra o que foi medido.
+  transcricao: string | null;
   // Cronograma de pagamento negociado pelo closer, digitado no GHL e trazido
   // pelo ghl-sync-inbound ao fechar. Nao ha default: sem isso, gerar parcelas
   // e recusado. Os percentuais somam 100.
@@ -304,6 +307,12 @@ export interface ProposalRoom {
   piso_novo: string;
   piso_atual: string;
   preparo: string;
+  // null = sim. Todo registro anterior a etapa 20 foi cobrado com remocao.
+  remocao: boolean | null;
+  mover_moveis: boolean;
+  mover_moveis_horas: number;
+  servicos: string[];
+  observacao: string | null;
   created_at: string;
 }
 
