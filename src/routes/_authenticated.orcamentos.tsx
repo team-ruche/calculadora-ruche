@@ -1,6 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { ArrowLeft, FileText, Printer, Plus, Pencil, Settings, Search } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  FileText,
+  Printer,
+  Plus,
+  Pencil,
+  Settings,
+  Search,
+  ChevronDown as ChevronDownIcon,
+  ChevronRight,
+} from "lucide-react";
 import {
   supabase,
   type Proposal,
@@ -111,6 +121,17 @@ function OrcamentosPage() {
       return n;
     });
   const [viewId, setViewId] = useState<string | null>(null);
+  // Os orcamentos ficam agrupados por cliente. A chave e o nome normalizado:
+  // dois leads do mesmo cliente (um por parceiro, por exemplo) caem no mesmo
+  // grupo, que e exatamente o que se quer olhar junto.
+  const [recolhidos, setRecolhidos] = useState<Set<string>>(new Set());
+  const toggleGrupo = (k: string) =>
+    setRecolhidos((prev) => {
+      const n = new Set(prev);
+      if (n.has(k)) n.delete(k);
+      else n.add(k);
+      return n;
+    });
   // Quote layout settings (per partner).
   const { user, isRuche } = useAuth();
   const [configOpen, setConfigOpen] = useState(false);
@@ -218,6 +239,32 @@ function OrcamentosPage() {
       await reloadItems(proposalId);
     }
   };
+
+  const visiveis = rows
+    .filter((row) => inRange(row.created_at, range))
+    .filter((row) => (row.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()))
+    .filter((row) => statusFiltro.size === 0 || statusFiltro.has(row.stage));
+
+  const grupos = useMemo(() => {
+    const porCliente = new Map<string, { nome: string; lead: LeadLike; linhas: ProposalRow[] }>();
+    for (const row of visiveis) {
+      const nome = row.leads?.nome_cliente?.trim() || "Unnamed client";
+      const chave = nome.toLowerCase();
+      const g = porCliente.get(chave);
+      if (g) g.linhas.push(row);
+      else porCliente.set(chave, { nome, lead: row.leads, linhas: [row] });
+    }
+    return [...porCliente.entries()]
+      .map(([chave, g]) => ({
+        chave,
+        nome: g.nome,
+        lead: g.lead,
+        linhas: g.linhas,
+        total: g.linhas.reduce((a, r) => a + (r.total_cliente ?? 0), 0),
+      }))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, range, busca, statusFiltro]);
 
   const formDialog = (
     <Dialog open={dialog !== null} onOpenChange={(o) => !o && setDialog(null)}>
@@ -404,7 +451,7 @@ function OrcamentosPage() {
               <Table className="min-w-[720px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="sticky left-0 z-20 bg-card">Client</TableHead>
+                    <TableHead className="sticky left-0 z-20 bg-card">Quote</TableHead>
                     <TableHead>Author</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Last edit</TableHead>
@@ -414,71 +461,95 @@ function OrcamentosPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows
-                    .filter((row) => inRange(row.created_at, range))
-                    .filter((row) =>
-                      (row.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()),
-                    )
-                    .filter((row) => statusFiltro.size === 0 || statusFiltro.has(row.stage))
-                    .map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell className="sticky left-0 z-10 bg-card">
-                          <button
-                            type="button"
-                            onClick={() => setLeadDetail(row.leads)}
-                            className="font-medium text-primary underline-offset-2 hover:underline"
-                            title="Open setter card"
-                          >
-                            {row.leads?.nome_cliente || "—"}
-                          </button>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {authors[row.partner_id] || "—"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {shortDate(row.created_at)}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {shortDate(row.updated_at)}
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={row.stage}
-                            onValueChange={(v) => changeStage(row, v as ProposalStage)}
-                          >
-                            <SelectTrigger className="h-8 w-[190px] border-none px-2 shadow-none">
-                              <span
-                                className="rounded-full px-2.5 py-1 text-xs font-semibold"
-                                style={{
-                                  background: STAGE_BADGE[row.stage].bg,
-                                  color: STAGE_BADGE[row.stage].fg,
-                                }}
+                  {grupos.map((g) => {
+                    const aberto = !recolhidos.has(g.chave);
+                    return (
+                      <Fragment key={g.chave}>
+                        <TableRow className="bg-muted/40 hover:bg-muted/60">
+                          <TableCell colSpan={7} className="sticky left-0 z-10 py-2">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => toggleGrupo(g.chave)}
+                                className="flex items-center gap-1.5 text-sm font-semibold"
+                                aria-expanded={aberto}
                               >
-                                {STAGE_LABEL[row.stage]}
+                                {aberto ? (
+                                  <ChevronDownIcon className="h-4 w-4" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4" />
+                                )}
+                                {g.nome}
+                              </button>
+                              <span className="text-xs text-muted-foreground">
+                                {g.linhas.length} {g.linhas.length === 1 ? "quote" : "quotes"} ·{" "}
+                                {money(g.total)}
                               </span>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {STAGE_ORDER.map((s) => (
-                                <SelectItem key={s} value={s}>
-                                  {STAGE_LABEL[s]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell className="text-right">{money(row.total_cliente)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
-                            <FileText className="mr-1 h-4 w-4" /> View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  {rows
-                    .filter((row) => inRange(row.created_at, range))
-                    .filter((row) =>
-                      (row.leads?.nome_cliente ?? "").toLowerCase().includes(busca.toLowerCase()),
-                    ).length === 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setLeadDetail(g.lead)}
+                                className="ml-auto text-xs text-primary underline-offset-2 hover:underline"
+                                title="Open setter card"
+                              >
+                                Setter card
+                              </button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {aberto &&
+                          g.linhas.map((row, i) => (
+                            <TableRow key={row.id}>
+                              <TableCell className="sticky left-0 z-10 bg-card text-muted-foreground">
+                                #{g.linhas.length - i}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {authors[row.partner_id] || "—"}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {shortDate(row.created_at)}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {shortDate(row.updated_at)}
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  value={row.stage}
+                                  onValueChange={(v) => changeStage(row, v as ProposalStage)}
+                                >
+                                  <SelectTrigger className="h-8 w-[190px] border-none px-2 shadow-none">
+                                    <span
+                                      className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                                      style={{
+                                        background: STAGE_BADGE[row.stage].bg,
+                                        color: STAGE_BADGE[row.stage].fg,
+                                      }}
+                                    >
+                                      {STAGE_LABEL[row.stage]}
+                                    </span>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {STAGE_ORDER.map((s) => (
+                                      <SelectItem key={s} value={s}>
+                                        {STAGE_LABEL[s]}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {money(row.total_cliente)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
+                                  <FileText className="mr-1 h-4 w-4" /> View
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </Fragment>
+                    );
+                  })}
+                  {grupos.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground">
                         No quotes found.
