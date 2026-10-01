@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, X, Loader2, Camera, Images, Mic, MicOff, ChevronDown } from "lucide-react";
-import { supabase, type MotorPrice } from "@/integrations/supabase/models";
+import { Plus, Trash2, X, Loader2, Camera, Images, Mic, Square, ChevronDown } from "lucide-react";
+import { supabase, callTranscreverAudio, type MotorPrice } from "@/integrations/supabase/models";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -888,88 +888,112 @@ function MultiSelect({
   );
 }
 
-// --- Ditado ------------------------------------------------------------
-// Web Speech API: o navegador transcreve ao vivo e o texto cai direto na
-// nota. Sem upload, sem chave de API, sem backend. Chrome, Edge, Android e
-// Safari do iPhone tem; Firefox nao — la o botao aparece desabilitado.
-type SpeechResultList = ArrayLike<{ 0: { transcript: string }; isFinal: boolean }>;
-type SpeechRecognitionLike = {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  start: () => void;
-  stop: () => void;
-  onresult: ((e: { resultIndex: number; results: SpeechResultList }) => void) | null;
-  onerror: ((e: { error: string }) => void) | null;
-  onend: (() => void) | null;
-};
+// --- Nota por voz ------------------------------------------------------
+// Grava no navegador e manda para a Edge Function transcrever-audio (Whisper).
+// A Web Speech API do navegador ficou pelo caminho: ela fala com o servidor do
+// Google e morre com "network" em preview embutido, em Chromium sem as chaves
+// dele e em navegador com shield — ou seja, justamente onde o parceiro usa.
 
-const speechCtor = (): (new () => SpeechRecognitionLike) | undefined => {
-  if (typeof window === "undefined") return undefined;
-  const w = window as unknown as {
-    SpeechRecognition?: new () => SpeechRecognitionLike;
-    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-  };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition;
-};
+const MAX_SEGUNDOS = 300;
 
 function DictateButton({ onText }: { onText: (t: string) => void }) {
-  const [on, setOn] = useState(false);
-  const recRef = useRef<SpeechRecognitionLike | null>(null);
-  // onresult fecha sobre o callback do momento do start; o ref mantem o atual.
+  const [gravando, setGravando] = useState(false);
+  const [segundos, setSegundos] = useState(0);
+  const [enviando, setEnviando] = useState(false);
+  const recRef = useRef<MediaRecorder | null>(null);
   const cbRef = useRef(onText);
   cbRef.current = onText;
 
-  useEffect(() => () => recRef.current?.stop(), []);
+  // Fecha o microfone se o formulario sumir no meio da gravacao.
+  useEffect(
+    () => () => {
+      if (recRef.current?.state === "recording") recRef.current.stop();
+    },
+    [],
+  );
 
-  const supported = !!speechCtor();
+  useEffect(() => {
+    if (!gravando) return;
+    const t = setInterval(() => setSegundos((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [gravando]);
 
-  const toggle = () => {
-    if (recRef.current) {
+  // Corta sozinho no limite: audio longo demais e recusado pela API, e
+  // descobrir isso depois de cinco minutos falando seria cruel.
+  useEffect(() => {
+    if (segundos >= MAX_SEGUNDOS && recRef.current?.state === "recording") {
       recRef.current.stop();
-      return;
+      toast.info("Recording stopped at 5 minutes.");
     }
-    const Ctor = speechCtor();
-    if (!Ctor) return;
-    const r = new Ctor();
-    r.lang = "en-US";
-    r.continuous = true;
-    r.interimResults = false;
-    r.onresult = (e) => {
-      let txt = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const res = e.results[i];
-        if (res?.isFinal) txt += res[0].transcript;
-      }
-      if (txt.trim()) cbRef.current(txt.trim());
+  }, [segundos]);
+
+  const iniciar = async () => {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      return toast.error("This browser cannot record audio. Type the note instead.");
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      return toast.error("Microphone blocked. Allow it for this site and try again.");
+    }
+
+    const rec = new MediaRecorder(stream);
+    const pedacos: Blob[] = [];
+    rec.ondataavailable = (e) => {
+      if (e.data.size > 0) pedacos.push(e.data);
     };
-    r.onerror = (e) => {
-      if (e.error !== "aborted") toast.error(`Dictation failed: ${e.error}`);
-    };
-    r.onend = () => {
+    rec.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
       recRef.current = null;
-      setOn(false);
+      setGravando(false);
+      setSegundos(0);
+      const mime = rec.mimeType || "audio/webm";
+      const blob = new Blob(pedacos, { type: mime });
+      if (blob.size < 1000) return toast.error("Recording too short.");
+      setEnviando(true);
+      try {
+        const texto = await callTranscreverAudio(blob, mime);
+        cbRef.current(texto);
+        toast.success("Transcribed");
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : String(e));
+      } finally {
+        setEnviando(false);
+      }
     };
-    r.start();
-    recRef.current = r;
-    setOn(true);
+    rec.start();
+    recRef.current = rec;
+    setSegundos(0);
+    setGravando(true);
   };
+
+  const parar = () => recRef.current?.stop();
+
+  const mmss = `${Math.floor(segundos / 60)}:${String(segundos % 60).padStart(2, "0")}`;
 
   return (
     <Button
       type="button"
       size="sm"
-      variant={on ? "default" : "ghost"}
-      disabled={!supported}
-      onClick={toggle}
-      title={supported ? "Dictate into this note" : "Dictation is not available in this browser"}
+      variant={gravando ? "destructive" : "ghost"}
+      disabled={enviando}
+      onClick={gravando ? parar : iniciar}
+      title="Record a voice note — it gets transcribed into the field"
     >
-      {on ? (
-        <Mic className="mr-1.5 h-4 w-4 animate-pulse" />
+      {enviando ? (
+        <>
+          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Transcribing…
+        </>
+      ) : gravando ? (
+        <>
+          <Square className="mr-1.5 h-3.5 w-3.5 fill-current" /> Stop · {mmss}
+        </>
       ) : (
-        <MicOff className="mr-1.5 h-4 w-4" />
+        <>
+          <Mic className="mr-1.5 h-4 w-4" /> Record
+        </>
       )}
-      {on ? "Listening… tap to stop" : "Dictate"}
     </Button>
   );
 }

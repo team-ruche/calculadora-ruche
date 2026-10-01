@@ -69,6 +69,21 @@ export async function callRevisarOrcamento(proposalId: string): Promise<AiReview
   return corpo.review;
 }
 
+// Transcreve um audio gravado na nota (Whisper via Edge Function). O ditado
+// nativo do navegador foi descartado: depende do servico de fala do Google e
+// devolve "network" em preview embutido e em Chromium sem as chaves dele.
+export async function callTranscreverAudio(blob: Blob, mime: string): Promise<string> {
+  const form = new FormData();
+  form.append("file", new File([blob], "nota", { type: mime }));
+  const { data, error } = await supabase.functions.invoke("transcrever-audio", { body: form });
+  const corpo = (data as { error?: string; texto?: string } | null) ?? null;
+  if (error || corpo?.error) {
+    throw new Error(corpo?.error ?? error?.message ?? "Falha ao transcrever o áudio");
+  }
+  if (!corpo?.texto) throw new Error("A transcrição voltou vazia");
+  return corpo.texto;
+}
+
 // Cria a opção do parceiro no dropdown "Assigned Partner" do GHL + a linha
 // em ghl_partner_map. Chamar quando um parceiro é aprovado/criado.
 export async function callGhlSyncPartner(partnerUserId: string) {
