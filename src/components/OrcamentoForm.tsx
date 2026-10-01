@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Select,
@@ -19,15 +18,11 @@ import { toast } from "sonner";
 
 type Opt = { value: string; label: string };
 
+// Project extras ficou so com appliances to move, agora cobrado por HORA.
+// Os demais saem do formulario mas continuam no tipo e no save: assim um
+// orcamento antigo editado preserva o que ja tinha, em vez de zerar escondido.
 const EXTRA_FIELDS: { key: keyof ExtrasDraft; label: string; unit: string }[] = [
-  { key: "degraus_escada", label: "Stair steps", unit: "ea" },
-  { key: "baseboard_instalar_ft", label: "Baseboard to install", unit: "linear ft" },
-  { key: "baseboard_pintar_ft", label: "Baseboard to paint", unit: "linear ft" },
-  { key: "quarter_round_ft", label: "Quarter round", unit: "linear ft" },
-  { key: "transicoes", label: "Transitions", unit: "ea" },
-  { key: "ambientes_moveis", label: "Rooms with furniture", unit: "ea" },
-  { key: "aparelhos_mover", label: "Appliances to move", unit: "ea" },
-  { key: "portas_trim", label: "Doors for door trimming", unit: "ea" },
+  { key: "aparelhos_mover", label: "Appliances to move", unit: "hours" },
 ];
 
 interface ExtrasDraft {
@@ -576,22 +571,12 @@ export function OrcamentoForm({
                 id={field.key}
                 type="number"
                 min={0}
-                step={field.unit === "linear ft" ? "0.1" : "1"}
+                step={field.unit === "ea" ? "1" : "0.5"}
                 value={extras[field.key] || ""}
                 onChange={(e) => setExtras((p) => ({ ...p, [field.key]: Number(e.target.value) }))}
               />
             </div>
           ))}
-          <div className="flex items-center gap-2 pt-6">
-            <Checkbox
-              id="segundo-andar"
-              checked={segundoAndar}
-              onCheckedChange={(v) => setSegundoAndar(v === true)}
-            />
-            <Label htmlFor="segundo-andar" className="cursor-pointer">
-              2nd floor no elevator
-            </Label>
-          </div>
         </CardContent>
       </Card>
 
