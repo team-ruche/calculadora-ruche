@@ -105,12 +105,13 @@ const STAGE_COLOR: Record<
 > = {
   appointment_confirmed: { bar: "#F0A81E", text: "#3D2600", head: "#FBE7BF", headText: "#7A4E05" },
   appointment_canceled: { bar: "#E07A52", text: "#3D1405", head: "#F6D6C7", headText: "#7A2E12" },
+  pricing_review: { bar: "#6B46C1", text: "#2E1A54", head: "#EDE6F8", headText: "#4B2E83" },
   negotiation: { bar: "#185FA5", text: "#042C53", head: "#E6F1FB", headText: "#0C447C" },
   no_deal: { bar: "#9C9A90", text: "#26251F", head: "#DEDCD2", headText: "#45443D" },
   deal: { bar: "#5FA13B", text: "#173404", head: "#D3E8BC", headText: "#2C5212" },
 };
 
-const REALIZADAS: ProposalStage[] = ["negotiation", "no_deal", "deal"];
+const REALIZADAS: ProposalStage[] = ["pricing_review", "negotiation", "no_deal", "deal"];
 
 // Quote done = has a calculated value. It's the gate to move to Negotiation.
 const orcamentoFeito = (r: Row) => r.total_cliente != null && r.total_cliente > 0;
@@ -153,6 +154,7 @@ function Overview() {
     const m: Record<ProposalStage, Row[]> = {
       appointment_confirmed: [],
       appointment_canceled: [],
+      pricing_review: [],
       negotiation: [],
       no_deal: [],
       deal: [],
@@ -191,9 +193,9 @@ function Overview() {
 
   const changeStage = async (row: Row, next: ProposalStage) => {
     if (row.stage === next) return;
-    // Gate: only enters Negotiation with the quote (measurement) filled in.
-    if (next === "negotiation" && !orcamentoFeito(row)) {
-      toast.info("Fill in the quote (measurement) to move to Negotiation.");
+    // Gate: pricing approval and negotiation both need the quote priced.
+    if ((next === "pricing_review" || next === "negotiation") && !orcamentoFeito(row)) {
+      toast.info("Fill in the quote (measurement) first.");
       setOrc({ row, advance: true });
       return;
     }
@@ -225,15 +227,17 @@ function Overview() {
     }
   };
 
-  const moverParaNeg = async (row: Row) => {
+  // A medicao salva nao vai mais direto para negociacao: passa pelo closer,
+  // que ajusta e aprova o pricing. A aprovacao e que move para Negotiation.
+  const moverParaPricing = async (row: Row) => {
     setAskNeg(null);
     const { error } = await supabase
       .from("proposals")
-      .update({ stage: "negotiation" })
+      .update({ stage: "pricing_review" })
       .eq("id", row.id);
     if (error) return toast.error(error.message);
     await load();
-    toast.success("Moved to Negotiation");
+    toast.success("Sent for pricing approval");
     // Measurement + quote ready → send the quote link to GHL (doesn't change stage there).
     if (row.ghl_opportunity_id) {
       try {
@@ -457,7 +461,7 @@ function Overview() {
       <Dialog open={!!askNeg} onOpenChange={(o) => !o && setAskNeg(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Move to Negotiation?</DialogTitle>
+            <DialogTitle>Send for pricing approval?</DialogTitle>
             <DialogDescription>
               The measurement for {askNeg?.leads?.nome_cliente ?? "this client"} has been saved. Do
               you want to move the card to the Negotiation stage now?
@@ -467,7 +471,7 @@ function Overview() {
             <Button variant="outline" onClick={() => setAskNeg(null)}>
               Not now
             </Button>
-            <Button onClick={() => askNeg && moverParaNeg(askNeg)}>Move to Negotiation</Button>
+            <Button onClick={() => askNeg && moverParaPricing(askNeg)}>Send for approval</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -507,6 +511,7 @@ function Funnel({
   const { count } = counts;
   const conf = count("appointment_confirmed");
   const canc = count("appointment_canceled");
+  const pricing = count("pricing_review");
   const neg = count("negotiation");
   const nodeal = count("no_deal");
   const deal = count("deal");
@@ -565,6 +570,7 @@ function Funnel({
           stage="appointment_confirmed"
           sub={`−${canc} canceled`}
         />
+        <FunnelRow label="Pricing approval" value={pricing} stage="pricing_review" />
         <FunnelRow label="Negotiation" value={neg} stage="negotiation" sub={`−${nodeal} no deal`} />
         <FunnelRow label="Deal" value={deal} stage="deal" />
       </div>

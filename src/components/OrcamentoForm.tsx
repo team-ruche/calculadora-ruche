@@ -448,9 +448,20 @@ export function OrcamentoForm({
       return toast.error(exErr.message);
     }
 
-    const { error: calcErr } = await supabase.rpc("rpc_calcular_proposta", { p_proposal_id: pid });
-    if (calcErr) toast.warning("Saved, but the calculation failed: " + calcErr.message);
-    else toast.success(mode === "create" ? "Quote created and priced" : "Quote updated");
+    // Recalculo passa pelo wrapper: se o closer ja ajustou o pricing deste
+    // orcamento, o motor nao volta por cima. Os servicos marcados por ambiente
+    // entram como linha de preco zero, esperando o closer precificar.
+    const { data: pricingStatus, error: calcErr } = await supabase.rpc("rpc_recalcular_se_auto", {
+      p_proposal_id: pid,
+    });
+    if (calcErr) {
+      toast.warning("Saved, but the calculation failed: " + calcErr.message);
+    } else if (pricingStatus !== "auto") {
+      toast.info("Saved. Pricing was already adjusted by Ruche, so it was left untouched.");
+    } else {
+      await supabase.rpc("rpc_seed_servicos", { p_proposal_id: pid });
+      toast.success(mode === "create" ? "Quote created and priced" : "Quote updated");
+    }
 
     setSubmitting(false);
     onSaved();

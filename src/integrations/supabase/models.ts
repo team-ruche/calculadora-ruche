@@ -41,6 +41,34 @@ export async function callGhlSync(
   }
 }
 
+// Revisao por IA: compara a transcricao da visita com o que foi medido e
+// devolve o que o cliente pediu e nao esta no orcamento. Ver
+// supabase/functions/revisar-orcamento.
+export interface AiReviewFalta {
+  o_que: string;
+  evidencia: string;
+  gravidade: "alta" | "media" | "baixa";
+}
+
+export interface AiReview {
+  resumo: string;
+  faltando: AiReviewFalta[];
+  conferido: string[];
+  modelo?: string;
+}
+
+export async function callRevisarOrcamento(proposalId: string): Promise<AiReview> {
+  const { data, error } = await supabase.functions.invoke("revisar-orcamento", {
+    body: { proposal_id: proposalId },
+  });
+  const corpo = (data as { error?: string; review?: AiReview } | null) ?? null;
+  if (error || corpo?.error) {
+    throw new Error(corpo?.error ?? error?.message ?? "Falha ao revisar o orçamento");
+  }
+  if (!corpo?.review) throw new Error("A revisão voltou vazia");
+  return corpo.review;
+}
+
 // Cria a opção do parceiro no dropdown "Assigned Partner" do GHL + a linha
 // em ghl_partner_map. Chamar quando um parceiro é aprovado/criado.
 export async function callGhlSyncPartner(partnerUserId: string) {
@@ -109,11 +137,17 @@ export interface Lead {
 
 // Estágios do kanban do Overview.
 export type ProposalStage =
-  "appointment_confirmed" | "appointment_canceled" | "negotiation" | "no_deal" | "deal";
+  | "appointment_confirmed"
+  | "appointment_canceled"
+  | "pricing_review"
+  | "negotiation"
+  | "no_deal"
+  | "deal";
 
 export const STAGE_LABEL: Record<ProposalStage, string> = {
   appointment_confirmed: "Appointment Confirmed",
   appointment_canceled: "Appointment Canceled",
+  pricing_review: "Pricing Approval",
   negotiation: "Negotiation",
   no_deal: "No Deal",
   deal: "Deal",
@@ -122,10 +156,19 @@ export const STAGE_LABEL: Record<ProposalStage, string> = {
 export const STAGE_ORDER: ProposalStage[] = [
   "appointment_confirmed",
   "appointment_canceled",
+  "pricing_review",
   "negotiation",
   "no_deal",
   "deal",
 ];
+
+export type PricingStatus = "auto" | "ajustado" | "aprovado";
+
+export const PRICING_STATUS_LABEL: Record<PricingStatus, string> = {
+  auto: "Engine pricing",
+  ajustado: "Adjusted",
+  aprovado: "Approved",
+};
 
 // Status do contrato (Controle Financeiro)
 export type ContractStatus = "active" | "pending" | "on_hold" | "contractual_billing" | "encerrado";
@@ -247,6 +290,13 @@ export interface Proposal {
   // pelo ghl-sync-inbound ao fechar. Nao ha default: sem isso, gerar parcelas
   // e recusado. Os percentuais somam 100.
   payment_schedule: PaymentScheduleEntry[] | null;
+  // Pricing por orcamento (etapa 21). 'auto' segue o motor; a partir de
+  // 'ajustado' o recalculo e recusado para nao atropelar a edicao do closer.
+  pricing_status: PricingStatus;
+  pricing_aprovado_em: string | null;
+  pricing_aprovado_por: string | null;
+  ai_review: AiReview | null;
+  ai_review_at: string | null;
   // Snapshot do layout do orçamento (congelado ao gerar).
   orcamento_layout: OrcamentoLayout | null;
   // Sync GHL — ver supabase-migration-etapa10-ghl-sync.sql

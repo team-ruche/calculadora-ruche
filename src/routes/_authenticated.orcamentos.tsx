@@ -8,6 +8,7 @@ import {
   Pencil,
   Settings,
   Search,
+  SlidersHorizontal,
   ChevronDown as ChevronDownIcon,
   ChevronRight,
 } from "lucide-react";
@@ -37,6 +38,7 @@ import { OrcamentoForm } from "@/components/OrcamentoForm";
 import { OrcamentoView } from "@/components/OrcamentoView";
 import { LeadDetalhe, type LeadLike } from "@/components/LeadDetalhe";
 import { OrcamentoLayoutEditor } from "@/components/OrcamentoLayoutEditor";
+import { PricingDialog } from "@/components/PricingDialog";
 import { DateRangePicker, presetRange } from "@/components/DateRangePicker";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -70,6 +72,7 @@ type ProposalRow = Proposal & {
 const STAGE_BADGE: Record<ProposalStage, { bg: string; fg: string }> = {
   appointment_confirmed: { bg: "#FBE7BF", fg: "#7A4E05" },
   appointment_canceled: { bg: "#F6D6C7", fg: "#7A2E12" },
+  pricing_review: { bg: "#EDE6F8", fg: "#4B2E83" },
   negotiation: { bg: "#E6F1FB", fg: "#0C447C" },
   no_deal: { bg: "#DEDCD2", fg: "#45443D" },
   deal: { bg: "#D3E8BC", fg: "#2C5212" },
@@ -121,6 +124,8 @@ function OrcamentosPage() {
       return n;
     });
   const [viewId, setViewId] = useState<string | null>(null);
+  // Aba de pricing do orcamento. So Ruche abre: a tela mostra repasse e margem.
+  const [pricingRow, setPricingRow] = useState<ProposalRow | null>(null);
   // Os orcamentos ficam agrupados por cliente. A chave e o nome normalizado:
   // dois leads do mesmo cliente (um por parceiro, por exemplo) caem no mesmo
   // grupo, que e exatamente o que se quer olhar junto.
@@ -196,9 +201,12 @@ function OrcamentosPage() {
   // Syncs the status with the kanban (same `stage` field), with the same gate.
   const changeStage = async (row: ProposalRow, next: ProposalStage) => {
     if (row.stage === next) return;
-    // Gate: only enters Negotiation with the quote (measurement) filled in.
-    if (next === "negotiation" && !(row.total_cliente && row.total_cliente > 0)) {
-      toast.info("Fill in the quote (measurement) to move to Negotiation.");
+    // Gate: pricing approval and negotiation both need the quote priced.
+    if (
+      (next === "pricing_review" || next === "negotiation") &&
+      !(row.total_cliente && row.total_cliente > 0)
+    ) {
+      toast.info("Fill in the quote (measurement) first.");
       setAdvanceNegId(row.id);
       setDialog({ mode: "edit", proposalId: row.id });
       return;
@@ -223,8 +231,8 @@ function OrcamentosPage() {
         .maybeSingle();
       const total = (fresh as { total_cliente: number | null } | null)?.total_cliente ?? 0;
       if (total > 0) {
-        await supabase.from("proposals").update({ stage: "negotiation" }).eq("id", proposalId);
-        toast.success("Quote saved · moved to Negotiation");
+        await supabase.from("proposals").update({ stage: "pricing_review" }).eq("id", proposalId);
+        toast.success("Quote saved · sent for pricing approval");
         await load();
       }
     }
@@ -342,6 +350,13 @@ function OrcamentosPage() {
         lead={leadDetail}
         open={!!leadDetail}
         onOpenChange={(o) => !o && setLeadDetail(null)}
+      />
+      <PricingDialog
+        proposalId={pricingRow?.id ?? null}
+        clienteNome={pricingRow?.leads?.nome_cliente ?? "Client"}
+        open={!!pricingRow}
+        onOpenChange={(o) => !o && setPricingRow(null)}
+        onChanged={load}
       />
       <OrcamentoView
         open={!!viewId}
@@ -540,9 +555,27 @@ function OrcamentosPage() {
                                 {money(row.total_cliente)}
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button size="sm" variant="outline" onClick={() => openDetail(row)}>
-                                  <FileText className="mr-1 h-4 w-4" /> View
-                                </Button>
+                                <div className="flex justify-end gap-1.5">
+                                  {isRuche && (
+                                    <Button
+                                      size="sm"
+                                      variant={
+                                        row.pricing_status === "aprovado" ? "ghost" : "secondary"
+                                      }
+                                      onClick={() => setPricingRow(row)}
+                                      title="Open the pricing of this quote"
+                                    >
+                                      <SlidersHorizontal className="mr-1 h-4 w-4" /> Pricing
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openDetail(row)}
+                                  >
+                                    <FileText className="mr-1 h-4 w-4" /> View
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
