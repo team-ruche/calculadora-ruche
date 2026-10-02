@@ -9,55 +9,34 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as OrcamentoIdRouteImport } from './routes/orcamento.$id'
-import { Route as AuthenticatedVisaoInternaRouteImport } from './routes/_authenticated.visao-interna'
-import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated.usuarios'
-import { Route as AuthenticatedPagamentosRouteImport } from './routes/_authenticated.pagamentos'
-import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated.overview'
-import { Route as AuthenticatedOrcamentosRouteImport } from './routes/_authenticated.orcamentos'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedMotorRouteImport } from './routes/_authenticated.motor'
+import { Route as AuthenticatedOrcamentosRouteImport } from './routes/_authenticated.orcamentos'
+import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated.overview'
+import { Route as AuthenticatedPagamentosRouteImport } from './routes/_authenticated.pagamentos'
+import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated.usuarios'
+import { Route as AuthenticatedVisaoInternaRouteImport } from './routes/_authenticated.visao-interna'
+import { Route as OrcamentoIdRouteImport } from './routes/orcamento.$id'
 
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OrcamentoIdRoute = OrcamentoIdRouteImport.update({
-  id: '/orcamento/$id',
-  path: '/orcamento/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedVisaoInternaRoute =
-  AuthenticatedVisaoInternaRouteImport.update({
-    id: '/visao-interna',
-    path: '/visao-interna',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
-  id: '/usuarios',
-  path: '/usuarios',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedPagamentosRoute = AuthenticatedPagamentosRouteImport.update({
-  id: '/pagamentos',
-  path: '/pagamentos',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
-  id: '/overview',
-  path: '/overview',
+const AuthenticatedMotorRoute = AuthenticatedMotorRouteImport.update({
+  id: '/motor',
+  path: '/motor',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedOrcamentosRoute = AuthenticatedOrcamentosRouteImport.update({
@@ -65,10 +44,31 @@ const AuthenticatedOrcamentosRoute = AuthenticatedOrcamentosRouteImport.update({
   path: '/orcamentos',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedMotorRoute = AuthenticatedMotorRouteImport.update({
-  id: '/motor',
-  path: '/motor',
+const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
   getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedPagamentosRoute = AuthenticatedPagamentosRouteImport.update({
+  id: '/pagamentos',
+  path: '/pagamentos',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedVisaoInternaRoute =
+  AuthenticatedVisaoInternaRouteImport.update({
+    id: '/visao-interna',
+    path: '/visao-interna',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const OrcamentoIdRoute = OrcamentoIdRouteImport.update({
+  id: '/orcamento/$id',
+  path: '/orcamento/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -152,11 +152,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -166,46 +166,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/orcamento/$id': {
-      id: '/orcamento/$id'
-      path: '/orcamento/$id'
-      fullPath: '/orcamento/$id'
-      preLoaderRoute: typeof OrcamentoIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/visao-interna': {
-      id: '/_authenticated/visao-interna'
-      path: '/visao-interna'
-      fullPath: '/visao-interna'
-      preLoaderRoute: typeof AuthenticatedVisaoInternaRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/usuarios': {
-      id: '/_authenticated/usuarios'
-      path: '/usuarios'
-      fullPath: '/usuarios'
-      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/pagamentos': {
-      id: '/_authenticated/pagamentos'
-      path: '/pagamentos'
-      fullPath: '/pagamentos'
-      preLoaderRoute: typeof AuthenticatedPagamentosRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/overview': {
-      id: '/_authenticated/overview'
-      path: '/overview'
-      fullPath: '/overview'
-      preLoaderRoute: typeof AuthenticatedOverviewRouteImport
+    '/_authenticated/motor': {
+      id: '/_authenticated/motor'
+      path: '/motor'
+      fullPath: '/motor'
+      preLoaderRoute: typeof AuthenticatedMotorRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/orcamentos': {
@@ -215,12 +187,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOrcamentosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/motor': {
-      id: '/_authenticated/motor'
-      path: '/motor'
-      fullPath: '/motor'
-      preLoaderRoute: typeof AuthenticatedMotorRouteImport
+    '/_authenticated/overview': {
+      id: '/_authenticated/overview'
+      path: '/overview'
+      fullPath: '/overview'
+      preLoaderRoute: typeof AuthenticatedOverviewRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/pagamentos': {
+      id: '/_authenticated/pagamentos'
+      path: '/pagamentos'
+      fullPath: '/pagamentos'
+      preLoaderRoute: typeof AuthenticatedPagamentosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/usuarios': {
+      id: '/_authenticated/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/visao-interna': {
+      id: '/_authenticated/visao-interna'
+      path: '/visao-interna'
+      fullPath: '/visao-interna'
+      preLoaderRoute: typeof AuthenticatedVisaoInternaRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/orcamento/$id': {
+      id: '/orcamento/$id'
+      path: '/orcamento/$id'
+      fullPath: '/orcamento/$id'
+      preLoaderRoute: typeof OrcamentoIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
