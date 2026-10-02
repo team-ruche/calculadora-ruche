@@ -37,7 +37,7 @@ export function MetricCard({
         <div className="min-w-0">
           <p
             className={cn(
-              "text-xs font-medium",
+              "metric-label text-xs font-medium",
               tone === "dark" ? "text-sidebar-foreground/75" : "text-muted-foreground",
             )}
           >
@@ -45,7 +45,7 @@ export function MetricCard({
           </p>
           <p
             className={cn(
-              "mt-3 text-[26px] font-semibold leading-none tracking-[-0.04em] tabular-nums sm:text-[30px]",
+              "metric-value mt-3 text-[26px] font-semibold leading-none tracking-[-0.04em] tabular-nums sm:text-[30px]",
               tones[tone],
             )}
             aria-busy={loading}
@@ -55,7 +55,7 @@ export function MetricCard({
           {sub && (
             <p
               className={cn(
-                "mt-2 text-xs leading-relaxed",
+                "metric-caption mt-2 text-xs leading-relaxed",
                 tone === "dark" ? "text-sidebar-foreground/75" : "text-muted-foreground",
               )}
             >

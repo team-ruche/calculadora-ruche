@@ -65,7 +65,7 @@
 
 :root {
   --radius: 1rem;
-  --background: oklch(0.977 0.006 90);
+  --background: oklch(0.954 0.01 85);
   --foreground: oklch(0.245 0.012 75);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.245 0.012 75);
@@ -101,11 +101,11 @@
   --sidebar-accent-foreground: oklch(0.95 0.01 85);
   --sidebar-border: oklch(0.28 0.015 60);
   --sidebar-ring: oklch(0.83 0.14 85);
-  --glass-surface: oklch(1 0 0 / 84%);
+  --glass-surface: oklch(1 0 0 / 70%);
   --glass-popover: oklch(1 0 0 / 96%);
   --glass-border: oklch(1 0 0 / 92%);
   --glass-edge: oklch(0.5 0.012 75 / 10%);
-  --glass-shadow: 0 4px 20px oklch(0.3 0.012 75 / 4%), 0 1px 3px oklch(0.3 0.012 75 / 3%);
+  --glass-shadow: 0 12px 32px oklch(0.3 0.012 75 / 8%), 0 2px 6px oklch(0.3 0.012 75 / 5%);
   --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -186,8 +186,8 @@
 .app-shell,
 .auth-shell {
   background:
-    radial-gradient(ellipse at 95% 0%, oklch(0.83 0.14 85 / 10%), transparent 42rem),
-    radial-gradient(ellipse at 0% 35%, oklch(0.7 0.03 230 / 5%), transparent 36rem),
+    radial-gradient(ellipse at 95% 0%, oklch(0.83 0.14 85 / 22%), transparent 46rem),
+    radial-gradient(ellipse at 0% 35%, oklch(0.7 0.055 230 / 12%), transparent 38rem),
     var(--background);
 }
 
@@ -202,6 +202,7 @@
 }
 
 .glass-panel {
+  backdrop-filter: blur(14px) saturate(135%);
   border-radius: 1.25rem;
 }
 
@@ -237,8 +238,10 @@
 }
 
 .dock-link-active {
-  background: oklch(1 0 0 / 9%);
-  box-shadow: inset 0 1px 0 oklch(1 0 0 / 9%);
+  background: linear-gradient(145deg, oklch(0.83 0.14 85 / 25%), oklch(0.83 0.14 85 / 8%));
+  box-shadow:
+    inset 0 1px 0 oklch(0.83 0.14 85 / 40%),
+    0 3px 12px oklch(0 0 0 / 12%);
 }
 
 .dock-link-active::after {
@@ -334,9 +337,11 @@
 }
 
 .pipeline-column {
-  background: color-mix(in oklch, var(--card) 42%, transparent);
+  background: color-mix(in oklch, var(--card) 28%, transparent);
   border-color: var(--glass-edge);
-  box-shadow: inset 0 1px 0 var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-border),
+    inset 0 2px 8px oklch(0.25 0.012 75 / 3%);
 }
 
 .pipeline-column-outcome {
@@ -352,7 +357,9 @@
 .pipeline-card {
   background: var(--card);
   border: 1px solid var(--glass-edge);
-  box-shadow: 0 2px 8px oklch(0.25 0.012 75 / 4%);
+  box-shadow:
+    0 8px 18px oklch(0.25 0.012 75 / 8%),
+    0 2px 4px oklch(0.25 0.012 75 / 4%);
 }
 
 .pipeline-card:active {
@@ -384,8 +391,8 @@
   }
   .metric-card:hover,
   .pipeline-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px oklch(0.25 0.012 75 / 8%);
+    transform: translateY(-4px);
+    box-shadow: 0 16px 30px oklch(0.25 0.012 75 / 13%);
     border-color: color-mix(in oklch, var(--primary) 35%, var(--border));
   }
   .pipeline-card:active {
@@ -429,6 +436,94 @@
   }
   .glass-dock {
     background: oklch(0.22 0.012 75);
+  }
+}
+
+.overview-hero {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 100% 0%, oklch(0.7 0.12 80 / 26%), transparent 65%),
+    radial-gradient(ellipse at 0% 100%, oklch(0.55 0.045 220 / 20%), transparent 60%),
+    linear-gradient(135deg, oklch(0.27 0.014 75), oklch(0.195 0.01 75));
+  border: 1px solid oklch(1 0 0 / 18%);
+  box-shadow:
+    0 20px 48px oklch(0.22 0.015 75 / 18%),
+    inset 0 1px 0 oklch(1 0 0 / 18%);
+}
+.overview-hero .page-heading h1 {
+  color: oklch(0.99 0.003 85);
+}
+.overview-hero .page-heading p {
+  color: oklch(0.84 0.014 85);
+}
+.overview-hero .page-heading button[data-variant="outline"] {
+  color: white;
+}
+.overview-hero .page-heading button:not(.button-primary) {
+  background: oklch(1 0 0 / 8%);
+  border-color: oklch(1 0 0 / 18%);
+  color: oklch(0.97 0.005 85);
+}
+.overview-hero .metric-card {
+  background: linear-gradient(135deg, oklch(1 0 0 / 12%), oklch(1 0 0 / 4%));
+  border-color: oklch(1 0 0 / 16%);
+  box-shadow:
+    0 8px 20px oklch(0 0 0 / 13%),
+    inset 0 1px 0 oklch(1 0 0 / 15%);
+}
+.overview-hero .metric-card > div {
+  display: block;
+}
+.overview-hero .metric-label {
+  color: oklch(0.9 0.01 85);
+}
+.overview-hero .metric-value {
+  color: oklch(0.99 0.004 85);
+  font-size: clamp(1.125rem, 2.15vw, 2rem);
+}
+.overview-hero .metric-caption {
+  color: oklch(0.8 0.013 85);
+}
+.overview-hero .metric-icon {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: none;
+  background: oklch(0.83 0.14 85 / 14%);
+  border: 1px solid oklch(0.83 0.14 85 / 20%);
+}
+.overview-hero .metric-icon svg {
+  color: oklch(0.86 0.12 85);
+}
+.overview-hero .metric-card:last-child {
+  background: linear-gradient(140deg, oklch(0.75 0.1 150 / 17%), oklch(1 0 0 / 4%));
+  border-color: oklch(0.8 0.08 150 / 25%);
+}
+.overview-hero .metric-card:last-child .metric-value {
+  color: oklch(0.88 0.1 150);
+}
+.floating-toolbar {
+  border-width: 1px;
+  border-color: var(--glass-border);
+  box-shadow:
+    0 12px 32px oklch(0.25 0.012 75 / 9%),
+    inset 0 1px 0 var(--glass-border);
+}
+@media (min-width: 640px) {
+  .overview-hero .metric-icon {
+    display: flex;
+    width: 2rem;
+    height: 2rem;
+  }
+  .overview-hero .metric-label {
+    min-height: 2rem;
+    padding-right: 2.25rem;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .overview-hero .metric-card {
+    background: oklch(0.32 0.012 75);
   }
 }
 
