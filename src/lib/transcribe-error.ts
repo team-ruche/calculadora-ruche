@@ -8,9 +8,14 @@ type MaybeFnError = {
 } | null;
 
 const isResponse = (v: unknown): v is Response =>
-  typeof v === "object" && v !== null && "status" in v && typeof (v as Response).text === "function";
+  typeof v === "object" &&
+  v !== null &&
+  "status" in v &&
+  typeof (v as Response).text === "function";
 
-async function readBody(res: Response): Promise<{ error?: string; message?: string; code?: string } | null> {
+async function readBody(
+  res: Response,
+): Promise<{ error?: string; message?: string; code?: string } | null> {
   try {
     const text = await res.clone().text();
     if (!text) return null;
@@ -47,7 +52,9 @@ export async function transcribeErrorMessage(
     }
     if (res.status === 401) return "Your session expired. Sign in again, then retry.";
     const detail = body?.error ?? body?.message;
-    return detail ? `Transcription failed (${res.status}): ${detail}` : `Transcription failed (HTTP ${res.status}).`;
+    return detail
+      ? `Transcription failed (${res.status}): ${detail}`
+      : `Transcription failed (HTTP ${res.status}).`;
   }
 
   return error.message || "Transcription failed.";

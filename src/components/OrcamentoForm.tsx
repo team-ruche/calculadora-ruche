@@ -917,14 +917,29 @@ function DictateButton({ onText }: { onText: (t: string) => void }) {
   const [gravando, setGravando] = useState(false);
   const [segundos, setSegundos] = useState(0);
   const [enviando, setEnviando] = useState(false);
+  // Audio whose transcription failed — kept so it can be retried or downloaded.
+  const [falhou, setFalhou] = useState<{ blob: Blob; mime: string; url: string } | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const urlRef = useRef<string | null>(null);
   const cbRef = useRef(onText);
   cbRef.current = onText;
 
-  // Fecha o microfone se o formulario sumir no meio da gravacao.
+  const setFailed = (v: { blob: Blob; mime: string } | null) => {
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    urlRef.current = null;
+    if (!v) return setFalhou(null);
+    const url = URL.createObjectURL(v.blob);
+    urlRef.current = url;
+    setFalhou({ ...v, url });
+  };
+
+  // Release the mic and object URLs if the form unmounts.
   useEffect(
     () => () => {
       if (recRef.current?.state === "recording") recRef.current.stop();
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     },
     [],
   );
@@ -935,14 +950,28 @@ function DictateButton({ onText }: { onText: (t: string) => void }) {
     return () => clearInterval(t);
   }, [gravando]);
 
-  // Corta sozinho no limite: audio longo demais e recusado pela API, e
-  // descobrir isso depois de cinco minutos falando seria cruel.
+  // Corta sozinho no limite: audio longo demais e recusado pela API.
   useEffect(() => {
     if (segundos >= MAX_SEGUNDOS && recRef.current?.state === "recording") {
       recRef.current.stop();
       toast.info("Recording stopped at 5 minutes.");
     }
   }, [segundos]);
+
+  const transcrever = async (blob: Blob, mime: string) => {
+    setEnviando(true);
+    try {
+      const texto = await callTranscreverAudio(blob, mime);
+      cbRef.current(texto);
+      setFailed(null);
+      toast.success("Transcribed");
+    } catch (e) {
+      setFailed({ blob, mime });
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   const iniciar = async () => {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
@@ -954,30 +983,23 @@ function DictateButton({ onText }: { onText: (t: string) => void }) {
     } catch {
       return toast.error("Microphone blocked. Allow it for this site and try again.");
     }
+    streamRef.current = stream;
 
     const rec = new MediaRecorder(stream);
     const pedacos: Blob[] = [];
     rec.ondataavailable = (e) => {
       if (e.data.size > 0) pedacos.push(e.data);
     };
-    rec.onstop = async () => {
+    rec.onstop = () => {
       stream.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
       recRef.current = null;
       setGravando(false);
       setSegundos(0);
       const mime = rec.mimeType || "audio/webm";
       const blob = new Blob(pedacos, { type: mime });
       if (blob.size < 1000) return toast.error("Recording too short.");
-      setEnviando(true);
-      try {
-        const texto = await callTranscreverAudio(blob, mime);
-        cbRef.current(texto);
-        toast.success("Transcribed");
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : String(e));
-      } finally {
-        setEnviando(false);
-      }
+      void transcrever(blob, mime);
     };
     rec.start();
     recRef.current = rec;
@@ -988,30 +1010,51 @@ function DictateButton({ onText }: { onText: (t: string) => void }) {
   const parar = () => recRef.current?.stop();
 
   const mmss = `${Math.floor(segundos / 60)}:${String(segundos % 60).padStart(2, "0")}`;
+  const ext = (falhou?.mime.split(";")[0].split("/")[1] ?? "webm").replace("mpeg", "mp3");
 
   return (
-    <Button
-      type="button"
-      size="sm"
-      variant={gravando ? "destructive" : "ghost"}
-      disabled={enviando}
-      onClick={gravando ? parar : iniciar}
-      title="Record a voice note — it gets transcribed into the field"
-    >
-      {enviando ? (
+    <div className="flex flex-wrap items-center gap-1">
+      {falhou && !gravando && (
         <>
-          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Transcribing…
-        </>
-      ) : gravando ? (
-        <>
-          <Square className="mr-1.5 h-3.5 w-3.5 fill-current" /> Stop · {mmss}
-        </>
-      ) : (
-        <>
-          <Mic className="mr-1.5 h-4 w-4" /> Record
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={enviando}
+            onClick={() => transcrever(falhou.blob, falhou.mime)}
+          >
+            Retry transcription
+          </Button>
+          <Button type="button" size="sm" variant="ghost" asChild>
+            <a href={falhou.url} download={`voice-note.${ext}`}>
+              Download audio
+            </a>
+          </Button>
         </>
       )}
-    </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant={gravando ? "destructive" : "ghost"}
+        disabled={enviando}
+        onClick={gravando ? parar : iniciar}
+        title="Record a voice note — it gets transcribed into the field"
+      >
+        {enviando ? (
+          <>
+            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Transcribing…
+          </>
+        ) : gravando ? (
+          <>
+            <Square className="mr-1.5 h-3.5 w-3.5 fill-current" /> Stop · {mmss}
+          </>
+        ) : (
+          <>
+            <Mic className="mr-1.5 h-4 w-4" /> Record
+          </>
+        )}
+      </Button>
+    </div>
   );
 }
 
