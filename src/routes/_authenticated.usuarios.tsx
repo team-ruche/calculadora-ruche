@@ -39,6 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
   head: () => ({ meta: [{ title: "Users · Ruche" }] }),
@@ -110,7 +111,7 @@ function UsuariosPage() {
       <NovoUsuarioDialog open={novoOpen} onOpenChange={setNovoOpen} onCreated={load} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Users</h1>
+          <PageHeader title="Users" />
           <p className="text-sm text-muted-foreground">
             Create partners, approve sign-ups and set the role.
           </p>
