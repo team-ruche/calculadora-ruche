@@ -15,9 +15,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as OrcamentoIdRouteImport } from './routes/orcamento.$id'
 import { Route as AuthenticatedVisaoInternaRouteImport } from './routes/_authenticated.visao-interna'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated.usuarios'
+import { Route as AuthenticatedPagamentosRouteImport } from './routes/_authenticated.pagamentos'
 import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated.overview'
 import { Route as AuthenticatedOrcamentosRouteImport } from './routes/_authenticated.orcamentos'
-import { Route as AuthenticatedPagamentosRouteImport } from './routes/_authenticated.pagamentos'
 import { Route as AuthenticatedMotorRouteImport } from './routes/_authenticated.motor'
 
 const AuthRoute = AuthRouteImport.update({
@@ -50,6 +50,11 @@ const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
   path: '/usuarios',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedPagamentosRoute = AuthenticatedPagamentosRouteImport.update({
+  id: '/pagamentos',
+  path: '/pagamentos',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
@@ -58,11 +63,6 @@ const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
 const AuthenticatedOrcamentosRoute = AuthenticatedOrcamentosRouteImport.update({
   id: '/orcamentos',
   path: '/orcamentos',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedPagamentosRoute = AuthenticatedPagamentosRouteImport.update({
-  id: '/pagamentos',
-  path: '/pagamentos',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedMotorRoute = AuthenticatedMotorRouteImport.update({
@@ -76,8 +76,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/motor': typeof AuthenticatedMotorRoute
   '/orcamentos': typeof AuthenticatedOrcamentosRoute
-  '/pagamentos': typeof AuthenticatedPagamentosRoute
   '/overview': typeof AuthenticatedOverviewRoute
+  '/pagamentos': typeof AuthenticatedPagamentosRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/visao-interna': typeof AuthenticatedVisaoInternaRoute
   '/orcamento/$id': typeof OrcamentoIdRoute
@@ -87,8 +87,8 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/motor': typeof AuthenticatedMotorRoute
   '/orcamentos': typeof AuthenticatedOrcamentosRoute
-  '/pagamentos': typeof AuthenticatedPagamentosRoute
   '/overview': typeof AuthenticatedOverviewRoute
+  '/pagamentos': typeof AuthenticatedPagamentosRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/visao-interna': typeof AuthenticatedVisaoInternaRoute
   '/orcamento/$id': typeof OrcamentoIdRoute
@@ -100,8 +100,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/motor': typeof AuthenticatedMotorRoute
   '/_authenticated/orcamentos': typeof AuthenticatedOrcamentosRoute
-  '/_authenticated/pagamentos': typeof AuthenticatedPagamentosRoute
   '/_authenticated/overview': typeof AuthenticatedOverviewRoute
+  '/_authenticated/pagamentos': typeof AuthenticatedPagamentosRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/visao-interna': typeof AuthenticatedVisaoInternaRoute
   '/orcamento/$id': typeof OrcamentoIdRoute
@@ -114,6 +114,7 @@ export interface FileRouteTypes {
     | '/motor'
     | '/orcamentos'
     | '/overview'
+    | '/pagamentos'
     | '/usuarios'
     | '/visao-interna'
     | '/orcamento/$id'
@@ -124,6 +125,7 @@ export interface FileRouteTypes {
     | '/motor'
     | '/orcamentos'
     | '/overview'
+    | '/pagamentos'
     | '/usuarios'
     | '/visao-interna'
     | '/orcamento/$id'
@@ -135,6 +137,7 @@ export interface FileRouteTypes {
     | '/_authenticated/motor'
     | '/_authenticated/orcamentos'
     | '/_authenticated/overview'
+    | '/_authenticated/pagamentos'
     | '/_authenticated/usuarios'
     | '/_authenticated/visao-interna'
     | '/orcamento/$id'
@@ -191,6 +194,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/pagamentos': {
+      id: '/_authenticated/pagamentos'
+      path: '/pagamentos'
+      fullPath: '/pagamentos'
+      preLoaderRoute: typeof AuthenticatedPagamentosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/overview': {
       id: '/_authenticated/overview'
       path: '/overview'
@@ -203,13 +213,6 @@ declare module '@tanstack/react-router' {
       path: '/orcamentos'
       fullPath: '/orcamentos'
       preLoaderRoute: typeof AuthenticatedOrcamentosRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/pagamentos': {
-      id: '/_authenticated/pagamentos'
-      path: '/pagamentos'
-      fullPath: '/pagamentos'
-      preLoaderRoute: typeof AuthenticatedPagamentosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/motor': {
@@ -225,8 +228,8 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedMotorRoute: typeof AuthenticatedMotorRoute
   AuthenticatedOrcamentosRoute: typeof AuthenticatedOrcamentosRoute
-  AuthenticatedPagamentosRoute: typeof AuthenticatedPagamentosRoute
   AuthenticatedOverviewRoute: typeof AuthenticatedOverviewRoute
+  AuthenticatedPagamentosRoute: typeof AuthenticatedPagamentosRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedVisaoInternaRoute: typeof AuthenticatedVisaoInternaRoute
 }
@@ -234,8 +237,8 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedMotorRoute: AuthenticatedMotorRoute,
   AuthenticatedOrcamentosRoute: AuthenticatedOrcamentosRoute,
-  AuthenticatedPagamentosRoute: AuthenticatedPagamentosRoute,
   AuthenticatedOverviewRoute: AuthenticatedOverviewRoute,
+  AuthenticatedPagamentosRoute: AuthenticatedPagamentosRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedVisaoInternaRoute: AuthenticatedVisaoInternaRoute,
 }
