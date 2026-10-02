@@ -24,7 +24,13 @@ type Gran = "dia" | "semana" | "mes";
 const GRAN_LABEL: Record<Gran, string> = { dia: "Daily", semana: "Weekly", mes: "Monthly" };
 
 const money = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
-const axisMoney = (n: number) => `$${Math.round(n / 1000)}k`;
+const axisMoney = (n: number) =>
+  n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  });
 
 function startOfWeek(d: Date) {
   const x = new Date(d);
@@ -43,10 +49,10 @@ function bucket(dateStr: string, g: Gran): { key: string; label: string } {
     const s = startOfWeek(d);
     return {
       key: format(s, "yyyy-MM-dd"),
-      label: format(s, "dd/MM", { locale: enUS }),
+      label: format(s, "MMM d", { locale: enUS }),
     };
   }
-  return { key: format(d, "yyyy-MM-dd"), label: format(d, "dd/MM", { locale: enUS }) };
+  return { key: format(d, "yyyy-MM-dd"), label: format(d, "MMM d", { locale: enUS }) };
 }
 
 export function ChartFaturamento({ deals }: { deals: DealPonto[] }) {

@@ -247,8 +247,7 @@ export function PricingDialog({
             </span>
           </DialogTitle>
           <DialogDescription>
-            Each quote carries its own price list. Editing here never touches the engine, and the
-            engine never comes back over an adjusted quote.
+            Review project prices, partner payout and margin before approving the quote.
           </DialogDescription>
         </DialogHeader>
 
@@ -431,7 +430,7 @@ export function PricingDialog({
 
         <div className="shrink-0 border-t px-6 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-6 text-sm">
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
               <div>
                 <p className="text-xs text-muted-foreground">Client</p>
                 <p className="font-semibold tabular-nums">{money(totais.cli)}</p>
@@ -451,7 +450,7 @@ export function PricingDialog({
               </div>
             </div>
             {isRuche ? (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button variant="ghost" onClick={resetar} disabled={salvando || status === "auto"}>
                   <RotateCcw className="mr-1.5 h-4 w-4" /> Reset to engine
                 </Button>
