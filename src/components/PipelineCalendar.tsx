@@ -83,6 +83,15 @@ export function PipelineCalendar({
     return d;
   });
 
+  useEffect(() => {
+    const from = new Date(isMobile ? mobileDay : weekStart);
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(from);
+    if (!isMobile) to.setDate(to.getDate() + 6);
+    to.setHours(23, 59, 59, 999);
+    onVisibleRangeChange({ from, to });
+  }, [isMobile, mobileDay, weekStart, onVisibleRangeChange]);
+
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart);
     d.setDate(d.getDate() + i);
@@ -148,7 +157,13 @@ export function PipelineCalendar({
           Today
         </Button>
         <div className="flex items-center gap-1.5">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => move(-1)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Previous calendar period"
+            className="h-10 w-10"
+            onClick={() => move(-1)}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="min-w-44 text-center text-sm font-semibold">
@@ -156,16 +171,22 @@ export function PipelineCalendar({
               ? format(mobileDay, "EEE, d MMM yyyy", { locale: enUS })
               : `${format(days[0], "d MMM", { locale: enUS })} – ${format(days[6], "d MMM yyyy", { locale: enUS })}`}
           </span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => move(1)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Next calendar period"
+            className="h-10 w-10"
+            onClick={() => move(1)}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        <div className="ml-auto hidden items-center gap-3 text-[11px] text-muted-foreground sm:flex">
+        <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           {STAGE_ORDER.map((s) => (
             <span key={s} className="flex items-center gap-1">
               <span
                 className="h-2 w-2 rounded-full"
-                style={{ background: STAGE_BG[s].dot }}
+                style={{ background: STAGE_STYLE[s].dot }}
                 aria-hidden
               />
               {STAGE_LABEL[s]}
@@ -188,14 +209,14 @@ export function PipelineCalendar({
                 >
                   <div
                     className={`text-lg font-bold leading-none ${
-                      hoje ? "text-primary" : "text-foreground"
+                      hoje ? "text-brand-ink" : "text-foreground"
                     }`}
                   >
                     {format(d, "dd")}
                   </div>
                   <div
                     className={`text-[11px] uppercase ${
-                      hoje ? "font-semibold text-primary" : "text-muted-foreground"
+                      hoje ? "font-semibold text-brand-ink" : "text-muted-foreground"
                     }`}
                   >
                     {format(d, "EEE", { locale: enUS })}
@@ -254,7 +275,7 @@ export function PipelineCalendar({
                       if (dt.getHours() < START_HOUR || dt.getHours() > END_HOUR) return null;
                       const top =
                         ((dt.getHours() - START_HOUR) * 60 + dt.getMinutes()) * (ROW_H / 60);
-                      const c = STAGE_BG[r.stage];
+                      const c = STAGE_STYLE[r.stage];
                       return (
                         <Popover key={r.id}>
                           <PopoverTrigger asChild>
@@ -266,7 +287,7 @@ export function PipelineCalendar({
                                 minHeight: 46,
                                 background: c.bg,
                                 color: c.fg,
-                                borderColor: c.border,
+                                borderColor: c.dot,
                               }}
                             >
                               <span className="block truncate text-xs font-semibold">
@@ -294,12 +315,9 @@ export function PipelineCalendar({
                               </p>
                               <p className="flex items-center gap-1.5 font-medium text-foreground">
                                 <DollarSign className="h-3.5 w-3.5 shrink-0" />
-                                {money(r.total_cliente)}
-                                {!r.total_cliente && (
-                                  <span className="font-normal text-muted-foreground">
-                                    (after quote)
-                                  </span>
-                                )}
+                                {r.total_cliente && r.total_cliente > 0
+                                  ? money(r.total_cliente)
+                                  : "Not quoted"}
                               </p>
                             </div>
 
@@ -316,21 +334,28 @@ export function PipelineCalendar({
                               >
                                 <MessageSquare className="h-3.5 w-3.5" />
                               </IconBtn>
-                              <IconBtn label="GHL">
+                              <IconBtn
+                                label="GHL"
+                                href={
+                                  r.ghl_opportunity_id
+                                    ? `https://app.gohighlevel.com/v2/location/${r.location_id ?? "jl5iFelWb5hiWu9FIeiD"}/opportunities/list/${r.ghl_opportunity_id}?tab=OpportunityDetails`
+                                    : undefined
+                                }
+                              >
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </IconBtn>
                               <button
                                 type="button"
                                 onClick={() => onOrcamento(r.id)}
-                                className="ml-auto flex h-7 items-center gap-1 rounded-md px-2.5 text-[11px] font-semibold"
+                                className="ml-auto flex min-h-9 items-center gap-1 rounded-md px-2.5 text-[11px] font-semibold"
                                 style={
                                   r.total_cliente && r.total_cliente > 0
                                     ? { background: "#E7F4E4", color: "#2C7A3F" }
-                                    : { background: "#FDECEC", color: "#B42318" }
+                                    : { background: "#FBE7BF", color: "#7A4E05" }
                                 }
                               >
                                 <ClipboardList className="h-3.5 w-3.5" />
-                                {r.total_cliente && r.total_cliente > 0 ? "Measured" : "Measure"}
+                                {r.total_cliente && r.total_cliente > 0 ? "View quote" : "Measure"}
                               </button>
                             </div>
 
@@ -352,7 +377,7 @@ export function PipelineCalendar({
                                   >
                                     <span
                                       className="h-2.5 w-2.5 rounded-full"
-                                      style={{ background: STAGE_BG[s].dot }}
+                                      style={{ background: STAGE_STYLE[s].dot }}
                                     />
                                     <span className="flex-1">{STAGE_LABEL[s]}</span>
                                     {active && <Check className="h-3.5 w-3.5" />}
@@ -397,9 +422,9 @@ function IconBtn({
   href?: string;
   accent?: boolean;
 }) {
-  const cls = `flex h-7 w-7 items-center justify-center rounded-md border ${
+  const cls = `flex h-9 w-9 items-center justify-center rounded-md border ${
     accent
-      ? "border-primary/40 bg-primary/10 text-primary"
+      ? "border-primary/40 bg-primary/10 text-brand-ink"
       : "border-border bg-background text-muted-foreground hover:text-foreground"
   }`;
   return href ? (
@@ -407,7 +432,15 @@ function IconBtn({
       {children}
     </a>
   ) : (
-    <button type="button" aria-label={label} title={label} onClick={onClick} className={cls}>
+    <button
+      type="button"
+      data-touch-action
+      aria-label={label}
+      title={label}
+      disabled={!onClick}
+      onClick={onClick}
+      className={`${cls} disabled:opacity-35 disabled:cursor-not-allowed`}
+    >
       {children}
     </button>
   );
