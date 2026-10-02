@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { enUS } from "date-fns/locale";
 import type { ProposalStage } from "@/integrations/supabase/models";
 import { STAGE_LABEL, STAGE_ORDER } from "@/integrations/supabase/models";
+import { STAGE_STYLE } from "@/lib/proposal-stage";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -25,20 +26,13 @@ export type CalRow = {
   visita_at: string | null;
   stage: ProposalStage;
   total_cliente: number | null;
+  ghl_opportunity_id?: string | null;
+  location_id?: string | null;
   leads: {
     nome_cliente: string | null;
     endereco: string | null;
     telefone: string | null;
   } | null;
-};
-
-const STAGE_BG: Record<ProposalStage, { bg: string; fg: string; border: string; dot: string }> = {
-  appointment_confirmed: { bg: "#FCEED2", fg: "#5C3B04", border: "#F0A81E", dot: "#F0A81E" },
-  appointment_canceled: { bg: "#F9E1D7", fg: "#5C2410", border: "#E07A52", dot: "#E07A52" },
-  pricing_review: { bg: "#EDE6F8", fg: "#4B2E83", border: "#6B46C1", dot: "#6B46C1" },
-  negotiation: { bg: "#E6F1FB", fg: "#0C447C", border: "#185FA5", dot: "#185FA5" },
-  no_deal: { bg: "#E6E4DB", fg: "#3A3934", border: "#9C9A90", dot: "#9C9A90" },
-  deal: { bg: "#DFEECB", fg: "#204009", border: "#5FA13B", dot: "#5FA13B" },
 };
 
 const START_HOUR = 0; // midnight
@@ -66,6 +60,7 @@ interface Props {
   rows: CalRow[];
   weekStart: Date;
   onWeekStart: (d: Date) => void;
+  onVisibleRangeChange: (range: { from: Date; to: Date }) => void;
   onSelect: (id: string) => void;
   onChangeStage: (id: string, next: ProposalStage) => void;
   onOrcamento: (id: string) => void;
@@ -75,6 +70,7 @@ export function PipelineCalendar({
   rows,
   weekStart,
   onWeekStart,
+  onVisibleRangeChange,
   onSelect,
   onChangeStage,
   onOrcamento,
