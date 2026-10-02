@@ -5,6 +5,10 @@ import {
   MessageSquare,
   Calendar as CalendarIcon,
   CalendarDays,
+  CalendarCheck,
+  Target,
+  TrendingUp,
+  Trophy,
   LayoutGrid,
   ExternalLink,
   ClipboardList,
@@ -267,57 +271,66 @@ function Overview() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Overview"
-        description="Your visits, quotes and opportunities in one place."
-        actions={
-          <>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Refresh pipeline"
-              onClick={load}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            </Button>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              New quote
-            </Button>
-          </>
-        }
-      />
+      <section
+        className="overview-hero space-y-6 rounded-[1.75rem] p-5 sm:p-7"
+        aria-label="Pipeline overview"
+      >
+        <PageHeader
+          title="Overview"
+          description="Your visits, quotes and opportunities in one place."
+          actions={
+            <>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Refresh pipeline"
+                onClick={load}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              </Button>
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                New quote
+              </Button>
+            </>
+          }
+        />
 
-      <div className="metric-grid grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MetricCard
-          label="Visits completed"
-          value={pct(completed.length, scheduled.length)}
-          sub={`${completed.length} of ${scheduled.length} scheduled visits`}
-          loading={loading}
-        />
-        <MetricCard
-          label="Visit win rate"
-          value={pct(deals, completed.length)}
-          sub="Deals / completed visits"
-          loading={loading}
-        />
-        <MetricCard
-          label="In negotiation"
-          value={money(pipeline)}
-          sub="Opportunities in this view"
-          loading={loading}
-        />
-        <MetricCard
-          label="Won value"
-          value={money(vendaFechada)}
-          sub="Won opportunities in this view"
-          tone="success"
-          loading={loading}
-        />
-      </div>
+        <div className="metric-grid grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <MetricCard
+            icon={CalendarCheck}
+            label="Visits completed"
+            value={pct(completed.length, scheduled.length)}
+            sub={`${completed.length} of ${scheduled.length} scheduled visits`}
+            loading={loading}
+          />
+          <MetricCard
+            icon={Target}
+            label="Visit win rate"
+            value={pct(deals, completed.length)}
+            sub="Deals / completed visits"
+            loading={loading}
+          />
+          <MetricCard
+            icon={TrendingUp}
+            label="In negotiation"
+            value={money(pipeline)}
+            sub="Opportunities in this view"
+            loading={loading}
+          />
+          <MetricCard
+            icon={Trophy}
+            label="Won value"
+            value={money(vendaFechada)}
+            sub="Won opportunities in this view"
+            tone="success"
+            loading={loading}
+          />
+        </div>
+      </section>
 
-      <div className="glass-toolbar sticky top-16 z-30 -mx-4 space-y-3 px-4 py-4 sm:-mx-8 sm:px-8">
+      <div className="glass-toolbar floating-toolbar sticky top-20 z-30 space-y-3 rounded-2xl px-4 py-4">
         <div className="flex flex-wrap items-center gap-2">
           <div
             className="inline-flex shrink-0 rounded-xl border border-border/60 bg-card/70 p-1"
