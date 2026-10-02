@@ -12,6 +12,9 @@ import {
   DollarSign,
   ArrowDownAZ,
   Search,
+  Plus,
+  RefreshCw,
+  ChevronDown,
 } from "lucide-react";
 import {
   supabase,
@@ -45,6 +48,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
+import { MetricCard } from "@/components/MetricCard";
+import { STAGE_STYLE } from "@/lib/proposal-stage";
+import { filterPipelineRows, type VisitScope } from "@/lib/pipeline";
 
 // Fallback for when the proposal does not yet have a location_id stored (leads
 // created before step 10). Today only 1 client is running the sync.
@@ -98,26 +105,12 @@ const visitLabel = (iso: string | null) => {
   });
 };
 
-// Colors per stage — tones with good contrast (text always in the family's 900).
-const STAGE_COLOR: Record<
-  ProposalStage,
-  { bar: string; text: string; head: string; headText: string }
-> = {
-  appointment_confirmed: { bar: "#F0A81E", text: "#3D2600", head: "#FBE7BF", headText: "#7A4E05" },
-  appointment_canceled: { bar: "#E07A52", text: "#3D1405", head: "#F6D6C7", headText: "#7A2E12" },
-  pricing_review: { bar: "#6B46C1", text: "#2E1A54", head: "#EDE6F8", headText: "#4B2E83" },
-  negotiation: { bar: "#185FA5", text: "#042C53", head: "#E6F1FB", headText: "#0C447C" },
-  no_deal: { bar: "#9C9A90", text: "#26251F", head: "#DEDCD2", headText: "#45443D" },
-  deal: { bar: "#5FA13B", text: "#173404", head: "#D3E8BC", headText: "#2C5212" },
-};
-
 const REALIZADAS: ProposalStage[] = ["pricing_review", "negotiation", "no_deal", "deal"];
 
 // Quote done = has a calculated value. It's the gate to move to Negotiation.
 const orcamentoFeito = (r: Row) => r.total_cliente != null && r.total_cliente > 0;
 
 function Overview() {
-  const { user, isRuche } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -131,6 +124,17 @@ function Overview() {
   const [sortBy, setSortBy] = useState<SortBy>("visita");
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [busca, setBusca] = useState("");
+  const [visitScope, setVisitScope] = useState<VisitScope>("all");
+  const [mobileStage, setMobileStage] = useState<ProposalStage>("appointment_confirmed");
+  const [dropStage, setDropStage] = useState<ProposalStage | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [calendarRange, setCalendarRange] = useState<Range>(() => {
+    const from = startOfWeek(new Date());
+    const to = new Date(from);
+    to.setDate(to.getDate() + 6);
+    to.setHours(23, 59, 59, 999);
+    return { from, to };
+  });
   const isMobile = useIsMobile();
 
   const load = async () => {
@@ -148,7 +152,15 @@ function Overview() {
     load();
   }, []);
 
-  const visitRows = useMemo(() => rows.filter((r) => inRange(r.visita_at, range)), [rows, range]);
+  const filteredRows = useMemo(
+    () =>
+      filterPipelineRows(rows, {
+        range: view === "calendar" ? calendarRange : range,
+        query: busca,
+        visitScope: view === "calendar" ? "scheduled" : visitScope,
+      }),
+    [rows, range, calendarRange, busca, view, visitScope],
+  );
 
   const byStage = useMemo(() => {
     const m: Record<ProposalStage, Row[]> = {
@@ -159,9 +171,7 @@ function Overview() {
       no_deal: [],
       deal: [],
     };
-    const q = busca.trim().toLowerCase();
-    for (const r of visitRows) {
-      if (q && !(r.leads?.nome_cliente ?? "").toLowerCase().includes(q)) continue;
+    for (const r of filteredRows) {
       (m[r.stage] ?? m.appointment_confirmed).push(r);
     }
     const cmp = (a: Row, b: Row) => {
@@ -176,19 +186,20 @@ function Overview() {
     };
     for (const s of STAGE_ORDER) m[s].sort(cmp);
     return m;
-  }, [visitRows, sortBy, busca]);
+  }, [filteredRows, sortBy]);
 
   const count = (s: ProposalStage) => byStage[s].length;
   const sumStage = (s: ProposalStage) => byStage[s].reduce((a, r) => a + (r.total_cliente ?? 0), 0);
 
-  const totais = visitRows.length;
-  const realizadas = visitRows.filter((r) => REALIZADAS.includes(r.stage)).length;
-  const deals = visitRows.filter((r) => r.stage === "deal").length;
-  const pipeline = visitRows
+  const totais = filteredRows.length;
+  const scheduled = filteredRows.filter((r) => r.visita_at);
+  const completed = scheduled.filter((r) => REALIZADAS.includes(r.stage));
+  const deals = completed.filter((r) => r.stage === "deal").length;
+  const pipeline = filteredRows
     .filter((r) => r.stage === "negotiation")
     .reduce((a, r) => a + (r.total_cliente ?? 0), 0);
-  const vendaFechada = rows
-    .filter((r) => r.stage === "deal" && inRange(r.fechado_at, range))
+  const vendaFechada = filteredRows
+    .filter((r) => r.stage === "deal")
     .reduce((a, r) => a + (r.total_cliente ?? 0), 0);
 
   const changeStage = async (row: Row, next: ProposalStage) => {
@@ -256,55 +267,116 @@ function Overview() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Overview</h1>
-        <p className="text-sm text-muted-foreground">
-          Welcome, {user?.nome || user?.email}.{" "}
-          {isRuche ? "You have full access." : "You are a partner."}
-        </p>
+      <PageHeader
+        title="Overview"
+        description="Your visits, quotes and opportunities in one place."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Refresh pipeline"
+              onClick={load}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              New quote
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricCard
+          label="Visits completed"
+          value={pct(completed.length, scheduled.length)}
+          sub={`${completed.length} of ${scheduled.length} scheduled visits`}
+          loading={loading}
+        />
+        <MetricCard
+          label="Visit win rate"
+          value={pct(deals, completed.length)}
+          sub="Deals / completed visits"
+          loading={loading}
+        />
+        <MetricCard
+          label="In negotiation"
+          value={money(pipeline)}
+          sub="Opportunities in this view"
+          loading={loading}
+        />
+        <MetricCard
+          label="Won value"
+          value={money(vendaFechada)}
+          sub="Won opportunities in this view"
+          tone="success"
+          loading={loading}
+        />
       </div>
 
-      {/* Filter bar — fixed at the top, bleeding to the edge */}
-      <div className="sticky top-14 z-30 -mx-4 flex flex-wrap items-center gap-2 border-b bg-background px-4 py-2.5 sm:-mx-6 sm:px-6">
-        <div className="inline-flex shrink-0 rounded-lg border bg-card p-0.5">
-          <button
-            type="button"
-            onClick={() => setView("kanban")}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-              view === "kanban" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-            }`}
+      <div className="sticky top-14 z-30 -mx-4 space-y-2 border-b bg-background px-4 py-3 sm:-mx-6 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="inline-flex shrink-0 rounded-lg border bg-card p-0.5"
+            role="group"
+            aria-label="Pipeline view"
           >
-            <LayoutGrid className="h-4 w-4" /> Kanban
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("calendar")}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-              view === "calendar" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-            }`}
-          >
-            <CalendarDays className="h-4 w-4" /> Calendar
-          </button>
-        </div>
-
-        <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
-        <div className="flex min-w-[140px] flex-1 items-center gap-2 rounded-lg border bg-card px-3 py-1.5">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Search client…"
-            className="w-full bg-transparent text-sm outline-none"
-          />
-        </div>
-        {view === "kanban" && (
-          <div className="flex min-w-[150px] flex-1 items-center gap-2 sm:flex-none">
-            <ArrowDownAZ className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <button
+              type="button"
+              aria-pressed={view === "kanban"}
+              onClick={() => setView("kanban")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium ${view === "kanban" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Kanban
+            </button>
+            <button
+              type="button"
+              aria-pressed={view === "calendar"}
+              onClick={() => setView("calendar")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium ${view === "calendar" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+            >
+              <CalendarDays className="h-4 w-4" />
+              Calendar
+            </button>
+          </div>
+          {view === "kanban" && (
+            <>
+              {visitScope !== "unscheduled" && (
+                <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
+              )}
+              <Select value={visitScope} onValueChange={(v) => setVisitScope(v as VisitScope)}>
+                <SelectTrigger className="h-10 w-44" aria-label="Visit status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All opportunities</SelectItem>
+                  <SelectItem value="scheduled">Scheduled visits</SelectItem>
+                  <SelectItem value="unscheduled">Unscheduled</SelectItem>
+                </SelectContent>
+              </Select>
+            </>
+          )}
+          <label className="flex min-w-40 flex-1 items-center gap-2 rounded-lg border bg-card px-3 py-2 focus-within:ring-2 focus-within:ring-brand-ink">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <input
+              aria-label="Search clients"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Search client…"
+              className="min-w-0 w-full bg-transparent text-sm outline-none"
+            />
+          </label>
+          {view === "kanban" && (
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-              <SelectTrigger className="h-9 flex-1 sm:w-52">
+              <SelectTrigger className="h-10 w-40" aria-label="Sort opportunities">
+                <ArrowDownAZ className="mr-2 h-4 w-4" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="end">
+              <SelectContent>
                 {(Object.keys(SORT_LABEL) as SortBy[]).map((s) => (
                   <SelectItem key={s} value={s}>
                     {SORT_LABEL[s]}
@@ -312,18 +384,17 @@ function Overview() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        )}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Funnel counts={{ count }} totais={totais} className="lg:col-span-2" />
-        <div className="space-y-3">
-          <MetricBox label="Visits completed" value={pct(realizadas, totais)} />
-          <MetricBox label="Deal / Negotiation" value={pct(deals, realizadas)} />
-          <MetricBox label="Pipeline in negotiation" value={money(pipeline)} />
-          <MetricBox label="Closed sale" value={money(vendaFechada)} success />
+          )}
         </div>
+        <p className="text-xs text-muted-foreground" aria-live="polite">
+          {loading ? "Loading opportunities…" : `${totais} opportunities`} ·{" "}
+          {view === "calendar"
+            ? "Metrics follow the visible calendar dates."
+            : visitScope === "unscheduled"
+              ? "Unscheduled opportunities across all dates."
+              : `Filtered by visit date${visitScope === "all" ? "; unscheduled opportunities included across all dates" : ""}.`}{" "}
+          {busca.trim() && "Search applies to cards and metrics."}
+        </p>
       </div>
 
       {view === "calendar" ? (
@@ -333,6 +404,7 @@ function Overview() {
           )}
           weekStart={weekStart}
           onWeekStart={setWeekStart}
+          onVisibleRangeChange={setCalendarRange}
           onSelect={(id) => {
             const r = rows.find((x) => x.id === id);
             if (r) setDetail(r);
@@ -346,94 +418,123 @@ function Overview() {
             if (r) abrirOrcamento(r);
           }}
         />
-      ) : isMobile ? (
-        // Mobile: carousel — swipe sideways to switch stage (one screen per stage).
-        <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {STAGE_ORDER.map((stage) => (
-            <div
-              key={stage}
-              className="flex w-[88%] shrink-0 snap-center flex-col rounded-xl border border-border/60 bg-muted/30 p-2"
-            >
-              <div
-                className="mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
-                style={{ background: STAGE_COLOR[stage].head, color: STAGE_COLOR[stage].headText }}
-              >
-                <span>{STAGE_LABEL[stage]}</span>
-                <span className="rounded-full bg-background/70 px-1.5">{count(stage)}</span>
-              </div>
-              <div className="flex h-[500px] flex-col gap-2 overflow-y-auto pr-1">
-                {loading && <p className="p-2 text-xs text-muted-foreground">Loading…</p>}
-                {!loading && byStage[stage].length === 0 && (
-                  <p className="p-2 text-xs text-muted-foreground">No cards in this stage.</p>
-                )}
-                {byStage[stage].map((row) => (
-                  <KanbanCard
-                    key={row.id}
-                    row={row}
-                    onDragStart={() => setDragId(row.id)}
-                    onOrcamento={() => abrirOrcamento(row)}
-                    onDetail={() => setDetail(row)}
-                    onStageChange={(next) => changeStage(row, next)}
-                  />
-                ))}
-              </div>
-              <div
-                className="mt-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
-                style={{ background: STAGE_COLOR[stage].head, color: STAGE_COLOR[stage].headText }}
-              >
-                <span>Total</span>
-                <span>{money(sumStage(stage))}</span>
-              </div>
-            </div>
-          ))}
-        </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
-          {STAGE_ORDER.map((stage) => (
-            <div
-              key={stage}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => {
-                const row = rows.find((r) => r.id === dragId);
-                setDragId(null);
-                if (row) changeStage(row, stage);
-              }}
-              className="flex flex-col rounded-xl border border-border/60 bg-muted/30 p-2"
-            >
-              <div
-                className="mb-2 flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
-                style={{ background: STAGE_COLOR[stage].head, color: STAGE_COLOR[stage].headText }}
-              >
-                <span>{STAGE_LABEL[stage]}</span>
-                <span className="rounded-full bg-background/70 px-1.5">{count(stage)}</span>
-              </div>
-              <div className="flex h-[500px] flex-col gap-2 overflow-y-auto pr-1">
-                {loading && <p className="p-2 text-xs text-muted-foreground">Loading…</p>}
-                {!loading && byStage[stage].length === 0 && (
-                  <p className="p-2 text-xs text-muted-foreground">—</p>
-                )}
-                {byStage[stage].map((row) => (
-                  <KanbanCard
-                    key={row.id}
-                    row={row}
-                    onDragStart={() => setDragId(row.id)}
-                    onOrcamento={() => abrirOrcamento(row)}
-                    onDetail={() => setDetail(row)}
-                    onStageChange={(next) => changeStage(row, next)}
-                  />
+        <div className="space-y-3">
+          {isMobile && (
+            <Select value={mobileStage} onValueChange={(v) => setMobileStage(v as ProposalStage)}>
+              <SelectTrigger className="h-11 w-full" aria-label="Pipeline stage">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STAGE_ORDER.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {STAGE_LABEL[s]} ({count(s)})
+                  </SelectItem>
                 ))}
-              </div>
-              <div
-                className="mt-auto flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold"
-                style={{ background: STAGE_COLOR[stage].head, color: STAGE_COLOR[stage].headText }}
-              >
-                <span>Total</span>
-                <span>{money(sumStage(stage))}</span>
-              </div>
-            </div>
-          ))}
+              </SelectContent>
+            </Select>
+          )}
+          <div className="flex gap-3 overflow-x-auto pb-3" aria-label="Opportunity pipeline">
+            {(isMobile ? [mobileStage] : STAGE_ORDER).map((stage) => {
+              const outcome = stage === "appointment_canceled" || stage === "no_deal";
+              return (
+                <section
+                  key={stage}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDropStage(stage);
+                  }}
+                  onDragLeave={() => setDropStage(null)}
+                  onDrop={() => {
+                    const row = rows.find((r) => r.id === dragId);
+                    setDragId(null);
+                    setDropStage(null);
+                    if (row) changeStage(row, stage);
+                  }}
+                  className={`flex min-w-0 shrink-0 flex-col rounded-xl border p-2 ${isMobile ? "w-full" : "w-[280px]"} ${dropStage === stage ? "border-brand-ink bg-accent/40" : outcome ? "border-dashed bg-muted/20" : "bg-muted/40"}`}
+                >
+                  <div className="flex items-center gap-2 px-2 py-3">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ background: STAGE_STYLE[stage].dot }}
+                      aria-hidden
+                    />
+                    <h2 className="flex-1 text-sm font-semibold">{STAGE_LABEL[stage]}</h2>
+                    <span className="rounded-md bg-card px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
+                      {count(stage)}
+                    </span>
+                  </div>
+                  <div
+                    className="flex min-h-48 flex-col gap-3 overflow-y-auto px-0.5 pb-3 md:h-[clamp(18rem,calc(100dvh-25rem),48rem)]"
+                    aria-busy={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <div className="h-36 animate-pulse rounded-xl bg-card" />
+                        <div className="h-36 animate-pulse rounded-xl bg-card" />
+                      </>
+                    ) : byStage[stage].length === 0 ? (
+                      <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+                        {busca ? "No matching opportunities." : "No opportunities in this stage."}
+                      </p>
+                    ) : (
+                      byStage[stage].map((row) => (
+                        <KanbanCard
+                          key={row.id}
+                          row={row}
+                          onDragStart={() => setDragId(row.id)}
+                          onDragEnd={() => {
+                            setDragId(null);
+                            setDropStage(null);
+                          }}
+                          onOrcamento={() => abrirOrcamento(row)}
+                          onDetail={() => setDetail(row)}
+                          onStageChange={(next) => changeStage(row, next)}
+                        />
+                      ))
+                    )}
+                  </div>
+                  <div className="mt-auto flex items-center justify-between border-t px-2 pt-3 pb-1 text-xs text-muted-foreground">
+                    <span>Quoted value</span>
+                    <span className="font-medium tabular-nums text-foreground">
+                      {money(sumStage(stage))}
+                    </span>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         </div>
       )}
+
+      <details className="group rounded-xl border bg-card p-4">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold">
+          Pipeline by stage
+          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+        </summary>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Current stage distribution for the same filters. Not historical conversion.
+        </p>
+        <StageDistribution count={count} total={totais} />
+      </details>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="flex max-h-[88dvh] max-w-3xl flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
+            <DialogTitle>New quote</DialogTitle>
+          </DialogHeader>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <OrcamentoForm
+              mode="create"
+              onSaved={() => {
+                setCreateOpen(false);
+                load();
+              }}
+              onCancel={() => setCreateOpen(false)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Quote form (same as "New quote") */}
       <Dialog open={!!orc} onOpenChange={(o) => !o && setOrc(null)}>
@@ -441,11 +542,11 @@ function Overview() {
           <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
             <DialogTitle>Quote · measurement</DialogTitle>
             <DialogDescription>
-              Same form as "New quote". Filling it in unlocks the Negotiation stage.
+              Record the project measurements, then send the quote for pricing approval.
             </DialogDescription>
           </DialogHeader>
           {orc && (
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <OrcamentoForm
                 mode="edit"
                 proposalId={orc.row.id}
@@ -464,7 +565,7 @@ function Overview() {
             <DialogTitle>Send for pricing approval?</DialogTitle>
             <DialogDescription>
               The measurement for {askNeg?.leads?.nome_cliente ?? "this client"} has been saved. Do
-              you want to move the card to the Negotiation stage now?
+              you want to send it for pricing approval now?
             </DialogDescription>
           </DialogHeader>
           <div className="mt-2 flex justify-end gap-2">
@@ -498,94 +599,39 @@ function Overview() {
   );
 }
 
-// ---- Funnel -----------------------------------------------------------------
-function Funnel({
-  counts,
-  totais,
-  className,
+function StageDistribution({
+  count,
+  total,
 }: {
-  counts: { count: (s: ProposalStage) => number };
-  totais: number;
-  className?: string;
+  count: (stage: ProposalStage) => number;
+  total: number;
 }) {
-  const { count } = counts;
-  const conf = count("appointment_confirmed");
-  const canc = count("appointment_canceled");
-  const pricing = count("pricing_review");
-  const neg = count("negotiation");
-  const nodeal = count("no_deal");
-  const deal = count("deal");
-  const max = Math.max(conf, neg, deal, 1);
-  const bar = (v: number) => `${Math.max((v / max) * 100, 8)}%`;
-
-  const FunnelRow = ({
-    label,
-    value,
-    stage,
-    sub,
-  }: {
-    label: string;
-    value: number;
-    stage: ProposalStage;
-    sub?: string;
-  }) => (
-    <div>
-      <div className="flex items-center gap-3">
-        <span className="w-24 shrink-0 text-sm font-medium text-foreground">{label}</span>
-        <div className="flex flex-1 items-center gap-2">
-          <div
-            className="flex h-8 items-center justify-center rounded-lg text-sm font-semibold"
-            style={{ width: bar(value), background: STAGE_COLOR[stage].bar, color: "#fff" }}
-          >
-            {value}
+  const max = Math.max(...STAGE_ORDER.map(count), 1);
+  return (
+    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      {STAGE_ORDER.map((stage) => {
+        const value = count(stage);
+        return (
+          <div key={stage}>
+            <div className="mb-1.5 flex justify-between gap-2 text-xs">
+              <span>{STAGE_LABEL[stage]}</span>
+              <span className="tabular-nums">
+                {value} · {pct(value, total)}
+              </span>
+            </div>
+            <div
+              className="h-2 overflow-hidden rounded-full bg-muted"
+              role="img"
+              aria-label={`${STAGE_LABEL[stage]}: ${value}, ${pct(value, total)} of opportunities`}
+            >
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${(value / max) * 100}%`, background: STAGE_STYLE[stage].dot }}
+              />
+            </div>
           </div>
-          <span className="text-xs font-medium text-muted-foreground">{pct(value, totais)}</span>
-        </div>
-      </div>
-      {sub && (
-        <div className="ml-[108px] mt-1.5">
-          <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {sub}
-          </span>
-        </div>
-      )}
-    </div>
-  );
-
-  return (
-    <div className={`rounded-xl border bg-card p-5 ${className ?? ""}`}>
-      <div className="mb-4 flex items-center gap-2">
-        <span
-          className="flex h-6 w-6 items-center justify-center rounded-md"
-          style={{ background: "#F0A81E", color: "#fff" }}
-        >
-          <CalendarIcon className="h-3.5 w-3.5" />
-        </span>
-        <h2 className="text-base font-semibold text-foreground">Funnel · visits</h2>
-      </div>
-      <div className="space-y-3">
-        <FunnelRow
-          label="Confirmed"
-          value={conf}
-          stage="appointment_confirmed"
-          sub={`−${canc} canceled`}
-        />
-        <FunnelRow label="Pricing approval" value={pricing} stage="pricing_review" />
-        <FunnelRow label="Negotiation" value={neg} stage="negotiation" sub={`−${nodeal} no deal`} />
-        <FunnelRow label="Deal" value={deal} stage="deal" />
-      </div>
-    </div>
-  );
-}
-
-// ---- Metric box -------------------------------------------------------------
-function MetricBox({ label, value, success }: { label: string; value: string; success?: boolean }) {
-  return (
-    <div className="rounded-xl border bg-card p-4">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-xl font-bold ${success ? "text-emerald-600" : "text-foreground"}`}>
-        {value}
-      </p>
+        );
+      })}
     </div>
   );
 }
@@ -594,12 +640,14 @@ function MetricBox({ label, value, success }: { label: string; value: string; su
 function KanbanCard({
   row,
   onDragStart,
+  onDragEnd,
   onOrcamento,
   onDetail,
   onStageChange,
 }: {
   row: Row;
   onDragStart: () => void;
+  onDragEnd: () => void;
   onOrcamento: () => void;
   onDetail: () => void;
   onStageChange: (next: ProposalStage) => void;
@@ -629,14 +677,15 @@ function KanbanCard({
     href?: string;
     accent?: boolean;
   }) => {
-    const cls = `flex h-7 w-7 items-center justify-center rounded-md border ${
+    const cls = `flex h-9 w-9 items-center justify-center rounded-md border ${
       accent
-        ? "border-primary/40 bg-primary/10 text-primary"
+        ? "border-primary/40 bg-primary/10 text-brand-ink"
         : "border-border bg-background text-muted-foreground hover:text-foreground"
     }`;
     return href ? (
       <a
         href={href}
+        data-touch-action
         aria-label={label}
         title={label}
         onClick={(e) => e.stopPropagation()}
@@ -647,13 +696,15 @@ function KanbanCard({
     ) : (
       <button
         type="button"
+        data-touch-action
         aria-label={label}
         title={label}
+        disabled={!onClick}
         onClick={(e) => {
           e.stopPropagation();
           onClick?.();
         }}
-        className={cls}
+        className={`${cls} disabled:cursor-not-allowed disabled:opacity-35`}
       >
         {icon}
       </button>
@@ -661,30 +712,36 @@ function KanbanCard({
   };
 
   return (
-    <div
+    <article
       draggable
       onDragStart={onDragStart}
-      onClick={onDetail}
-      role="button"
-      className="cursor-pointer rounded-xl border bg-card p-3 shadow-sm transition-shadow hover:shadow-md"
+      onDragEnd={onDragEnd}
+      className="rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-semibold leading-tight text-foreground">{nome}</p>
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
+        <button
+          type="button"
+          onClick={onDetail}
+          className="text-left text-sm font-semibold leading-snug text-foreground hover:underline"
+        >
+          {nome}
+        </button>
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-brand-ink">
           {initials}
         </span>
       </div>
 
-      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+      <div className="mt-3 space-y-2 text-xs text-muted-foreground">
         <p className="flex items-center gap-1.5">
-          <CalendarIcon className="h-3.5 w-3.5 shrink-0" /> {visitLabel(row.visita_at)}
+          <CalendarIcon className="h-3.5 w-3.5 shrink-0" />{" "}
+          <span className="font-medium text-foreground">{visitLabel(row.visita_at)}</span>
         </p>
         <p className="flex items-center gap-1.5">
           <MapPin className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{endereco}</span>
         </p>
         <p className="flex items-center gap-1.5 font-medium text-foreground">
-          <DollarSign className="h-3.5 w-3.5 shrink-0" /> {money(row.total_cliente)}
-          {!feito && <span className="font-normal text-muted-foreground">(after quote)</span>}
+          <DollarSign className="h-3.5 w-3.5 shrink-0" />{" "}
+          {feito ? money(row.total_cliente) : "Not quoted"}
         </p>
       </div>
 
@@ -714,31 +771,32 @@ function KanbanCard({
             e.stopPropagation();
             onOrcamento();
           }}
-          className="ml-auto flex h-7 items-center gap-1 rounded-md px-2.5 text-[11px] font-semibold"
+          className="ml-auto flex min-h-9 items-center gap-1 rounded-md px-2.5 text-xs font-semibold"
           style={
             feito
               ? { background: "#E7F4E4", color: "#2C7A3F" }
-              : { background: "#FDECEC", color: "#B42318" }
+              : { background: "#FBE7BF", color: "#7A4E05" }
           }
         >
-          <ClipboardList className="h-3.5 w-3.5" /> {feito ? "Measured" : "Measure"}
+          <ClipboardList className="h-3.5 w-3.5" /> {feito ? "View quote" : "Measure"}
         </button>
       </div>
 
       {/* Switch stage on mobile (dragging doesn't work well on touch) */}
-      <div className="mt-2.5 md:hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="mt-3" onClick={(e) => e.stopPropagation()}>
         <Select value={row.stage} onValueChange={(v) => onStageChange(v as ProposalStage)}>
           <SelectTrigger
-            className="h-9 w-full rounded-lg border-none text-xs font-semibold"
+            aria-label={`Move ${nome} to stage`}
+            className="h-9 w-full rounded-lg border-none text-xs font-medium"
             style={{
-              background: STAGE_COLOR[row.stage].head,
-              color: STAGE_COLOR[row.stage].headText,
+              background: STAGE_STYLE[row.stage].bg,
+              color: STAGE_STYLE[row.stage].fg,
             }}
           >
             <span className="flex items-center gap-1.5">
               <span
                 className="h-2.5 w-2.5 rounded-full"
-                style={{ background: STAGE_COLOR[row.stage].bar }}
+                style={{ background: STAGE_STYLE[row.stage].dot }}
               />
               {STAGE_LABEL[row.stage]}
             </span>
@@ -749,7 +807,7 @@ function KanbanCard({
                 <span className="flex items-center gap-2">
                   <span
                     className="h-2.5 w-2.5 rounded-full"
-                    style={{ background: STAGE_COLOR[s].bar }}
+                    style={{ background: STAGE_STYLE[s].dot }}
                   />
                   {STAGE_LABEL[s]}
                 </span>
@@ -758,6 +816,6 @@ function KanbanCard({
           </SelectContent>
         </Select>
       </div>
-    </div>
+    </article>
   );
 }

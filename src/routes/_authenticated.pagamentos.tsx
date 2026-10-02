@@ -1,4 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { PageHeader } from "@/components/PageHeader";
+import { MetricCard } from "@/components/MetricCard";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Upload, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import {
@@ -104,8 +106,8 @@ function PagamentosPage() {
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    if (isRuche) load();
+  }, [isRuche]);
 
   const totais = useMemo(() => {
     const aRepassar = linhas
@@ -118,30 +120,21 @@ function PagamentosPage() {
     return { aRepassar, atrasado, aguardando };
   }, [linhas]);
 
+  if (!isRuche) return <Navigate to="/overview" replace />;
+
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <div>
-        <h1 className="text-xl font-semibold">Payments</h1>
-        <p className="text-sm text-muted-foreground">
-          Tell us when the customer paid you. The remittance window starts from that date.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Payments" description="Customer payments and partner remittances." />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">To remit</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums">{money(totais.aRepassar)}</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Overdue</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-[#B42318]">
-            {money(totais.atrasado)}
-          </p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Awaiting customer</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums">{totais.aguardando}</p>
-        </div>
+        <MetricCard label="To remit" value={money(totais.aRepassar)} loading={loading} />
+        <MetricCard
+          label="Overdue"
+          value={money(totais.atrasado)}
+          tone="danger"
+          loading={loading}
+        />
+        <MetricCard label="Awaiting customer" value={String(totais.aguardando)} loading={loading} />
       </div>
 
       <div className="rounded-xl border bg-card">

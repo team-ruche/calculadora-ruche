@@ -35,7 +35,7 @@ export function LeadDetalhe({
       <DialogContent className="flex max-h-[88dvh] max-w-3xl flex-col gap-0 overflow-y-hidden p-0">
         <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
           <DialogTitle>{lead?.nome_cliente ?? "Lead details"}</DialogTitle>
-          <DialogDescription>Setter discovery — groups A to F (GHL form).</DialogDescription>
+          <DialogDescription>Contact information and project details.</DialogDescription>
         </DialogHeader>
 
         {lead && (
@@ -101,7 +101,7 @@ export function LeadDetalhe({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border bg-card p-4">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary">{title}</p>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-brand-ink">{title}</p>
       <div className="grid gap-3 sm:grid-cols-2">{children}</div>
     </div>
   );
@@ -120,9 +120,7 @@ function Field({
   return (
     <div className={`space-y-1 ${full ? "sm:col-span-2" : ""}`}>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="min-h-9 rounded-md border bg-background px-3 py-2 text-sm text-foreground">
-        {shown}
-      </div>
+      <div className="break-words text-sm font-medium text-foreground">{shown}</div>
     </div>
   );
 }

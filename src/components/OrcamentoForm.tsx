@@ -476,95 +476,102 @@ export function OrcamentoForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Client</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="nome-cliente">Name</Label>
-            <Input
-              id="nome-cliente"
-              required
-              value={nomeCliente}
-              onChange={(e) => setNomeCliente(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="telefone">Phone</Label>
-            <Input id="telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="endereco">Address</Label>
-            <Input id="endereco" value={endereco} onChange={(e) => setEndereco(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
+    <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Client</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="nome-cliente">Name</Label>
+              <Input
+                id="nome-cliente"
+                required
+                value={nomeCliente}
+                onChange={(e) => setNomeCliente(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="telefone">Phone</Label>
+              <Input
+                id="telefone"
+                type="tel"
+                autoComplete="tel"
+                value={telefone}
+                onChange={(e) => setTelefone(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="endereco">Address</Label>
+              <Input id="endereco" value={endereco} onChange={(e) => setEndereco(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle>Rooms</CardTitle>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle>Rooms</CardTitle>
+              <CardDescription>
+                Everything is measured room by room: floors, furniture, extra services, notes and
+                photos.
+              </CardDescription>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={addRoom}>
+              <Plus className="mr-1 h-4 w-4" /> Room
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {rooms.map((room, i) => (
+              <RoomCard
+                key={room.localId}
+                room={room}
+                index={i}
+                canRemove={rooms.length > 1}
+                pisoNovoOpts={pisoNovoOpts}
+                pisoAtualOpts={pisoAtualOpts}
+                prepOpts={prepOpts}
+                onChange={(patch) => updateRoom(room.localId, patch)}
+                onRemove={() => removeRoom(room.localId)}
+                onFiles={(files) => addFiles(room.localId, files)}
+                onRemoveMedia={(idx) => removeMedia(room.localId, idx)}
+              />
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Post-visit transcript</CardTitle>
             <CardDescription>
-              Everything is measured room by room: floors, furniture, extra services, notes and
-              photos.
+              Paste here the conversation with the client. The AI reads it against the quote and
+              flags what the client asked for and is missing — a room, a service, a photo.
             </CardDescription>
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={addRoom}>
-            <Plus className="mr-1 h-4 w-4" /> Room
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {rooms.map((room, i) => (
-            <RoomCard
-              key={room.localId}
-              room={room}
-              index={i}
-              canRemove={rooms.length > 1}
-              pisoNovoOpts={pisoNovoOpts}
-              pisoAtualOpts={pisoAtualOpts}
-              prepOpts={prepOpts}
-              onChange={(patch) => updateRoom(room.localId, patch)}
-              onRemove={() => removeRoom(room.localId)}
-              onFiles={(files) => addFiles(room.localId, files)}
-              onRemoveMedia={(idx) => removeMedia(room.localId, idx)}
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex justify-end">
+              <DictateButton onText={(t) => setTranscricao((p) => (p ? p + " " + t : t))} />
+            </div>
+            <Textarea
+              rows={8}
+              placeholder="Paste the transcript of the visit, or use the mic to dictate…"
+              value={transcricao}
+              onChange={(e) => setTranscricao(e.target.value)}
             />
-          ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Post-visit transcript</CardTitle>
-          <CardDescription>
-            Paste here the conversation with the client. The AI reads it against the quote and flags
-            what the client asked for and is missing — a room, a service, a photo.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex justify-end">
-            <DictateButton onText={(t) => setTranscricao((p) => (p ? p + " " + t : t))} />
-          </div>
-          <Textarea
-            rows={8}
-            placeholder="Paste the transcript of the visit, or use the mic to dictate…"
-            value={transcricao}
-            onChange={(e) => setTranscricao(e.target.value)}
-          />
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end gap-2">
+          </CardContent>
+        </Card>
+      </div>
+      <div className="flex shrink-0 justify-end gap-2 border-t bg-background px-6 py-4">
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
             Cancel
@@ -602,205 +609,215 @@ function RoomCard({
   onRemoveMedia: (idx: number) => void;
 }) {
   return (
-    <div className="space-y-4 rounded-lg border p-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold">{room.nome.trim() || `Room ${index + 1}`}</p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 shrink-0"
-          disabled={!canRemove}
-          onClick={onRemove}
-          title="Remove room"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="space-y-2">
-          <Label>Room name</Label>
-          <Input
-            required
-            placeholder={`Room ${index + 1}`}
-            value={room.nome}
-            onChange={(e) => onChange({ nome: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Area (sqft)</Label>
-          <Input
-            type="number"
-            min={0}
-            step="0.1"
-            required
-            value={room.areaSqft || ""}
-            onChange={(e) => onChange({ areaSqft: Number(e.target.value) })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Prep</Label>
-          <RoomSelect
-            value={room.preparo}
-            opts={prepOpts}
-            onChange={(v) => onChange({ preparo: v })}
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Current floor</Label>
-          <RoomSelect
-            value={room.pisoAtual}
-            opts={pisoAtualOpts}
-            onChange={(v) => onChange({ pisoAtual: v })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>New floor</Label>
-          <RoomSelect
-            value={room.pisoNovo}
-            opts={pisoNovoOpts}
-            onChange={(v) => onChange({ pisoNovo: v })}
-          />
-        </div>
-      </div>
-
-      <label className="flex items-start gap-2.5">
-        <Checkbox
-          className="mt-0.5"
-          checked={room.remocao}
-          onCheckedChange={(c) => onChange({ remocao: c === true })}
-        />
-        <span className="text-sm leading-tight">
-          Remove the current floor
-          <span className="block text-xs text-muted-foreground">
-            Uncheck when the new floor is installed over the existing one — no removal is charged.
-          </span>
+    <details open className="group rounded-lg border p-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold">
+        <span>{room.nome.trim() || `Room ${index + 1}`}</span>
+        <span className="text-xs font-normal text-muted-foreground">
+          {room.areaSqft || 0} sqft · expand / collapse
         </span>
-      </label>
+      </summary>
+      <div className="mt-4 space-y-4">
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            disabled={!canRemove}
+            onClick={onRemove}
+            title="Remove room"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
 
-      <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-        <label className="flex items-center gap-2.5">
-          <Checkbox
-            checked={room.moverMoveis}
-            onCheckedChange={(c) =>
-              onChange({ moverMoveis: c === true, ...(c === true ? {} : { moverMoveisHoras: 0 }) })
-            }
-          />
-          <span className="text-sm">Furniture to move</span>
-        </label>
-        {room.moverMoveis && (
+        <div className="grid gap-3 md:grid-cols-3">
           <div className="space-y-2">
-            <Label>Estimated hours</Label>
+            <Label>Room name</Label>
+            <Input
+              required
+              placeholder={`Room ${index + 1}`}
+              value={room.nome}
+              onChange={(e) => onChange({ nome: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Area (sqft)</Label>
             <Input
               type="number"
               min={0}
-              step="0.5"
-              className="max-w-40"
-              value={room.moverMoveisHoras || ""}
-              onChange={(e) => onChange({ moverMoveisHoras: Number(e.target.value) })}
+              step="0.1"
+              required
+              value={room.areaSqft || ""}
+              onChange={(e) => onChange({ areaSqft: Number(e.target.value) })}
             />
           </div>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label>Additional services</Label>
-        <MultiSelect
-          values={room.servicos}
-          opts={SERVICOS}
-          placeholder="None selected"
-          onChange={(v) => onChange({ servicos: v })}
-        />
-        {room.servicos.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {room.servicos.map((s) => (
-              <span
-                key={s}
-                className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs"
-              >
-                {SERVICO_LABEL[s] ?? s}
-                <button
-                  type="button"
-                  onClick={() => onChange({ servicos: room.servicos.filter((x) => x !== s) })}
-                  title="Remove"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
+          <div className="space-y-2">
+            <Label>Prep</Label>
+            <RoomSelect
+              value={room.preparo}
+              opts={prepOpts}
+              onChange={(v) => onChange({ preparo: v })}
+            />
           </div>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label>Notes</Label>
-          <DictateButton
-            onText={(t) =>
-              onChange({ observacao: room.observacao ? room.observacao + " " + t : t })
-            }
-          />
         </div>
-        <Textarea
-          rows={3}
-          placeholder="What the client said about this room, access, anything odd…"
-          value={room.observacao}
-          onChange={(e) => onChange({ observacao: e.target.value })}
-        />
-      </div>
 
-      <div className="space-y-2">
-        <Label>Photos / videos</Label>
-        <div className="flex flex-wrap gap-2">
-          <PickerButton
-            icon={<Camera className="mr-1.5 h-4 w-4" />}
-            label="Camera"
-            accept="image/*,video/*"
-            capture="environment"
-            onFiles={onFiles}
-          />
-          <PickerButton
-            icon={<Images className="mr-1.5 h-4 w-4" />}
-            label="Gallery"
-            accept="image/*,video/*"
-            multiple
-            onFiles={onFiles}
-          />
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Current floor</Label>
+            <RoomSelect
+              value={room.pisoAtual}
+              opts={pisoAtualOpts}
+              onChange={(v) => onChange({ pisoAtual: v })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>New floor</Label>
+            <RoomSelect
+              value={room.pisoNovo}
+              opts={pisoNovoOpts}
+              onChange={(v) => onChange({ pisoNovo: v })}
+            />
+          </div>
         </div>
-        {room.media.length > 0 && (
-          <div className="flex flex-wrap gap-2 pt-1">
-            {room.media.map((m, idx) => {
-              const url = m.kind === "existing" ? m.url : m.previewUrl;
-              const isVideo =
-                m.kind === "existing"
-                  ? m.mime?.startsWith("video")
-                  : m.file.type.startsWith("video");
-              return (
-                <div key={idx} className="relative h-20 w-20 overflow-hidden rounded border">
-                  {isVideo ? (
-                    <video src={url} className="h-full w-full object-cover" />
-                  ) : (
-                    <img src={url} alt="" className="h-full w-full object-cover" />
-                  )}
+
+        <label className="flex items-start gap-2.5">
+          <Checkbox
+            className="mt-0.5"
+            checked={room.remocao}
+            onCheckedChange={(c) => onChange({ remocao: c === true })}
+          />
+          <span className="text-sm leading-tight">
+            Remove the current floor
+            <span className="block text-xs text-muted-foreground">
+              Uncheck when the new floor is installed over the existing one — no removal is charged.
+            </span>
+          </span>
+        </label>
+
+        <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+          <label className="flex items-center gap-2.5">
+            <Checkbox
+              checked={room.moverMoveis}
+              onCheckedChange={(c) =>
+                onChange({
+                  moverMoveis: c === true,
+                  ...(c === true ? {} : { moverMoveisHoras: 0 }),
+                })
+              }
+            />
+            <span className="text-sm">Furniture to move</span>
+          </label>
+          {room.moverMoveis && (
+            <div className="space-y-2">
+              <Label>Estimated hours</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.5"
+                className="max-w-40"
+                value={room.moverMoveisHoras || ""}
+                onChange={(e) => onChange({ moverMoveisHoras: Number(e.target.value) })}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Additional services</Label>
+          <MultiSelect
+            values={room.servicos}
+            opts={SERVICOS}
+            placeholder="None selected"
+            onChange={(v) => onChange({ servicos: v })}
+          />
+          {room.servicos.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {room.servicos.map((s) => (
+                <span
+                  key={s}
+                  className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs"
+                >
+                  {SERVICO_LABEL[s] ?? s}
                   <button
                     type="button"
-                    onClick={() => onRemoveMedia(idx)}
-                    className="absolute right-0 top-0 bg-black/60 p-0.5 text-white"
+                    onClick={() => onChange({ servicos: room.servicos.filter((x) => x !== s) })}
                     title="Remove"
                   >
                     <X className="h-3 w-3" />
                   </button>
-                </div>
-              );
-            })}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Notes</Label>
+            <DictateButton
+              onText={(t) =>
+                onChange({ observacao: room.observacao ? room.observacao + " " + t : t })
+              }
+            />
           </div>
-        )}
+          <Textarea
+            rows={3}
+            placeholder="What the client said about this room, access, anything odd…"
+            value={room.observacao}
+            onChange={(e) => onChange({ observacao: e.target.value })}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Photos / videos</Label>
+          <div className="flex flex-wrap gap-2">
+            <PickerButton
+              icon={<Camera className="mr-1.5 h-4 w-4" />}
+              label="Camera"
+              accept="image/*,video/*"
+              capture="environment"
+              onFiles={onFiles}
+            />
+            <PickerButton
+              icon={<Images className="mr-1.5 h-4 w-4" />}
+              label="Gallery"
+              accept="image/*,video/*"
+              multiple
+              onFiles={onFiles}
+            />
+          </div>
+          {room.media.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {room.media.map((m, idx) => {
+                const url = m.kind === "existing" ? m.url : m.previewUrl;
+                const isVideo =
+                  m.kind === "existing"
+                    ? m.mime?.startsWith("video")
+                    : m.file.type.startsWith("video");
+                return (
+                  <div key={idx} className="relative h-20 w-20 overflow-hidden rounded border">
+                    {isVideo ? (
+                      <video src={url} className="h-full w-full object-cover" />
+                    ) : (
+                      <img src={url} alt="" className="h-full w-full object-cover" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => onRemoveMedia(idx)}
+                      className="absolute right-0 top-0 bg-black/60 p-0.5 text-white"
+                      title="Remove"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </details>
   );
 }
 

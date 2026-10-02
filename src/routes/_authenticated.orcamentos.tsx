@@ -50,6 +50,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
+import { STAGE_STYLE } from "@/lib/proposal-stage";
 
 type DialogState = { mode: "create" } | { mode: "edit"; proposalId: string } | null;
 
@@ -68,15 +70,7 @@ type ProposalRow = Proposal & {
   } | null;
 };
 
-// Badge color per kanban stage (synchronized).
-const STAGE_BADGE: Record<ProposalStage, { bg: string; fg: string }> = {
-  appointment_confirmed: { bg: "#FBE7BF", fg: "#7A4E05" },
-  appointment_canceled: { bg: "#F6D6C7", fg: "#7A2E12" },
-  pricing_review: { bg: "#EDE6F8", fg: "#4B2E83" },
-  negotiation: { bg: "#E6F1FB", fg: "#0C447C" },
-  no_deal: { bg: "#DEDCD2", fg: "#45443D" },
-  deal: { bg: "#D3E8BC", fg: "#2C5212" },
-};
+const STAGE_BADGE = STAGE_STYLE;
 
 const GRUPO_LABEL: Record<MotorGrupo, string> = {
   instalacao: "Installation",
@@ -281,7 +275,7 @@ function OrcamentosPage() {
           <DialogTitle>{dialog?.mode === "edit" ? "Edit quote" : "New quote"}</DialogTitle>
         </DialogHeader>
         {dialog && (
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <OrcamentoForm
               mode={dialog.mode}
               proposalId={dialog.mode === "edit" ? dialog.proposalId : undefined}
@@ -368,16 +362,11 @@ function OrcamentosPage() {
           if (id) setDialog({ mode: "edit", proposalId: id });
         }}
       />
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Quotes</h1>
-        <p className="text-sm text-muted-foreground">
-          Generated proposals. Open to view the client's quote and export.
-        </p>
-      </div>
+      <PageHeader title="Quotes" description="Create, review and export your client proposals." />
 
       {/* Filter bar fixed on scroll — compact */}
       <div className="sticky top-14 z-30 -mx-4 space-y-2 border-b bg-background px-4 py-2.5 sm:-mx-6 sm:px-6">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => setDialog({ mode: "create" })} className="shrink-0">
             <Plus className="mr-1 h-4 w-4" /> New Quote
           </Button>
@@ -398,6 +387,7 @@ function OrcamentosPage() {
             <input
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
+              aria-label="Search clients"
               placeholder="Search client…"
               className="w-full bg-transparent text-sm outline-none"
             />

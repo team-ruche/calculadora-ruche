@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 
 export const Route = createFileRoute("/_authenticated/motor")({
   head: () => ({ meta: [{ title: "Pricing · Ruche" }] }),
@@ -154,7 +155,7 @@ function MotorPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Pricing</h1>
+        <PageHeader title="Pricing" />
         <p className="text-sm text-muted-foreground">
           Price charged to the client and the partner payout band (start → cap), per unit.
         </p>

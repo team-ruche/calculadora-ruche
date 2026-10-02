@@ -67,6 +67,8 @@ import {
   type FVal,
 } from "@/components/ColumnFilter";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
+import { MetricCard } from "@/components/MetricCard";
 
 type Range = { from: Date; to: Date };
 const inRange = (iso: string | null, r: Range) => {
@@ -167,66 +169,7 @@ function DiasBadge({ dias }: { dias: number | null }) {
   );
 }
 
-// ---- Unified KPI ----------------------------------------------------------
-type Tone = "neutral" | "primary" | "danger" | "warn" | "success" | "dark";
-const KPI_TONE: Record<Tone, { value: string; iconBg: string; iconFg: string }> = {
-  neutral: { value: "", iconBg: "#F1F0EB", iconFg: "#45443D" },
-  primary: { value: "#0C447C", iconBg: "#E6F1FB", iconFg: "#0C447C" },
-  danger: { value: "#B42318", iconBg: "#FDECEC", iconFg: "#B42318" },
-  warn: { value: "#7A4E05", iconBg: "#FBEFD6", iconFg: "#7A4E05" },
-  success: { value: "#2C7A3F", iconBg: "#E7F4E4", iconFg: "#2C5212" },
-  dark: { value: "#FFFFFF", iconBg: "rgba(240,168,30,0.18)", iconFg: "#F0A81E" },
-};
-
-function Kpi({
-  label,
-  value,
-  sub,
-  icon: Icon,
-  tone = "neutral",
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  icon: LucideIcon;
-  tone?: Tone;
-}) {
-  const t = KPI_TONE[tone];
-  const isDark = tone === "dark";
-  return (
-    <div
-      className={`rounded-xl border p-4 shadow-sm ${isDark ? "border-transparent" : "bg-card"}`}
-      style={isDark ? { background: "#2C2C2A" } : undefined}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p
-            className={`text-xs font-medium uppercase tracking-wide ${isDark ? "text-[#D3D1C7]" : "text-muted-foreground"}`}
-          >
-            {label}
-          </p>
-          <p
-            className="mt-1.5 text-2xl font-bold tabular-nums"
-            style={t.value ? { color: t.value } : undefined}
-          >
-            {value}
-          </p>
-          {sub && (
-            <p className={`mt-1 text-xs ${isDark ? "text-[#B4B2A9]" : "text-muted-foreground"}`}>
-              {sub}
-            </p>
-          )}
-        </div>
-        <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: t.iconBg, color: t.iconFg }}
-        >
-          <Icon className="h-[18px] w-[18px]" />
-        </span>
-      </div>
-    </div>
-  );
-}
+const Kpi = MetricCard;
 
 function SectionTitle({ dot, children }: { dot: string; children: ReactNode }) {
   return (
@@ -485,14 +428,14 @@ function VisaoInternaPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Financial Control</h1>
-        <p className="text-sm text-muted-foreground">Contract collections and sales tracking.</p>
-      </div>
+      <PageHeader
+        title="Financial Control"
+        description="Contract collections and sales tracking."
+      />
 
       {/* Toggle fixed on scroll */}
       <div className="sticky top-14 z-30 -mx-4 border-b bg-background px-4 py-2 sm:-mx-6 sm:px-6">
-        <div className="inline-flex rounded-full bg-muted p-1">
+        <div className="inline-flex rounded-lg border bg-card p-0.5">
           {(
             [
               ["cobranca", "Collections"],
@@ -503,8 +446,9 @@ function VisaoInternaPage() {
               key={v}
               type="button"
               onClick={() => setTopView(v)}
-              className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                topView === v ? "bg-background shadow-sm" : "text-muted-foreground"
+              aria-pressed={topView === v}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                topView === v ? "bg-primary text-primary-foreground" : "text-muted-foreground"
               }`}
             >
               {l}
@@ -530,7 +474,7 @@ function VisaoInternaPage() {
           </div>
 
           {/* Sub-tabs (underline, to distinguish from the top toggle) */}
-          <div className="flex gap-5 border-b">
+          <div className="flex flex-wrap gap-x-5 gap-y-3 border-b">
             {(
               [
                 ["prio", "Priority"],
@@ -700,6 +644,7 @@ function VisaoInternaPage() {
                     <input
                       value={busca}
                       onChange={(e) => setBusca(e.target.value)}
+                      aria-label="Search records"
                       placeholder="Search client…"
                       className="w-full bg-transparent text-sm outline-none"
                     />
@@ -999,6 +944,7 @@ function VisaoInternaPage() {
                     <input
                       value={busca}
                       onChange={(e) => setBusca(e.target.value)}
+                      aria-label="Search records"
                       placeholder="Search client…"
                       className="w-full bg-transparent text-sm outline-none"
                     />
@@ -1056,7 +1002,8 @@ function VisaoInternaPage() {
                               autoFocus
                               value={novaBusca}
                               onChange={(e) => setNovaBusca(e.target.value)}
-                              placeholder="Search client…"
+                              aria-label="Search records"
+                      placeholder="Search client…"
                               className="w-full bg-transparent text-sm outline-none"
                             />
                           </div>
