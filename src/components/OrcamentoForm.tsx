@@ -917,15 +917,20 @@ function DictateButton({ onText }: { onText: (t: string) => void }) {
   const [gravando, setGravando] = useState(false);
   const [segundos, setSegundos] = useState(0);
   const [enviando, setEnviando] = useState(false);
+  // True while awaiting getUserMedia — blocks double-clicks that would start
+  // two recordings at once.
+  const [iniciando, setIniciando] = useState(false);
   // Audio whose transcription failed — kept so it can be retried or downloaded.
   const [falhou, setFalhou] = useState<{ blob: Blob; mime: string; url: string } | null>(null);
   const recRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const urlRef = useRef<string | null>(null);
+  const mountedRef = useRef(false);
   const cbRef = useRef(onText);
   cbRef.current = onText;
 
   const setFailed = (v: { blob: Blob; mime: string } | null) => {
+    if (!mountedRef.current) return;
     if (urlRef.current) URL.revokeObjectURL(urlRef.current);
     urlRef.current = null;
     if (!v) return setFalhou(null);
@@ -934,15 +939,20 @@ function DictateButton({ onText }: { onText: (t: string) => void }) {
     setFalhou({ ...v, url });
   };
 
-  // Release the mic and object URLs if the form unmounts.
-  useEffect(
-    () => () => {
+  // Track mount state (reset on mount for React StrictMode double-effects) and
+  // release the mic and object URLs on unmount.
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
       if (recRef.current?.state === "recording") recRef.current.stop();
       streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      recRef.current = null;
       if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-    },
-    [],
-  );
+      urlRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!gravando) return;
@@ -959,33 +969,55 @@ function DictateButton({ onText }: { onText: (t: string) => void }) {
   }, [segundos]);
 
   const transcrever = async (blob: Blob, mime: string) => {
+    if (!mountedRef.current) return;
     setEnviando(true);
     try {
       const texto = await callTranscreverAudio(blob, mime);
+      if (!mountedRef.current) return;
       cbRef.current(texto);
       setFailed(null);
       toast.success("Transcribed");
     } catch (e) {
+      if (!mountedRef.current) return;
       setFailed({ blob, mime });
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
-      setEnviando(false);
+      if (mountedRef.current) setEnviando(false);
     }
   };
 
   const iniciar = async () => {
+    if (iniciando || falhou) return;
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       return toast.error("This browser cannot record audio. Type the note instead.");
     }
+    setIniciando(true);
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      return toast.error("Microphone blocked. Allow it for this site and try again.");
+      if (mountedRef.current) {
+        setIniciando(false);
+        toast.error("Microphone blocked. Allow it for this site and try again.");
+      }
+      return;
+    }
+    // Unmounted while waiting for the mic permission: release it and bail.
+    if (!mountedRef.current) {
+      stream.getTracks().forEach((t) => t.stop());
+      return;
     }
     streamRef.current = stream;
 
-    const rec = new MediaRecorder(stream);
+    let rec: MediaRecorder;
+    try {
+      rec = new MediaRecorder(stream);
+    } catch {
+      stream.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      setIniciando(false);
+      return toast.error("This browser cannot record audio. Type the note instead.");
+    }
     const pedacos: Blob[] = [];
     rec.ondataavailable = (e) => {
       if (e.data.size > 0) pedacos.push(e.data);
@@ -994,6 +1026,9 @@ function DictateButton({ onText }: { onText: (t: string) => void }) {
       stream.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
       recRef.current = null;
+      // Fired async — possibly after unmount (e.g. cleanup stopped the
+      // recorder). Never touch state or create object URLs when unmounted.
+      if (!mountedRef.current) return;
       setGravando(false);
       setSegundos(0);
       const mime = rec.mimeType || "audio/webm";
@@ -1001,9 +1036,17 @@ function DictateButton({ onText }: { onText: (t: string) => void }) {
       if (blob.size < 1000) return toast.error("Recording too short.");
       void transcrever(blob, mime);
     };
-    rec.start();
+    try {
+      rec.start();
+    } catch {
+      stream.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      setIniciando(false);
+      return toast.error("Could not start recording. Try again.");
+    }
     recRef.current = rec;
     setSegundos(0);
+    setIniciando(false);
     setGravando(true);
   };
 
@@ -1030,19 +1073,35 @@ function DictateButton({ onText }: { onText: (t: string) => void }) {
               Download audio
             </a>
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={enviando}
+            onClick={() => setFailed(null)}
+          >
+            Discard audio
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Recording kept only while this form is open. Download it before leaving.
+          </span>
         </>
       )}
       <Button
         type="button"
         size="sm"
         variant={gravando ? "destructive" : "ghost"}
-        disabled={enviando}
+        disabled={enviando || iniciando || (!!falhou && !gravando)}
         onClick={gravando ? parar : iniciar}
         title="Record a voice note — it gets transcribed into the field"
       >
         {enviando ? (
           <>
             <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Transcribing…
+          </>
+        ) : iniciando ? (
+          <>
+            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Starting…
           </>
         ) : gravando ? (
           <>
