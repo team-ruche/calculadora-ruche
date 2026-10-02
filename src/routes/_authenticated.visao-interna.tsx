@@ -434,7 +434,7 @@ function VisaoInternaPage() {
       />
 
       {/* Toggle fixed on scroll */}
-      <div className="sticky top-14 z-30 -mx-4 border-b bg-background px-4 py-2 sm:-mx-6 sm:px-6">
+      <div className="glass-toolbar sticky top-16 z-30 -mx-4 px-4 py-3 sm:-mx-8 sm:px-8">
         <div className="inline-flex rounded-lg border bg-card p-0.5">
           {(
             [

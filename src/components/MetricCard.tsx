@@ -29,8 +29,8 @@ export function MetricCard({
   return (
     <div
       className={cn(
-        "rounded-xl border bg-card p-4 shadow-sm",
-        tone === "dark" && "border-sidebar-border bg-sidebar",
+        "metric-card glass-panel relative overflow-hidden rounded-2xl p-4 sm:p-5",
+        tone === "dark" && "metric-card-dark",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -44,7 +44,10 @@ export function MetricCard({
             {label}
           </p>
           <p
-            className={cn("mt-1.5 text-2xl font-bold tabular-nums", tones[tone])}
+            className={cn(
+              "mt-3 text-[26px] font-semibold leading-none tracking-[-0.04em] tabular-nums sm:text-[30px]",
+              tones[tone],
+            )}
             aria-busy={loading}
           >
             {loading ? "—" : value}
@@ -52,7 +55,7 @@ export function MetricCard({
           {sub && (
             <p
               className={cn(
-                "mt-1 text-xs",
+                "mt-2 text-xs leading-relaxed",
                 tone === "dark" ? "text-sidebar-foreground/75" : "text-muted-foreground",
               )}
             >
@@ -60,7 +63,16 @@ export function MetricCard({
             </p>
           )}
         </div>
-        {Icon && <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", tones[tone])} aria-hidden />}
+        {Icon && (
+          <span
+            className={cn(
+              "metric-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+              tone === "dark" ? "bg-white/10" : "bg-muted/70",
+            )}
+          >
+            <Icon className={cn("h-4 w-4", tones[tone])} aria-hidden />
+          </span>
+        )}
       </div>
     </div>
   );

@@ -126,7 +126,7 @@ function PagamentosPage() {
     <div className="space-y-6">
       <PageHeader title="Payments" description="Customer payments and partner remittances." />
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="metric-grid grid gap-3 sm:grid-cols-3">
         <MetricCard label="To remit" value={money(totais.aRepassar)} loading={loading} />
         <MetricCard
           label="Overdue"
@@ -137,7 +137,7 @@ function PagamentosPage() {
         <MetricCard label="Awaiting customer" value={String(totais.aguardando)} loading={loading} />
       </div>
 
-      <div className="rounded-xl border bg-card">
+      <div className="glass-panel overflow-hidden rounded-2xl">
         <Table>
           <TableHeader>
             <TableRow>
