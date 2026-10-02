@@ -289,7 +289,7 @@ function Overview() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="metric-grid grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricCard
           label="Visits completed"
           value={pct(completed.length, scheduled.length)}
@@ -317,10 +317,10 @@ function Overview() {
         />
       </div>
 
-      <div className="sticky top-14 z-30 -mx-4 space-y-2 border-b bg-background px-4 py-3 sm:-mx-6 sm:px-6">
+      <div className="glass-toolbar sticky top-16 z-30 -mx-4 space-y-3 px-4 py-4 sm:-mx-8 sm:px-8">
         <div className="flex flex-wrap items-center gap-2">
           <div
-            className="inline-flex shrink-0 rounded-lg border bg-card p-0.5"
+            className="inline-flex shrink-0 rounded-xl border border-border/60 bg-card/70 p-1"
             role="group"
             aria-label="Pipeline view"
           >
@@ -328,7 +328,7 @@ function Overview() {
               type="button"
               aria-pressed={view === "kanban"}
               onClick={() => setView("kanban")}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium ${view === "kanban" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              className={`ruche-button flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium ${view === "kanban" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
             >
               <LayoutGrid className="h-4 w-4" />
               Kanban
@@ -337,7 +337,7 @@ function Overview() {
               type="button"
               aria-pressed={view === "calendar"}
               onClick={() => setView("calendar")}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium ${view === "calendar" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+              className={`ruche-button flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium ${view === "calendar" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
             >
               <CalendarDays className="h-4 w-4" />
               Calendar
@@ -360,7 +360,7 @@ function Overview() {
               </Select>
             </>
           )}
-          <label className="flex min-w-40 flex-1 items-center gap-2 rounded-lg border bg-card px-3 py-2 focus-within:ring-2 focus-within:ring-brand-ink">
+          <label className="form-field flex min-w-40 flex-1 items-center gap-2 rounded-xl border px-3 py-2 focus-within:ring-2 focus-within:ring-brand-ink">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             <input
               aria-label="Search clients"
@@ -451,7 +451,7 @@ function Overview() {
                     setDropStage(null);
                     if (row) changeStage(row, stage);
                   }}
-                  className={`flex min-w-0 shrink-0 flex-col rounded-xl border p-2 ${isMobile ? "w-full" : "w-[280px]"} ${dropStage === stage ? "border-brand-ink bg-accent/40" : outcome ? "border-dashed bg-muted/20" : "bg-muted/40"}`}
+                  className={`pipeline-column flex min-w-0 shrink-0 flex-col rounded-2xl border p-2 ${isMobile ? "w-full" : "w-[280px]"} ${dropStage === stage ? "pipeline-column-drop" : outcome ? "pipeline-column-outcome" : ""}`}
                 >
                   <div className="flex items-center gap-2 px-2 py-3">
                     <span
@@ -507,7 +507,7 @@ function Overview() {
         </div>
       )}
 
-      <details className="group rounded-xl border bg-card p-4">
+      <details className="glass-panel group rounded-2xl p-5">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold">
           Pipeline by stage
           <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
@@ -625,7 +625,7 @@ function StageDistribution({
               aria-label={`${STAGE_LABEL[stage]}: ${value}, ${pct(value, total)} of opportunities`}
             >
               <div
-                className="h-full rounded-full"
+                className="stage-bar h-full rounded-full"
                 style={{ width: `${(value / max) * 100}%`, background: STAGE_STYLE[stage].dot }}
               />
             </div>
@@ -716,7 +716,7 @@ function KanbanCard({
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      className="rounded-xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+      className="pipeline-card rounded-2xl p-4"
     >
       <div className="flex items-start justify-between gap-2">
         <button

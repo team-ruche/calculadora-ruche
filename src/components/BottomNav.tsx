@@ -13,14 +13,14 @@ export function BottomNav() {
   const extra = visible.slice(3);
   const moreActive = extra.some((item) => isActiveRoute(path, item.url));
   const linkClass = (active: boolean) =>
-    `flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-primary sm:min-w-24 sm:flex-none sm:px-4 ${active ? "bg-sidebar-accent text-sidebar-primary" : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground"}`;
+    `dock-link flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-primary sm:min-w-24 sm:flex-none sm:px-4 ${active ? "dock-link-active text-sidebar-primary" : "text-sidebar-foreground/75 hover:text-sidebar-foreground"}`;
 
   return (
     <nav
       aria-label="Main navigation"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-sidebar-border bg-sidebar px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-lg"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
     >
-      <div className="mx-auto flex max-w-5xl items-center justify-center gap-1 sm:gap-2">
+      <div className="glass-dock pointer-events-auto mx-auto flex w-fit max-w-full items-center justify-center gap-1 rounded-[1.75rem] p-2 sm:gap-2">
         {visible.map((item, index) => {
           const active = isActiveRoute(path, item.url);
           return (

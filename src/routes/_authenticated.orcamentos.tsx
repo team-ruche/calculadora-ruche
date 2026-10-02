@@ -365,7 +365,7 @@ function OrcamentosPage() {
       <PageHeader title="Quotes" description="Create, review and export your client proposals." />
 
       {/* Filter bar fixed on scroll — compact */}
-      <div className="sticky top-14 z-30 -mx-4 space-y-2 border-b bg-background px-4 py-2.5 sm:-mx-6 sm:px-6">
+      <div className="glass-toolbar sticky top-16 z-30 -mx-4 space-y-2 px-4 py-3 sm:-mx-8 sm:px-8">
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => setDialog({ mode: "create" })} className="shrink-0">
             <Plus className="mr-1 h-4 w-4" /> New Quote

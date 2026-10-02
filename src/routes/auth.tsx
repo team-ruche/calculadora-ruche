@@ -82,7 +82,7 @@ function AuthPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen">
+    <div className="auth-shell relative flex min-h-screen">
       {/* Hive texture in the background — mobile only */}
       <div
         className="absolute inset-0 lg:hidden"
@@ -124,13 +124,13 @@ function AuthPage() {
       </div>
 
       {/* ===== Form ===== */}
-      <div className="relative z-10 flex flex-1 items-center justify-center p-6 lg:bg-[#F7F3E9]">
-        <div className="w-full max-w-sm rounded-2xl bg-[#F7F3E9] p-6 shadow-2xl lg:rounded-none lg:bg-transparent lg:p-0 lg:shadow-none">
+      <div className="relative z-10 flex flex-1 items-center justify-center p-6 sm:p-10">
+        <div className="auth-card w-full max-w-md rounded-3xl p-7 sm:p-10">
           <div className="mb-8 lg:hidden">
             <Logo />
           </div>
 
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="text-3xl font-semibold tracking-[-0.045em] text-foreground">
             {tab === "login" ? "Welcome back" : "Create account"}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">

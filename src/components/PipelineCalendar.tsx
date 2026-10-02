@@ -150,7 +150,7 @@ export function PipelineCalendar({
       : null;
 
   return (
-    <div className="overflow-hidden rounded-xl border bg-card">
+    <div className="glass-panel overflow-hidden rounded-2xl">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
         <Button variant="outline" size="sm" onClick={irHoje}>
