@@ -12,6 +12,9 @@ import {
   DollarSign,
   ArrowDownAZ,
   Search,
+  Plus,
+  RefreshCw,
+  ChevronDown,
 } from "lucide-react";
 import {
   supabase,
@@ -45,6 +48,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
+import { MetricCard } from "@/components/MetricCard";
+import { STAGE_STYLE } from "@/lib/proposal-stage";
+import { filterPipelineRows, type VisitScope } from "@/lib/pipeline";
 
 // Fallback for when the proposal does not yet have a location_id stored (leads
 // created before step 10). Today only 1 client is running the sync.
@@ -98,26 +105,12 @@ const visitLabel = (iso: string | null) => {
   });
 };
 
-// Colors per stage — tones with good contrast (text always in the family's 900).
-const STAGE_COLOR: Record<
-  ProposalStage,
-  { bar: string; text: string; head: string; headText: string }
-> = {
-  appointment_confirmed: { bar: "#F0A81E", text: "#3D2600", head: "#FBE7BF", headText: "#7A4E05" },
-  appointment_canceled: { bar: "#E07A52", text: "#3D1405", head: "#F6D6C7", headText: "#7A2E12" },
-  pricing_review: { bar: "#6B46C1", text: "#2E1A54", head: "#EDE6F8", headText: "#4B2E83" },
-  negotiation: { bar: "#185FA5", text: "#042C53", head: "#E6F1FB", headText: "#0C447C" },
-  no_deal: { bar: "#9C9A90", text: "#26251F", head: "#DEDCD2", headText: "#45443D" },
-  deal: { bar: "#5FA13B", text: "#173404", head: "#D3E8BC", headText: "#2C5212" },
-};
-
 const REALIZADAS: ProposalStage[] = ["pricing_review", "negotiation", "no_deal", "deal"];
 
 // Quote done = has a calculated value. It's the gate to move to Negotiation.
 const orcamentoFeito = (r: Row) => r.total_cliente != null && r.total_cliente > 0;
 
 function Overview() {
-  const { user, isRuche } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -131,6 +124,17 @@ function Overview() {
   const [sortBy, setSortBy] = useState<SortBy>("visita");
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [busca, setBusca] = useState("");
+  const [visitScope, setVisitScope] = useState<VisitScope>("all");
+  const [mobileStage, setMobileStage] = useState<ProposalStage>("appointment_confirmed");
+  const [dropStage, setDropStage] = useState<ProposalStage | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [calendarRange, setCalendarRange] = useState<Range>(() => {
+    const from = startOfWeek(new Date());
+    const to = new Date(from);
+    to.setDate(to.getDate() + 6);
+    to.setHours(23, 59, 59, 999);
+    return { from, to };
+  });
   const isMobile = useIsMobile();
 
   const load = async () => {
@@ -148,7 +152,15 @@ function Overview() {
     load();
   }, []);
 
-  const visitRows = useMemo(() => rows.filter((r) => inRange(r.visita_at, range)), [rows, range]);
+  const filteredRows = useMemo(
+    () =>
+      filterPipelineRows(rows, {
+        range: view === "calendar" ? calendarRange : range,
+        query: busca,
+        visitScope: view === "calendar" ? "scheduled" : visitScope,
+      }),
+    [rows, range, calendarRange, busca, view, visitScope],
+  );
 
   const byStage = useMemo(() => {
     const m: Record<ProposalStage, Row[]> = {
@@ -159,9 +171,7 @@ function Overview() {
       no_deal: [],
       deal: [],
     };
-    const q = busca.trim().toLowerCase();
-    for (const r of visitRows) {
-      if (q && !(r.leads?.nome_cliente ?? "").toLowerCase().includes(q)) continue;
+    for (const r of filteredRows) {
       (m[r.stage] ?? m.appointment_confirmed).push(r);
     }
     const cmp = (a: Row, b: Row) => {
@@ -176,19 +186,20 @@ function Overview() {
     };
     for (const s of STAGE_ORDER) m[s].sort(cmp);
     return m;
-  }, [visitRows, sortBy, busca]);
+  }, [filteredRows, sortBy]);
 
   const count = (s: ProposalStage) => byStage[s].length;
   const sumStage = (s: ProposalStage) => byStage[s].reduce((a, r) => a + (r.total_cliente ?? 0), 0);
 
-  const totais = visitRows.length;
-  const realizadas = visitRows.filter((r) => REALIZADAS.includes(r.stage)).length;
-  const deals = visitRows.filter((r) => r.stage === "deal").length;
-  const pipeline = visitRows
+  const totais = filteredRows.length;
+  const scheduled = filteredRows.filter((r) => r.visita_at);
+  const completed = scheduled.filter((r) => REALIZADAS.includes(r.stage));
+  const deals = completed.filter((r) => r.stage === "deal").length;
+  const pipeline = filteredRows
     .filter((r) => r.stage === "negotiation")
     .reduce((a, r) => a + (r.total_cliente ?? 0), 0);
-  const vendaFechada = rows
-    .filter((r) => r.stage === "deal" && inRange(r.fechado_at, range))
+  const vendaFechada = filteredRows
+    .filter((r) => r.stage === "deal")
     .reduce((a, r) => a + (r.total_cliente ?? 0), 0);
 
   const changeStage = async (row: Row, next: ProposalStage) => {
@@ -256,55 +267,116 @@ function Overview() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Overview</h1>
-        <p className="text-sm text-muted-foreground">
-          Welcome, {user?.nome || user?.email}.{" "}
-          {isRuche ? "You have full access." : "You are a partner."}
-        </p>
+      <PageHeader
+        title="Overview"
+        description="Your visits, quotes and opportunities in one place."
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Refresh pipeline"
+              onClick={load}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              New quote
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricCard
+          label="Visits completed"
+          value={pct(completed.length, scheduled.length)}
+          sub={`${completed.length} of ${scheduled.length} scheduled visits`}
+          loading={loading}
+        />
+        <MetricCard
+          label="Visit win rate"
+          value={pct(deals, completed.length)}
+          sub="Deals / completed visits"
+          loading={loading}
+        />
+        <MetricCard
+          label="In negotiation"
+          value={money(pipeline)}
+          sub="Opportunities in this view"
+          loading={loading}
+        />
+        <MetricCard
+          label="Won value"
+          value={money(vendaFechada)}
+          sub="Won opportunities in this view"
+          tone="success"
+          loading={loading}
+        />
       </div>
 
-      {/* Filter bar — fixed at the top, bleeding to the edge */}
-      <div className="sticky top-14 z-30 -mx-4 flex flex-wrap items-center gap-2 border-b bg-background px-4 py-2.5 sm:-mx-6 sm:px-6">
-        <div className="inline-flex shrink-0 rounded-lg border bg-card p-0.5">
-          <button
-            type="button"
-            onClick={() => setView("kanban")}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-              view === "kanban" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-            }`}
+      <div className="sticky top-14 z-30 -mx-4 space-y-2 border-b bg-background px-4 py-3 sm:-mx-6 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="inline-flex shrink-0 rounded-lg border bg-card p-0.5"
+            role="group"
+            aria-label="Pipeline view"
           >
-            <LayoutGrid className="h-4 w-4" /> Kanban
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("calendar")}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${
-              view === "calendar" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-            }`}
-          >
-            <CalendarDays className="h-4 w-4" /> Calendar
-          </button>
-        </div>
-
-        <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
-        <div className="flex min-w-[140px] flex-1 items-center gap-2 rounded-lg border bg-card px-3 py-1.5">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Search client…"
-            className="w-full bg-transparent text-sm outline-none"
-          />
-        </div>
-        {view === "kanban" && (
-          <div className="flex min-w-[150px] flex-1 items-center gap-2 sm:flex-none">
-            <ArrowDownAZ className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <button
+              type="button"
+              aria-pressed={view === "kanban"}
+              onClick={() => setView("kanban")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium ${view === "kanban" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Kanban
+            </button>
+            <button
+              type="button"
+              aria-pressed={view === "calendar"}
+              onClick={() => setView("calendar")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium ${view === "calendar" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+            >
+              <CalendarDays className="h-4 w-4" />
+              Calendar
+            </button>
+          </div>
+          {view === "kanban" && (
+            <>
+              {visitScope !== "unscheduled" && (
+                <DateRangePicker value={range} onChange={(r) => r && setRange(r)} />
+              )}
+              <Select value={visitScope} onValueChange={(v) => setVisitScope(v as VisitScope)}>
+                <SelectTrigger className="h-10 w-44" aria-label="Visit status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All opportunities</SelectItem>
+                  <SelectItem value="scheduled">Scheduled visits</SelectItem>
+                  <SelectItem value="unscheduled">Unscheduled</SelectItem>
+                </SelectContent>
+              </Select>
+            </>
+          )}
+          <label className="flex min-w-40 flex-1 items-center gap-2 rounded-lg border bg-card px-3 py-2 focus-within:ring-2 focus-within:ring-brand-ink">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <input
+              aria-label="Search clients"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Search client…"
+              className="min-w-0 w-full bg-transparent text-sm outline-none"
+            />
+          </label>
+          {view === "kanban" && (
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-              <SelectTrigger className="h-9 flex-1 sm:w-52">
+              <SelectTrigger className="h-10 w-40" aria-label="Sort opportunities">
+                <ArrowDownAZ className="mr-2 h-4 w-4" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent align="end">
+              <SelectContent>
                 {(Object.keys(SORT_LABEL) as SortBy[]).map((s) => (
                   <SelectItem key={s} value={s}>
                     {SORT_LABEL[s]}
@@ -312,18 +384,17 @@ function Overview() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        )}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Funnel counts={{ count }} totais={totais} className="lg:col-span-2" />
-        <div className="space-y-3">
-          <MetricBox label="Visits completed" value={pct(realizadas, totais)} />
-          <MetricBox label="Deal / Negotiation" value={pct(deals, realizadas)} />
-          <MetricBox label="Pipeline in negotiation" value={money(pipeline)} />
-          <MetricBox label="Closed sale" value={money(vendaFechada)} success />
+          )}
         </div>
+        <p className="text-xs text-muted-foreground" aria-live="polite">
+          {loading ? "Loading opportunities…" : `${totais} opportunities`} ·{" "}
+          {view === "calendar"
+            ? "Metrics follow the visible calendar dates."
+            : visitScope === "unscheduled"
+              ? "Unscheduled opportunities across all dates."
+              : `Filtered by visit date${visitScope === "all" ? "; unscheduled opportunities included across all dates" : ""}.`}{" "}
+          {busca.trim() && "Search applies to cards and metrics."}
+        </p>
       </div>
 
       {view === "calendar" ? (
