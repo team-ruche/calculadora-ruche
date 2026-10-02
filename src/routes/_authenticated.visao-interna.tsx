@@ -1003,7 +1003,7 @@ function VisaoInternaPage() {
                               value={novaBusca}
                               onChange={(e) => setNovaBusca(e.target.value)}
                               aria-label="Search records"
-                      placeholder="Search client…"
+                              placeholder="Search client…"
                               className="w-full bg-transparent text-sm outline-none"
                             />
                           </div>
