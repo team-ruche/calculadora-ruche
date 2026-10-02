@@ -78,7 +78,8 @@ export async function callTranscreverAudio(blob: Blob, mime: string): Promise<st
   const { data, error } = await supabase.functions.invoke("transcrever-audio", { body: form });
   const corpo = (data as { error?: string; texto?: string } | null) ?? null;
   if (error || corpo?.error) {
-    throw new Error(corpo?.error ?? error?.message ?? "Falha ao transcrever o áudio");
+    const { transcribeErrorMessage } = await import("@/lib/transcribe-error");
+    throw new Error(await transcribeErrorMessage(error, corpo));
   }
   if (!corpo?.texto) throw new Error("A transcrição voltou vazia");
   return corpo.texto;
