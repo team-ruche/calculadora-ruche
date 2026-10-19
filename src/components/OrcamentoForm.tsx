@@ -121,7 +121,7 @@ export function OrcamentoForm({
   onSaved: () => void;
   onCancel?: () => void;
 }) {
-  const { user } = useAuth();
+  const { user, empresaId } = useAuth();
 
   const [pisoNovoOpts, setPisoNovoOpts] = useState<Opt[]>([]);
   const [pisoAtualOpts, setPisoAtualOpts] = useState<Opt[]>([]);
@@ -136,17 +136,27 @@ export function OrcamentoForm({
   const [extras, setExtras] = useState<ExtrasDraft>(emptyExtras());
   const [segundoAndar, setSegundoAndar] = useState(false);
   const [removedPaths, setRemovedPaths] = useState<string[]>([]);
+  const [empresaAlvo, setEmpresaAlvo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     (async () => {
+      // Desde a etapa 23 motor_prices tem dono. Sem filtrar por empresa, um
+      // usuario da Ruche (que a RLS nao limita) veria cada piso duas vezes:
+      // o da empresa e o do catalogo modelo.
+      const alvo = await resolverEmpresa(mode === "edit" ? proposalId : undefined, empresaId);
+      setEmpresaAlvo(alvo);
       const { data } = await supabase
         .from("motor_prices")
         .select("*")
         .eq("ativo", true)
+        .eq("empresa_id", alvo ?? "00000000-0000-0000-0000-000000000000")
         .order("componente");
       const mp = (data as MotorPrice[]) ?? [];
+      if (!alvo) {
+        toast.error("Este orçamento não está ligado a nenhuma empresa — avise a Ruche.");
+      }
       setPisoNovoOpts(
         mp
           .filter((m) => m.grupo === "instalacao")
@@ -354,6 +364,7 @@ export function OrcamentoForm({
         .from("leads")
         .insert({
           partner_id: user.id,
+          empresa_id: empresaAlvo,
           nome_cliente: nomeCliente,
           telefone: telefone || null,
           endereco: endereco || null,
@@ -367,7 +378,12 @@ export function OrcamentoForm({
       }
       const { data: prop, error: propErr } = await supabase
         .from("proposals")
-        .insert({ lead_id: lead.id, partner_id: user.id, status: "rascunho" })
+        .insert({
+          lead_id: lead.id,
+          partner_id: user.id,
+          empresa_id: empresaAlvo,
+          status: "rascunho",
+        })
         .select()
         .single();
       if (propErr || !prop) {
@@ -1140,4 +1156,26 @@ function RoomSelect({
       </SelectContent>
     </Select>
   );
+}
+
+// Qual empresa este orcamento pertence. Ordem: a do proprio orcamento (edicao),
+// a do usuario logado (parceiro) e, para a Ruche criando orcamento, a unica
+// empresa ativa — enquanto houver so uma, nao faz sentido perguntar.
+async function resolverEmpresa(
+  proposalId: string | undefined,
+  empresaIdDoUsuario: string | null,
+): Promise<string | null> {
+  if (proposalId) {
+    const { data } = await supabase
+      .from("proposals")
+      .select("empresa_id")
+      .eq("id", proposalId)
+      .maybeSingle();
+    const id = (data as { empresa_id: string | null } | null)?.empresa_id;
+    if (id) return id;
+  }
+  if (empresaIdDoUsuario) return empresaIdDoUsuario;
+  const { data: es } = await supabase.from("empresas").select("id").eq("ativo", true).limit(2);
+  const lista = (es as { id: string }[]) ?? [];
+  return lista.length === 1 ? lista[0].id : null;
 }

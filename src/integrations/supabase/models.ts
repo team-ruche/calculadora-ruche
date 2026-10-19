@@ -109,8 +109,31 @@ export const ROLE_LABEL: Record<AppRoleLabel, string> = {
   parceiro: "Partner",
 };
 
+// A empresa (contractor) e o inquilino da ferramenta. Ate a etapa 23 isso
+// nao existia: a empresa era a propria conta de usuario.
+export type RevenueModel = "partner" | "cliente";
+
+export interface Empresa {
+  id: string;
+  nome: string;
+  nicho: string;
+  // partner = ha repasse e margem Ruche (modelo do piloto).
+  // cliente = o contractor fica com 100%; repasse, margem e parcelas somem.
+  revenue_model: RevenueModel;
+  location_id: string | null;
+  endereco: string | null;
+  ein: string | null;
+  telefone: string | null;
+  email: string | null;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AppUser {
   id: string;
+  // null para gente da Ruche: elas enxergam todas as empresas.
+  empresa_id: string | null;
   nome: string;
   email: string;
   telefone: string | null;
@@ -140,6 +163,7 @@ export type PreparoNivel = "nenhuma" | "simples" | "pesada";
 export interface Lead {
   id: string;
   partner_id: string;
+  empresa_id: string | null;
   nome_cliente: string;
   telefone: string | null;
   endereco: string | null;
@@ -311,6 +335,7 @@ export interface Proposal {
   pricing_status: PricingStatus;
   pricing_aprovado_em: string | null;
   pricing_aprovado_por: string | null;
+  empresa_id: string | null;
   ai_review: AiReview | null;
   ai_review_at: string | null;
   // Snapshot do layout do orçamento (congelado ao gerar).
@@ -485,6 +510,9 @@ export const defaultLayout = (partnerId: string): OrcamentoLayout => ({
 
 export interface MotorPrice {
   id: string;
+  // null = catalogo modelo do nicho, usado para provisionar empresa nova.
+  empresa_id: string | null;
+  nicho: string | null;
   grupo: MotorGrupo;
   codigo: string;
   componente: string;

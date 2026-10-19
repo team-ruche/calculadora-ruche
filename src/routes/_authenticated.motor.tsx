@@ -1,12 +1,24 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { supabase, type MotorPrice, type MotorGrupo } from "@/integrations/supabase/models";
+import {
+  supabase,
+  type MotorPrice,
+  type MotorGrupo,
+  type Empresa,
+} from "@/integrations/supabase/models";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -58,29 +70,67 @@ const slugify = (s: string) =>
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "") || "sub";
 
+// A tabela de preco deixou de ser uma so (etapa 23). O alvo da tela e uma
+// empresa, ou o catalogo modelo de um nicho — que e o que uma empresa nova
+// recebe clonado ao ser criada.
+const MODELO = "modelo:";
+
 function MotorPage() {
   const { isRuche } = useAuth();
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [nichosModelo, setNichosModelo] = useState<string[]>([]);
+  const [alvo, setAlvo] = useState<string>("");
   const [prices, setPrices] = useState<MotorPrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [addingGrupo, setAddingGrupo] = useState<MotorGrupo | null>(null);
   const [draft, setDraft] = useState<NewSub>(emptySub("sqft"));
 
-  const load = async () => {
+  // Empresas e nichos que tem catalogo modelo, para montar o seletor.
+  const loadAlvos = async () => {
+    const [{ data: es }, { data: mods }] = await Promise.all([
+      supabase.from("empresas").select("*").eq("ativo", true).order("nome"),
+      supabase.from("motor_prices").select("nicho").is("empresa_id", null),
+    ]);
+    const lista = (es as Empresa[]) ?? [];
+    const nichos = [
+      ...new Set(((mods as { nicho: string | null }[]) ?? []).map((m) => m.nicho).filter(Boolean)),
+    ] as string[];
+    setEmpresas(lista);
+    setNichosModelo(nichos.sort());
+    setAlvo((a) => a || lista[0]?.id || (nichos[0] ? MODELO + nichos[0] : ""));
+  };
+
+  const load = async (alvoAtual: string) => {
+    if (!alvoAtual) {
+      setPrices([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    const { data, error } = await supabase
-      .from("motor_prices")
-      .select("*")
-      .order("grupo")
-      .order("componente");
+    let q = supabase.from("motor_prices").select("*");
+    q = alvoAtual.startsWith(MODELO)
+      ? q.is("empresa_id", null).eq("nicho", alvoAtual.slice(MODELO.length))
+      : q.eq("empresa_id", alvoAtual);
+    const { data, error } = await q.order("grupo").order("componente");
     if (error) toast.error(error.message);
     else setPrices((data as MotorPrice[]) ?? []);
     setLoading(false);
   };
 
   useEffect(() => {
-    if (isRuche) load();
+    if (isRuche) loadAlvos();
   }, [isRuche]);
+
+  useEffect(() => {
+    if (isRuche) load(alvo);
+  }, [alvo, isRuche]);
+
+  const editandoModelo = alvo.startsWith(MODELO);
+  const nichoAlvo = editandoModelo
+    ? alvo.slice(MODELO.length)
+    : (empresas.find((e) => e.id === alvo)?.nicho ?? null);
+  const empresaAlvo = editandoModelo ? null : alvo || null;
 
   if (!isRuche) return <Navigate to="/overview" />;
 
@@ -126,6 +176,8 @@ function MotorPage() {
       return toast.error("Payout start cannot be greater than the cap");
     const codigo = (draft.codigo.trim() || slugify(draft.componente)).slice(0, 60);
     const { error } = await supabase.from("motor_prices").insert({
+      empresa_id: empresaAlvo,
+      nicho: nichoAlvo,
       grupo,
       codigo,
       componente: draft.componente.trim(),
@@ -141,7 +193,7 @@ function MotorPage() {
     }
     toast.success("Subcategory added");
     setAddingGrupo(null);
-    load();
+    load(alvo);
   };
 
   const deleteRow = async (row: MotorPrice) => {
@@ -149,7 +201,7 @@ function MotorPage() {
     const { error } = await supabase.from("motor_prices").delete().eq("id", row.id);
     if (error) return toast.error(error.message);
     toast.success("Subcategory removed");
-    load();
+    load(alvo);
   };
 
   return (
@@ -159,6 +211,32 @@ function MotorPage() {
         <p className="text-sm text-muted-foreground">
           Price charged to the client and the partner payout band (start → cap), per unit.
         </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">Catalog:</span>
+        <Select value={alvo} onValueChange={setAlvo}>
+          <SelectTrigger className="h-9 w-72">
+            <SelectValue placeholder="Select a catalog" />
+          </SelectTrigger>
+          <SelectContent>
+            {empresas.map((e) => (
+              <SelectItem key={e.id} value={e.id}>
+                {e.nome} · {e.nicho}
+              </SelectItem>
+            ))}
+            {nichosModelo.map((n) => (
+              <SelectItem key={n} value={MODELO + n}>
+                Template · {n}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {editandoModelo && (
+          <span className="rounded-full bg-[#FBE7BF] px-2.5 py-1 text-xs font-medium text-[#7A4E05]">
+            Template — what a new company starts from. Editing here changes no existing quote.
+          </span>
+        )}
       </div>
 
       {loading ? (

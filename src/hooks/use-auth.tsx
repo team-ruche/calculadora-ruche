@@ -8,6 +8,8 @@ interface AuthContextValue {
   loading: boolean;
   isRuche: boolean;
   isAprovado: boolean;
+  // Empresa do usuario. null para a Ruche, que nao pertence a nenhuma.
+  empresaId: string | null;
   // true quando o usuário chegou por link de recuperação de senha.
   passwordRecovery: boolean;
   clearRecovery: () => void;
@@ -59,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     isRuche: user?.role === "ruche",
     isAprovado: user?.status === "aprovado",
+    empresaId: user?.empresa_id ?? null,
     passwordRecovery,
     clearRecovery: () => setPasswordRecovery(false),
     refreshProfile: async () => {

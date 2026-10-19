@@ -77,6 +77,9 @@ export function PricingDialog({
   const [review, setReview] = useState<AiReview | null>(null);
   const [reviewAt, setReviewAt] = useState<string | null>(null);
   const [temTranscricao, setTemTranscricao] = useState(false);
+  // Empresa no modelo "cliente" fica com 100% do orcamento: repasse e margem
+  // da Ruche nao existem para ela e nao podem aparecer na tela.
+  const [mostraRepasse, setMostraRepasse] = useState(true);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [revisando, setRevisando] = useState(false);
@@ -94,7 +97,9 @@ export function PricingDialog({
     const [{ data: prop }, { data: its }] = await Promise.all([
       supabase
         .from("proposals")
-        .select("pricing_status, ai_review, ai_review_at, transcricao, notas")
+        .select(
+          "pricing_status, ai_review, ai_review_at, transcricao, notas, empresas:empresa_id(revenue_model)",
+        )
         .eq("id", proposalId)
         .maybeSingle(),
       supabase.from("proposal_items").select("*").eq("proposal_id", proposalId).order("grupo"),
@@ -105,11 +110,13 @@ export function PricingDialog({
       ai_review_at: string | null;
       transcricao: string | null;
       notas: string | null;
+      empresas: { revenue_model: "partner" | "cliente" } | null;
     } | null;
     setStatus(p?.pricing_status ?? "auto");
     setReview(p?.ai_review ?? null);
     setReviewAt(p?.ai_review_at ?? null);
     setTemTranscricao(!!(p?.transcricao ?? p?.notas)?.trim());
+    setMostraRepasse(p?.empresas?.revenue_model !== "cliente");
 
     const lista = (its as ProposalItem[]) ?? [];
     setItens(lista);
@@ -273,8 +280,12 @@ export function PricingDialog({
                     <TableHead className="w-24 text-right">Qty</TableHead>
                     <TableHead className="w-28 text-right">Unit price</TableHead>
                     <TableHead className="w-28 text-right">Client</TableHead>
-                    <TableHead className="w-28 text-right">Unit remit.</TableHead>
-                    <TableHead className="w-28 text-right">Remittance</TableHead>
+                    {mostraRepasse && (
+                      <>
+                        <TableHead className="w-28 text-right">Unit remit.</TableHead>
+                        <TableHead className="w-28 text-right">Remittance</TableHead>
+                      </>
+                    )}
                     <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
@@ -286,7 +297,7 @@ export function PricingDialog({
                       <Fragment key={g}>
                         <TableRow className="bg-muted/40 hover:bg-muted/40">
                           <TableCell
-                            colSpan={7}
+                            colSpan={mostraRepasse ? 7 : 5}
                             className="py-1.5 text-xs font-semibold uppercase tracking-wide"
                           >
                             {GRUPO_LABEL[g]}
@@ -326,21 +337,25 @@ export function PricingDialog({
                               <TableCell className="text-right tabular-nums">
                                 {money(q * (Number(d.preco) || 0))}
                               </TableCell>
-                              <TableCell>
-                                <Cell
-                                  value={d.repasse}
-                                  disabled={!isRuche}
-                                  onChange={(v) => set(i.id, "repasse", v)}
-                                  title={
-                                    i.repasse_teto > 0
-                                      ? `Capped at ${money(i.repasse_teto)} by the engine`
-                                      : undefined
-                                  }
-                                />
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums text-muted-foreground">
-                                {money(q * (Number(d.repasse) || 0))}
-                              </TableCell>
+                              {mostraRepasse && (
+                                <>
+                                  <TableCell>
+                                    <Cell
+                                      value={d.repasse}
+                                      disabled={!isRuche}
+                                      onChange={(v) => set(i.id, "repasse", v)}
+                                      title={
+                                        i.repasse_teto > 0
+                                          ? `Capped at ${money(i.repasse_teto)} by the engine`
+                                          : undefined
+                                      }
+                                    />
+                                  </TableCell>
+                                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                                    {money(q * (Number(d.repasse) || 0))}
+                                  </TableCell>
+                                </>
+                              )}
                               <TableCell className="text-right">
                                 {isRuche && (
                                   <Button
@@ -363,7 +378,7 @@ export function PricingDialog({
                   {itens.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
+                        colSpan={mostraRepasse ? 7 : 5}
                         className="py-8 text-center text-sm text-muted-foreground"
                       >
                         No lines yet. Save the measurement to generate them.
@@ -407,14 +422,16 @@ export function PricingDialog({
                     onChange={(e) => setNovo((p) => ({ ...p, preco: e.target.value }))}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Unit remit.</Label>
-                  <Input
-                    type="number"
-                    value={novo.repasse}
-                    onChange={(e) => setNovo((p) => ({ ...p, repasse: e.target.value }))}
-                  />
-                </div>
+                {mostraRepasse && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Unit remit.</Label>
+                    <Input
+                      type="number"
+                      value={novo.repasse}
+                      onChange={(e) => setNovo((p) => ({ ...p, repasse: e.target.value }))}
+                    />
+                  </div>
+                )}
                 <Button
                   type="button"
                   variant="outline"
@@ -435,19 +452,23 @@ export function PricingDialog({
                 <p className="text-xs text-muted-foreground">Client</p>
                 <p className="font-semibold tabular-nums">{money(totais.cli)}</p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Remittance</p>
-                <p className="font-semibold tabular-nums">{money(totais.rep)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Ruche margin</p>
-                <p className="font-semibold tabular-nums text-[#2C7A3F]">
-                  {money(totais.margem)}{" "}
-                  <span className="text-xs font-normal text-muted-foreground">
-                    {totais.pct.toFixed(1)}%
-                  </span>
-                </p>
-              </div>
+              {mostraRepasse && (
+                <>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Remittance</p>
+                    <p className="font-semibold tabular-nums">{money(totais.rep)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Ruche margin</p>
+                    <p className="font-semibold tabular-nums text-[#2C7A3F]">
+                      {money(totais.margem)}{" "}
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {totais.pct.toFixed(1)}%
+                      </span>
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
             {isRuche ? (
               <div className="flex flex-wrap gap-2">
