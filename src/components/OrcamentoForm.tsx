@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, X, Loader2, Camera, Images, Mic, Square, ChevronDown } from "lucide-react";
-import { supabase, callTranscreverAudio, type MotorPrice } from "@/integrations/supabase/models";
+import {
+  supabase,
+  callTranscreverAudio,
+  rotuloServico,
+  type MotorPrice,
+  type NichoTemplate,
+  type CampoTemplate,
+} from "@/integrations/supabase/models";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,26 +26,6 @@ import {
 import { toast } from "sonner";
 
 type Opt = { value: string; label: string };
-
-// Servicos extras que o parceiro pode marcar por ambiente. Ainda sem preco:
-// quem precifica e a aba de pricing do proprio orcamento, na aprovacao.
-const SERVICOS: Opt[] = [
-  { value: "painting", label: "Painting" },
-  { value: "ceiling_repair", label: "Ceiling repair" },
-  { value: "drywall_repair", label: "Drywall repair" },
-  { value: "baseboard_install", label: "Baseboard installation" },
-  { value: "baseboard_paint", label: "Baseboard painting" },
-  { value: "quarter_round", label: "Quarter round" },
-  { value: "transitions", label: "Floor transitions" },
-  { value: "stair_steps", label: "Stairs / steps" },
-  { value: "door_trim", label: "Door trim / undercut" },
-  { value: "subfloor_repair", label: "Subfloor repair" },
-  { value: "moisture_barrier", label: "Moisture barrier / underlayment" },
-  { value: "debris_haul", label: "Debris haul-away" },
-];
-const SERVICO_LABEL: Record<string, string> = Object.fromEntries(
-  SERVICOS.map((s) => [s.value, s.label]),
-);
 
 // Os extras do orcamento inteiro sairam da tela, mas continuam no tipo e no
 // save: um orcamento antigo editado preserva o que ja tinha, em vez de zerar
@@ -77,6 +64,9 @@ interface RoomDraft {
   moverMoveisHoras: number;
   servicos: string[];
   observacao: string;
+  // Valores dos campos do template do nicho. No flooring espelha as colunas
+  // antigas (piso_novo etc.), que o resto do sistema ainda le.
+  campos: Record<string, unknown>;
   media: MediaItem[];
 }
 
@@ -93,7 +83,18 @@ const emptyExtras = (): ExtrasDraft => ({
 
 // Piso atual e piso novo nascem EM BRANCO — o parceiro escolhe, nada vem
 // pre-selecionado (um default silencioso ja virou preco errado antes).
-const emptyRoom = (): RoomDraft => ({
+// Os defaults do template precisam estar em `campos` desde o inicio: o
+// checkbox ja aparece marcado, e o motor le `campos`, nao a tela. Sem semear,
+// a tela diria "remove o piso" e o orcamento nao cobraria a remocao.
+const camposIniciais = (t: NichoTemplate | null): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const c of t?.campos ?? []) {
+    if (c.tipo === "bool") out[c.key] = c.default === true;
+  }
+  return out;
+};
+
+const emptyRoom = (t: NichoTemplate | null = null): RoomDraft => ({
   localId: crypto.randomUUID(),
   nome: "",
   areaSqft: 0,
@@ -105,6 +106,7 @@ const emptyRoom = (): RoomDraft => ({
   moverMoveisHoras: 0,
   servicos: [],
   observacao: "",
+  campos: camposIniciais(t),
   media: [],
 });
 
@@ -123,10 +125,6 @@ export function OrcamentoForm({
 }) {
   const { user, empresaId } = useAuth();
 
-  const [pisoNovoOpts, setPisoNovoOpts] = useState<Opt[]>([]);
-  const [pisoAtualOpts, setPisoAtualOpts] = useState<Opt[]>([]);
-  const [prepOpts, setPrepOpts] = useState<Opt[]>([{ value: "nenhuma", label: "None" }]);
-
   const [nomeCliente, setNomeCliente] = useState("");
   const [telefone, setTelefone] = useState("");
   const [endereco, setEndereco] = useState("");
@@ -137,6 +135,9 @@ export function OrcamentoForm({
   const [segundoAndar, setSegundoAndar] = useState(false);
   const [removedPaths, setRemovedPaths] = useState<string[]>([]);
   const [empresaAlvo, setEmpresaAlvo] = useState<string | null>(null);
+  const [template, setTemplate] = useState<NichoTemplate | null>(null);
+  // Opcoes de catalogo por grupo do motor, ja filtradas por empresa e nicho.
+  const [catalogo, setCatalogo] = useState<Record<string, Opt[]>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -145,35 +146,32 @@ export function OrcamentoForm({
       // Desde a etapa 23 motor_prices tem dono. Sem filtrar por empresa, um
       // usuario da Ruche (que a RLS nao limita) veria cada piso duas vezes:
       // o da empresa e o do catalogo modelo.
-      const alvo = await resolverEmpresa(mode === "edit" ? proposalId : undefined, empresaId);
+      const ctx = await resolverContexto(mode === "edit" ? proposalId : undefined, empresaId);
+      const alvo = ctx.empresaId;
       setEmpresaAlvo(alvo);
+      setTemplate(ctx.template);
+      if (mode === "create") setRooms([emptyRoom(ctx.template)]);
       const { data } = await supabase
         .from("motor_prices")
         .select("*")
         .eq("ativo", true)
         .eq("empresa_id", alvo ?? "00000000-0000-0000-0000-000000000000")
+        .eq("nicho", ctx.nicho ?? "flooring")
         .order("componente");
       const mp = (data as MotorPrice[]) ?? [];
       if (!alvo) {
         toast.error("Este orçamento não está ligado a nenhuma empresa — avise a Ruche.");
       }
-      setPisoNovoOpts(
-        mp
-          .filter((m) => m.grupo === "instalacao")
-          .map((m) => ({ value: m.codigo, label: m.componente })),
-      );
-      setPisoAtualOpts(
-        mp
-          .filter((m) => m.grupo === "demolicao")
-          .map((m) => ({ value: m.codigo, label: m.componente })),
-      );
-      setPrepOpts([
-        { value: "nenhuma", label: "None" },
-        ...mp
-          .filter((m) => m.grupo === "prep")
-          .map((m) => ({ value: m.codigo, label: m.componente })),
-      ]);
-
+      if (!ctx.template) {
+        toast.error(`Nicho "${ctx.nicho ?? "?"}" não tem template — avise a Ruche.`);
+      }
+      // Um grupo do motor por conjunto de opcoes; o template diz qual campo
+      // consome qual grupo.
+      const porGrupo: Record<string, Opt[]> = {};
+      for (const m of mp) {
+        (porGrupo[m.grupo] ??= []).push({ value: m.codigo, label: m.componente });
+      }
+      setCatalogo(porGrupo);
       if (mode === "edit" && proposalId) await loadExisting(proposalId);
       setLoading(false);
     })();
@@ -241,6 +239,7 @@ export function OrcamentoForm({
         mover_moveis_horas: number | null;
         servicos: string[] | null;
         observacao: string | null;
+        campos: Record<string, unknown> | null;
       }[]) ?? []
     ).map((r) => ({
       localId: crypto.randomUUID(),
@@ -255,6 +254,7 @@ export function OrcamentoForm({
       moverMoveisHoras: Number(r.mover_moveis_horas ?? 0),
       servicos: r.servicos ?? [],
       observacao: r.observacao ?? "",
+      campos: (r.campos as Record<string, unknown>) ?? {},
       media: mediaByRoom[r.id] ?? [],
     }));
     setRooms(roomDrafts.length ? roomDrafts : [emptyRoom()]);
@@ -280,7 +280,7 @@ export function OrcamentoForm({
     }
   };
 
-  const addRoom = () => setRooms((p) => [...p, emptyRoom()]);
+  const addRoom = () => setRooms((p) => [...p, emptyRoom(template)]);
   const removeRoom = (id: string) =>
     setRooms((p) => (p.length === 1 ? p : p.filter((r) => r.localId !== id)));
   const updateRoom = (id: string, patch: Partial<RoomDraft>) =>
@@ -343,18 +343,10 @@ export function OrcamentoForm({
     if (rooms.some((r) => !r.nome.trim() || r.areaSqft <= 0)) {
       return toast.error("Each room needs a name and an area greater than zero");
     }
-    if (rooms.some((r) => !r.pisoNovo)) {
-      return toast.error("Pick the new floor for every room");
-    }
-    // Sem piso atual nao da para cobrar a remocao — ou escolhe, ou desmarca.
-    if (rooms.some((r) => r.remocao && !r.pisoAtual)) {
-      return toast.error(
-        "Pick the current floor, or uncheck “Remove current floor” when the new floor goes on top",
-      );
-    }
-    if (rooms.some((r) => r.moverMoveis && r.moverMoveisHoras <= 0)) {
-      return toast.error("Furniture to move needs the estimated hours");
-    }
+    // As travas vem do template do nicho: obrigatorio, e campo dependente que
+    // ficou visivel e vazio (marcou "remover o piso" e nao disse qual).
+    const faltando = primeiroCampoFaltando(rooms, template);
+    if (faltando) return toast.error(faltando);
     setSubmitting(true);
 
     let pid = proposalId ?? "";
@@ -429,12 +421,16 @@ export function OrcamentoForm({
           proposal_id: pid,
           nome: r.nome,
           area_sqft: r.areaSqft,
-          piso_novo: r.pisoNovo,
-          piso_atual: r.pisoAtual,
-          preparo: r.preparo,
-          remocao: r.remocao,
-          mover_moveis: r.moverMoveis,
-          mover_moveis_horas: r.moverMoveis ? r.moverMoveisHoras : 0,
+          // campos e a fonte; as colunas viram espelho para o que ainda le
+          // delas (ghl-sync, documento do orcamento, relatorios antigos).
+          piso_novo: txt(r.campos.piso_novo),
+          piso_atual: txt(r.campos.piso_atual),
+          preparo: txt(r.campos.preparo) || "nenhuma",
+          remocao: r.campos.remocao !== false,
+          mover_moveis: r.campos.mover_moveis === true,
+          mover_moveis_horas:
+            r.campos.mover_moveis === true ? Number(r.campos.mover_moveis_horas ?? 0) : 0,
+          campos: r.campos,
           servicos: r.servicos,
           observacao: r.observacao.trim() || null,
         })
@@ -450,7 +446,7 @@ export function OrcamentoForm({
     // O motor continua lendo as horas de mover moveis de proposal_extras.
     // A conta agora nasce dos ambientes; o preco por hora e o mesmo.
     const horasMoveis = rooms.reduce(
-      (a, r) => a + (r.moverMoveis ? Number(r.moverMoveisHoras) || 0 : 0),
+      (a, r) => a + (r.campos.mover_moveis === true ? Number(r.campos.mover_moveis_horas) || 0 : 0),
       0,
     );
     const { error: exErr } = await supabase.from("proposal_extras").insert({
@@ -554,9 +550,8 @@ export function OrcamentoForm({
                 room={room}
                 index={i}
                 canRemove={rooms.length > 1}
-                pisoNovoOpts={pisoNovoOpts}
-                pisoAtualOpts={pisoAtualOpts}
-                prepOpts={prepOpts}
+                template={template}
+                catalogo={catalogo}
                 onChange={(patch) => updateRoom(room.localId, patch)}
                 onRemove={() => removeRoom(room.localId)}
                 onFiles={(files) => addFiles(room.localId, files)}
@@ -605,9 +600,8 @@ function RoomCard({
   room,
   index,
   canRemove,
-  pisoNovoOpts,
-  pisoAtualOpts,
-  prepOpts,
+  template,
+  catalogo,
   onChange,
   onRemove,
   onFiles,
@@ -616,20 +610,24 @@ function RoomCard({
   room: RoomDraft;
   index: number;
   canRemove: boolean;
-  pisoNovoOpts: Opt[];
-  pisoAtualOpts: Opt[];
-  prepOpts: Opt[];
+  template: NichoTemplate | null;
+  catalogo: Record<string, Opt[]>;
   onChange: (patch: Partial<RoomDraft>) => void;
   onRemove: () => void;
   onFiles: (files: FileList | null) => void;
   onRemoveMedia: (idx: number) => void;
 }) {
+  const rotuloArea = template?.rotulo_area ?? "Room";
+  const servicoOpts: Opt[] = (template?.servicos ?? []).map((v) => ({
+    value: v,
+    label: rotuloServico(v),
+  }));
   return (
     <details open className="group rounded-lg border p-4">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold">
-        <span>{room.nome.trim() || `Room ${index + 1}`}</span>
+        <span>{room.nome.trim() || `${rotuloArea} ${index + 1}`}</span>
         <span className="text-xs font-normal text-muted-foreground">
-          {room.areaSqft || 0} sqft · expand / collapse
+          {room.areaSqft || 0} {template?.unidade_base ?? "sqft"} · expand / collapse
         </span>
       </summary>
       <div className="mt-4 space-y-4">
@@ -647,18 +645,18 @@ function RoomCard({
           </Button>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-2">
-            <Label>Room name</Label>
+            <Label>{rotuloArea} name</Label>
             <Input
               required
-              placeholder={`Room ${index + 1}`}
+              placeholder={`${rotuloArea} ${index + 1}`}
               value={room.nome}
               onChange={(e) => onChange({ nome: e.target.value })}
             />
           </div>
           <div className="space-y-2">
-            <Label>Area (sqft)</Label>
+            <Label>Area ({template?.unidade_base ?? "sqft"})</Label>
             <Input
               type="number"
               min={0}
@@ -668,82 +666,20 @@ function RoomCard({
               onChange={(e) => onChange({ areaSqft: Number(e.target.value) })}
             />
           </div>
-          <div className="space-y-2">
-            <Label>Prep</Label>
-            <RoomSelect
-              value={room.preparo}
-              opts={prepOpts}
-              onChange={(v) => onChange({ preparo: v })}
-            />
-          </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Current floor</Label>
-            <RoomSelect
-              value={room.pisoAtual}
-              opts={pisoAtualOpts}
-              onChange={(v) => onChange({ pisoAtual: v })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>New floor</Label>
-            <RoomSelect
-              value={room.pisoNovo}
-              opts={pisoNovoOpts}
-              onChange={(v) => onChange({ pisoNovo: v })}
-            />
-          </div>
-        </div>
-
-        <label className="flex items-start gap-2.5">
-          <Checkbox
-            className="mt-0.5"
-            checked={room.remocao}
-            onCheckedChange={(c) => onChange({ remocao: c === true })}
-          />
-          <span className="text-sm leading-tight">
-            Remove the current floor
-            <span className="block text-xs text-muted-foreground">
-              Uncheck when the new floor is installed over the existing one — no removal is charged.
-            </span>
-          </span>
-        </label>
-
-        <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-          <label className="flex items-center gap-2.5">
-            <Checkbox
-              checked={room.moverMoveis}
-              onCheckedChange={(c) =>
-                onChange({
-                  moverMoveis: c === true,
-                  ...(c === true ? {} : { moverMoveisHoras: 0 }),
-                })
-              }
-            />
-            <span className="text-sm">Furniture to move</span>
-          </label>
-          {room.moverMoveis && (
-            <div className="space-y-2">
-              <Label>Estimated hours</Label>
-              <Input
-                type="number"
-                min={0}
-                step="0.5"
-                className="max-w-40"
-                value={room.moverMoveisHoras || ""}
-                onChange={(e) => onChange({ moverMoveisHoras: Number(e.target.value) })}
-              />
-            </div>
-          )}
-        </div>
+        <CamposDoTemplate
+          campos={template?.campos ?? []}
+          valores={room.campos}
+          catalogo={catalogo}
+          onChange={(key, valor) => onChange({ campos: { ...room.campos, [key]: valor } })}
+        />
 
         <div className="space-y-2">
           <Label>Additional services</Label>
           <MultiSelect
             values={room.servicos}
-            opts={SERVICOS}
+            opts={servicoOpts}
             placeholder="None selected"
             onChange={(v) => onChange({ servicos: v })}
           />
@@ -754,7 +690,7 @@ function RoomCard({
                   key={s}
                   className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs"
                 >
-                  {SERVICO_LABEL[s] ?? s}
+                  {rotuloServico(s)}
                   <button
                     type="button"
                     onClick={() => onChange({ servicos: room.servicos.filter((x) => x !== s) })}
@@ -1158,24 +1094,160 @@ function RoomSelect({
   );
 }
 
-// Qual empresa este orcamento pertence. Ordem: a do proprio orcamento (edicao),
-// a do usuario logado (parceiro) e, para a Ruche criando orcamento, a unica
-// empresa ativa — enquanto houver so uma, nao faz sentido perguntar.
-async function resolverEmpresa(
+// Empresa e nicho deste orcamento, e o template do nicho. A empresa vem do
+// proprio orcamento (edicao), do usuario logado (parceiro) ou, para a Ruche
+// criando orcamento, da unica empresa ativa — enquanto houver so uma, nao faz
+// sentido perguntar.
+async function resolverContexto(
   proposalId: string | undefined,
   empresaIdDoUsuario: string | null,
-): Promise<string | null> {
+): Promise<{ empresaId: string | null; nicho: string | null; template: NichoTemplate | null }> {
+  let empresa: string | null = null;
+  let nicho: string | null = null;
+
   if (proposalId) {
     const { data } = await supabase
       .from("proposals")
-      .select("empresa_id")
+      .select("empresa_id, nicho")
       .eq("id", proposalId)
       .maybeSingle();
-    const id = (data as { empresa_id: string | null } | null)?.empresa_id;
-    if (id) return id;
+    const row = data as { empresa_id: string | null; nicho: string | null } | null;
+    empresa = row?.empresa_id ?? null;
+    nicho = row?.nicho ?? null;
   }
-  if (empresaIdDoUsuario) return empresaIdDoUsuario;
-  const { data: es } = await supabase.from("empresas").select("id").eq("ativo", true).limit(2);
-  const lista = (es as { id: string }[]) ?? [];
-  return lista.length === 1 ? lista[0].id : null;
+  if (!empresa) empresa = empresaIdDoUsuario;
+  if (!empresa) {
+    const { data: es } = await supabase.from("empresas").select("id").eq("ativo", true).limit(2);
+    const lista = (es as { id: string }[]) ?? [];
+    if (lista.length === 1) empresa = lista[0].id;
+  }
+  if (!nicho && empresa) {
+    const { data: e } = await supabase
+      .from("empresas")
+      .select("nicho")
+      .eq("id", empresa)
+      .maybeSingle();
+    nicho = (e as { nicho: string } | null)?.nicho ?? null;
+  }
+
+  let template: NichoTemplate | null = null;
+  if (nicho) {
+    const { data: t } = await supabase
+      .from("nicho_templates")
+      .select("*")
+      .eq("nicho", nicho)
+      .eq("ativo", true)
+      .maybeSingle();
+    template = (t as NichoTemplate) ?? null;
+  }
+  return { empresaId: empresa, nicho, template };
+}
+
+// Desenha os campos que o template do nicho declara. Campo sem grupo e so
+// medida: aparece na tela e nao vira linha de preco.
+function CamposDoTemplate({
+  campos,
+  valores,
+  catalogo,
+  onChange,
+}: {
+  campos: CampoTemplate[];
+  valores: Record<string, unknown>;
+  catalogo: Record<string, Opt[]>;
+  onChange: (key: string, valor: unknown) => void;
+}) {
+  const visivel = (c: CampoTemplate) => !c.depende_de || valores[c.depende_de] === true;
+
+  const selects = campos.filter((c) => c.tipo === "catalogo" && visivel(c));
+  const numeros = campos.filter((c) => c.tipo === "numero" && visivel(c));
+  const bools = campos.filter((c) => c.tipo === "bool");
+  const textos = campos.filter((c) => c.tipo === "texto" && visivel(c));
+
+  return (
+    <div className="space-y-3">
+      {selects.length > 0 && (
+        <div className="grid gap-3 md:grid-cols-2">
+          {selects.map((c) => (
+            <div key={c.key} className="space-y-2">
+              <Label>{c.label}</Label>
+              <RoomSelect
+                value={String(valores[c.key] ?? "")}
+                opts={catalogo[c.grupo ?? ""] ?? []}
+                onChange={(v) => onChange(c.key, v)}
+              />
+              {c.ajuda && <p className="text-xs text-muted-foreground">{c.ajuda}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {bools.map((c) => (
+        <label key={c.key} className="flex items-start gap-2.5">
+          <Checkbox
+            className="mt-0.5"
+            checked={(valores[c.key] ?? c.default ?? false) === true}
+            onCheckedChange={(v) => onChange(c.key, v === true)}
+          />
+          <span className="text-sm leading-tight">
+            {c.label}
+            {c.ajuda && <span className="block text-xs text-muted-foreground">{c.ajuda}</span>}
+          </span>
+        </label>
+      ))}
+
+      {numeros.length > 0 && (
+        <div className="grid gap-3 md:grid-cols-3">
+          {numeros.map((c) => (
+            <div key={c.key} className="space-y-2">
+              <Label>{c.label}</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.5"
+                value={(valores[c.key] as number) || ""}
+                onChange={(e) => onChange(c.key, Number(e.target.value))}
+              />
+              {c.ajuda && <p className="text-xs text-muted-foreground">{c.ajuda}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {textos.map((c) => (
+        <div key={c.key} className="space-y-2">
+          <Label>{c.label}</Label>
+          <Input
+            value={String(valores[c.key] ?? "")}
+            onChange={(e) => onChange(c.key, e.target.value)}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const txt = (v: unknown) => (v === null || v === undefined ? "" : String(v));
+
+// Primeira trava violada, em linguagem de gente. Sai do template, entao nicho
+// novo ganha validacao sem ninguem escrever if.
+function primeiroCampoFaltando(rooms: RoomDraft[], template: NichoTemplate | null): string | null {
+  if (!template) return null;
+  for (const [i, r] of rooms.entries()) {
+    const nome = r.nome.trim() || `${template.rotulo_area} ${i + 1}`;
+    for (const c of template.campos) {
+      const visivel = !c.depende_de || r.campos[c.depende_de] === true;
+      if (!visivel) continue;
+      const v = r.campos[c.key];
+      const vazio = v === undefined || v === null || v === "" || v === 0;
+      if (c.obrigatorio && vazio) {
+        return `${nome}: preencha "${c.label}"`;
+      }
+      // Campo que so apareceu porque outro foi marcado precisa de valor —
+      // marcar "remover o piso" e nao dizer qual nao cobra nada.
+      if (c.depende_de && vazio) {
+        return `${nome}: "${c.label}" ficou em branco`;
+      }
+    }
+  }
+  return null;
 }

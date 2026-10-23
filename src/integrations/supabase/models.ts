@@ -113,6 +113,39 @@ export const ROLE_LABEL: Record<AppRoleLabel, string> = {
 // nao existia: a empresa era a propria conta de usuario.
 export type RevenueModel = "partner" | "cliente";
 
+// O nicho descreve os campos de cada area do orcamento. Deixou de ser coluna
+// em proposal_rooms para nao precisar de um ALTER TABLE por nicho novo.
+export interface CampoTemplate {
+  key: string;
+  label: string;
+  tipo: "catalogo" | "numero" | "bool" | "texto";
+  // Grupo em motor_prices de onde sai o preco. Campo sem grupo e so medida.
+  grupo?: "instalacao" | "demolicao" | "prep" | "extra";
+  codigo?: string;
+  quantidade?: "area" | "self" | string;
+  depende_de?: string;
+  vazio?: string;
+  obrigatorio?: boolean;
+  ajuda?: string;
+  default?: boolean;
+  // 'extras' = ja cobrado pelo unpivot de proposal_extras; o motor pula.
+  fonte?: string;
+}
+
+export interface NichoTemplate {
+  nicho: string;
+  nome: string;
+  rotulo_area: string;
+  unidade_base: string;
+  campos: CampoTemplate[];
+  servicos: string[];
+  ativo: boolean;
+}
+
+// "stair_steps" -> "Stair steps"
+export const rotuloServico = (s: string) =>
+  s.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
 export interface Empresa {
   id: string;
   nome: string;
@@ -336,6 +369,7 @@ export interface Proposal {
   pricing_aprovado_em: string | null;
   pricing_aprovado_por: string | null;
   empresa_id: string | null;
+  nicho: string | null;
   ai_review: AiReview | null;
   ai_review_at: string | null;
   // Snapshot do layout do orçamento (congelado ao gerar).

@@ -21,17 +21,16 @@ const json = (body: unknown, status = 200) =>
   });
 
 type Room = {
+  id: string;
   nome: string;
   area_sqft: number;
-  piso_novo: string;
-  piso_atual: string;
-  preparo: string;
-  remocao: boolean | null;
-  mover_moveis: boolean | null;
-  mover_moveis_horas: number | null;
+  campos: Record<string, unknown> | null;
   servicos: string[] | null;
   observacao: string | null;
 };
+
+type Campo = { key: string; label: string; tipo: string };
+type Template = { nome: string; rotulo_area: string; unidade_base: string; campos: Campo[] };
 
 type Item = { grupo: string; componente: string; unidade: string; quantidade: number };
 
@@ -58,36 +57,52 @@ const SCHEMA = {
   },
 };
 
-const SYSTEM = [
-  "You audit flooring quotes for a contractor.",
-  "You get the transcript of the in-home visit and the measurement the installer filled in.",
-  "Your only job: list what the customer asked for in the transcript that is NOT reflected in the measurement.",
-  "Also flag rooms with no photo, and rooms whose scope the transcript contradicts.",
-  "Never invent prices, never suggest an amount — pricing is the closer's call.",
-  "If the transcript is empty or says nothing useful, say so in `resumo` and return an empty `faltando`.",
-  "Quote the transcript verbatim in `evidencia`. If you cannot quote it, do not raise the item.",
-  "Write in English.",
-].join(" ");
+const system = (nicho: string) =>
+  [
+    `You audit ${nicho} quotes for a contractor.`,
+    "You get the transcript of the in-home visit and the measurement the installer filled in.",
+    "Your only job: list what the customer asked for in the transcript that is NOT reflected in the measurement.",
+    "Also flag rooms with no photo, and rooms whose scope the transcript contradicts.",
+    "Never invent prices, never suggest an amount — pricing is the closer's call.",
+    "If the transcript is empty or says nothing useful, say so in `resumo` and return an empty `faltando`.",
+    "Quote the transcript verbatim in `evidencia`. If you cannot quote it, do not raise the item.",
+    "Write in English.",
+  ].join(" ");
 
-function medicaoTexto(rooms: Room[], itens: Item[], fotosPorRoom: Record<string, number>): string {
+// Descreve cada area pelos campos que o template do nicho declara, em vez de
+// pelas colunas de flooring. Assim deck, painting e o que vier depois chegam
+// na IA com o vocabulario certo, sem tocar nesta funcao de novo.
+function medicaoTexto(
+  rooms: Room[],
+  itens: Item[],
+  fotosPorRoom: Record<string, number>,
+  tpl: Template,
+): string {
   const linhasRooms = rooms.map((r) => {
-    const partes = [
-      `${r.nome}: ${r.area_sqft} sqft`,
-      `current floor ${r.piso_atual || "(blank)"} -> new floor ${r.piso_novo || "(blank)"}`,
-      `remove current floor: ${r.remocao === false ? "no" : "yes"}`,
-      `prep: ${r.preparo}`,
-      `furniture to move: ${r.mover_moveis ? `${r.mover_moveis_horas ?? 0}h` : "no"}`,
-      `extra services: ${(r.servicos ?? []).join(", ") || "none"}`,
-      `photos attached: ${fotosPorRoom[r.nome] ?? 0}`,
-      `installer note: ${r.observacao || "none"}`,
-    ];
+    const v = r.campos ?? {};
+    const partes = [`${r.nome}: ${r.area_sqft} ${tpl.unidade_base}`];
+    for (const c of tpl.campos) {
+      const bruto = v[c.key];
+      const valor =
+        c.tipo === "bool"
+          ? bruto === true
+            ? "yes"
+            : "no"
+          : bruto === undefined || bruto === null || bruto === ""
+            ? "(blank)"
+            : String(bruto);
+      partes.push(`${c.label}: ${valor}`);
+    }
+    partes.push(`extra services: ${(r.servicos ?? []).join(", ") || "none"}`);
+    partes.push(`photos attached: ${fotosPorRoom[r.nome] ?? 0}`);
+    partes.push(`installer note: ${r.observacao || "none"}`);
     return "- " + partes.join(" | ");
   });
   const linhasItens = itens.map(
     (i) => `- [${i.grupo}] ${i.componente} — ${i.quantidade} ${i.unidade}`,
   );
   return [
-    "ROOMS MEASURED:",
+    `${tpl.rotulo_area.toUpperCase()}S MEASURED:`,
     linhasRooms.join("\n") || "(none)",
     "",
     "QUOTE LINES:",
@@ -105,7 +120,10 @@ Deno.serve(async (req) => {
   const model = Deno.env.get("OPENAI_MODEL") ?? "gpt-4.1-mini";
   if (!openaiKey) {
     return json(
-      { error: "OPENAI_API_KEY nao configurada nesta função. Rode: supabase secrets set OPENAI_API_KEY=..." },
+      {
+        error:
+          "OPENAI_API_KEY nao configurada nesta função. Rode: supabase secrets set OPENAI_API_KEY=...",
+      },
       503,
     );
   }
@@ -128,7 +146,7 @@ Deno.serve(async (req) => {
   // Mesma regra da RLS: dono da proposta ou ruche.
   const { data: prop } = await admin
     .from("proposals")
-    .select("id, partner_id, transcricao, notas, leads(nome_cliente)")
+    .select("id, partner_id, transcricao, notas, nicho, empresa_id, leads(nome_cliente)")
     .eq("id", pid)
     .maybeSingle();
   if (!prop) return json({ error: "Orçamento não encontrado" }, 404);
@@ -148,9 +166,34 @@ Deno.serve(async (req) => {
     return json({ error: "Sem transcrição para comparar. Cole a conversa no orçamento." }, 400);
   }
 
+  // Template do nicho: e dele que sai o vocabulario do prompt.
+  let nicho = (prop as { nicho: string | null }).nicho;
+  if (!nicho) {
+    const { data: emp } = await admin
+      .from("empresas")
+      .select("nicho")
+      .eq("id", (prop as { empresa_id: string | null }).empresa_id ?? "")
+      .maybeSingle();
+    nicho = (emp as { nicho: string } | null)?.nicho ?? "flooring";
+  }
+  const { data: tplRow } = await admin
+    .from("nicho_templates")
+    .select("nome, rotulo_area, unidade_base, campos")
+    .eq("nicho", nicho)
+    .maybeSingle();
+  const tpl: Template = (tplRow as Template) ?? {
+    nome: nicho,
+    rotulo_area: "Room",
+    unidade_base: "sqft",
+    campos: [],
+  };
+
   const [{ data: rooms }, { data: itens }, { data: media }] = await Promise.all([
     admin.from("proposal_rooms").select("*").eq("proposal_id", pid),
-    admin.from("proposal_items").select("grupo, componente, unidade, quantidade").eq("proposal_id", pid),
+    admin
+      .from("proposal_items")
+      .select("grupo, componente, unidade, quantidade")
+      .eq("proposal_id", pid),
     admin.from("proposal_room_media").select("room_id").eq("proposal_id", pid),
   ]);
 
@@ -159,14 +202,14 @@ Deno.serve(async (req) => {
     fotosPorRoomId[m.room_id] = (fotosPorRoomId[m.room_id] ?? 0) + 1;
   }
   const fotosPorRoom: Record<string, number> = {};
-  for (const r of (rooms as (Room & { id: string })[]) ?? []) {
+  for (const r of (rooms as Room[]) ?? []) {
     fotosPorRoom[r.nome] = fotosPorRoomId[r.id] ?? 0;
   }
 
   const userMsg = [
     `CUSTOMER: ${(prop.leads as { nome_cliente: string } | null)?.nome_cliente ?? "unknown"}`,
     "",
-    medicaoTexto((rooms as Room[]) ?? [], (itens as Item[]) ?? [], fotosPorRoom),
+    medicaoTexto((rooms as Room[]) ?? [], (itens as Item[]) ?? [], fotosPorRoom, tpl),
     "",
     "VISIT TRANSCRIPT:",
     transcricao,
@@ -182,7 +225,7 @@ Deno.serve(async (req) => {
       model,
       temperature: 0,
       messages: [
-        { role: "system", content: SYSTEM },
+        { role: "system", content: system(tpl.nome) },
         { role: "user", content: userMsg },
       ],
       response_format: {
